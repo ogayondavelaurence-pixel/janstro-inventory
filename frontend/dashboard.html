@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Janstro Inventory System</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --sidebar-width: 260px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header i {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .sidebar-header h4 {
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .sidebar-header small {
+            opacity: 0.8;
+        }
+
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+
+        .menu-item {
+            padding: 12px 25px;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .menu-item:hover,
+        .menu-item.active {
+            background: rgba(255, 255, 255, 0.1);
+            border-left-color: white;
+            color: white;
+        }
+
+        .menu-item i {
+            font-size: 20px;
+            margin-right: 15px;
+            width: 24px;
+        }
+
+        .menu-section {
+            padding: 10px 25px;
+            font-size: 12px;
+            text-transform: uppercase;
+            opacity: 0.7;
+            letter-spacing: 1px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        /* Top Navigation */
+        .top-nav {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .top-nav h5 {
+            margin: 0;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .user-details .name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .user-details .role {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .btn-logout {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-logout:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        /* Content Area */
+        .content-area {
+            padding: 30px;
+        }
+
+        /* Stats Cards */
+        .stats-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .stats-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        .stats-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stats-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .stats-change {
+            font-size: 13px;
+        }
+
+        .stats-change.positive {
+            color: var(--success-color);
+        }
+
+        .stats-change.negative {
+            color: var(--danger-color);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .action-btn {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            color: var(--primary-color);
+        }
+
+        .action-btn i {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        /* Table Styling */
+        .data-table {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            color: #333;
+            padding: 15px;
+        }
+
+        .table tbody td {
+            padding: 15px;
+            vertical-align: middle;
+        }
+
+        /* Charts */
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: 400px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .stats-card {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="bi bi-box-seam"></i>
+            <h4>Janstro</h4>
+            <small>Inventory System v2.0</small>
+        </div>
+
+        <div class="sidebar-menu">
+            <div class="menu-section">Main</div>
+            <a href="dashboard.html" class="menu-item active">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+            </a>
+            
+            <div class="menu-section">Inventory (SAP: MMBE)</div>
+            <a href="inventory.html" class="menu-item">
+                <i class="bi bi-box"></i>
+                <span>All Items</span>
+            </a>
+            <a href="stock-movements.html" class="menu-item">
+                <i class="bi bi-arrow-left-right"></i>
+                <span>Stock Movements (MB51)</span>
+            </a>
+
+            <div class="menu-section">Procurement (SAP: ME21N)</div>
+            <a href="purchase-orders.html" class="menu-item">
+                <i class="bi bi-cart-plus"></i>
+                <span>Purchase Orders</span>
+            </a>
+            <a href="goods-receipt.html" class="menu-item">
+                <i class="bi bi-box-arrow-in-down"></i>
+                <span>Goods Receipt (MIGO)</span>
+            </a>
+            <a href="suppliers.html" class="menu-item">
+                <i class="bi bi-truck"></i>
+                <span>Suppliers</span>
+            </a>
+
+            <div class="menu-section">Sales (SAP: VA01)</div>
+            <a href="sales-orders.html" class="menu-item">
+                <i class="bi bi-cart-check"></i>
+                <span>Sales Orders</span>
+            </a>
+
+            <div class="menu-section">Reports</div>
+            <a href="reports.html" class="menu-item">
+                <i class="bi bi-graph-up"></i>
+                <span>Analytics</span>
+            </a>
+
+            <div class="menu-section">Administration</div>
+            <a href="users.html" class="menu-item">
+                <i class="bi bi-people"></i>
+                <span>Users</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navigation -->
+        <div class="top-nav">
+            <h5><i class="bi bi-speedometer2 me-2"></i>Dashboard</h5>
+            
+            <div class="user-info">
+                <div class="user-details">
+                    <div class="name" id="userName">Loading...</div>
+                    <div class="role" id="userRole">...</div>
+                </div>
+                <div class="user-avatar" id="userAvatar">A</div>
+                <button class="btn-logout" onclick="handleLogout()">
+                    <i class="bi bi-box-arrow-right me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Stats Cards -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-icon" style="background: rgba(40, 167, 69, 0.1); color: #28a745;">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <div class="stats-value" id="totalItems">0</div>
+                        <div class="stats-label">Total Items</div>
+                        <div class="stats-change positive">
+                            <i class="bi bi-arrow-up"></i> All active
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                        <div class="stats-value" id="lowStockItems">0</div>
+                        <div class="stats-label">Low Stock Alerts</div>
+                        <div class="stats-change negative">
+                            <i class="bi bi-arrow-down"></i> Needs attention
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-icon" style="background: rgba(102, 126, 234, 0.1); color: #667eea;">
+                            <i class="bi bi-cart-plus"></i>
+                        </div>
+                        <div class="stats-value" id="pendingPOs">0</div>
+                        <div class="stats-label">Pending POs</div>
+                        <div class="stats-change">
+                            <i class="bi bi-clock"></i> Awaiting receipt
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-icon" style="background: rgba(23, 162, 184, 0.1); color: #17a2b8;">
+                            <i class="bi bi-currency-dollar"></i>
+                        </div>
+                        <div class="stats-value" id="inventoryValue">₱0</div>
+                        <div class="stats-label">Inventory Value</div>
+                        <div class="stats-change positive">
+                            <i class="bi bi-graph-up"></i> Total assets
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <h5 class="mb-3"><i class="bi bi-lightning-fill me-2"></i>Quick Actions</h5>
+            <div class="quick-actions mb-4">
+                <a href="purchase-orders.html" class="action-btn">
+                    <i class="bi bi-cart-plus"></i>
+                    <div>Create Purchase Order</div>
+                </a>
+                <a href="goods-receipt.html" class="action-btn">
+                    <i class="bi bi-box-arrow-in-down"></i>
+                    <div>Receive Goods (MIGO)</div>
+                </a>
+                <a href="inventory.html" class="action-btn">
+                    <i class="bi bi-search"></i>
+                    <div>Check Stock (MMBE)</div>
+                </a>
+                <a href="reports.html" class="action-btn">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <div>View Reports</div>
+                </a>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="data-table">
+                        <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Recent Stock Movements (MB51)</h5>
+                        <div id="recentTransactionsContainer">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-3 text-muted">Loading transactions...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="chart-container">
+                        <h5 class="mb-3"><i class="bi bi-pie-chart me-2"></i>Inventory by Category</h5>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- API & Utils -->
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+
+    <script>
+        // Check authentication
+        if (!API.isAuthenticated()) {
+            window.location.href = 'index.html';
+        }
+
+        // Global variables
+        let categoryChart = null;
+
+        // Initialize dashboard
+        async function initDashboard() {
+            try {
+                // Update user info in header
+                const user = API.getUser();
+                if (user) {
+                    document.getElementById('userName').textContent = user.name || user.username;
+                    document.getElementById('userRole').textContent = (user.role || '').toUpperCase();
+                    document.getElementById('userAvatar').textContent = (user.name || user.username).charAt(0).toUpperCase();
+                }
+
+                // Load dashboard data
+                await Promise.all([
+                    loadDashboardStats(),
+                    loadRecentTransactions(),
+                    loadCategoryChart()
+                ]);
+
+            } catch (error) {
+                console.error('Dashboard initialization error:', error);
+                Utils.showToast('Failed to load dashboard data', 'error');
+            }
+        }
+
+        // Load dashboard statistics
+        async function loadDashboardStats() {
+            try {
+                const response = await API.getDashboardReport();
+
+                if (response.success) {
+                    const data = response.data;
+
+                    // Update stats cards
+                    document.getElementById('totalItems').textContent = Utils.formatNumber(data.total_items || 0);
+                    document.getElementById('lowStockItems').textContent = Utils.formatNumber(data.low_stock_items || 0);
+                    document.getElementById('pendingPOs').textContent = Utils.formatNumber(data.pending_pos || 0);
+                    document.getElementById('inventoryValue').textContent = Utils.formatCurrency(data.total_inventory_value || 0);
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard stats:', error);
+            }
+        }
+
+        // Load recent transactions
+        async function loadRecentTransactions() {
+            try {
+                const response = await API.getStockMovements();
+
+                if (response.success && response.data && response.data.length > 0) {
+                    const transactions = response.data.slice(0, 10); // Last 10 transactions
+                    
+                    const tableHTML = `
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date/Time</th>
+                                        <th>Item</th>
+                                        <th>Type</th>
+                                        <th>Quantity</th>
+                                        <th>User</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${transactions.map(txn => `
+                                        <tr>
+                                            <td>${Utils.formatDate(txn.date_time)}</td>
+                                            <td>${txn.item_name}</td>
+                                            <td>
+                                                <span class="badge ${Utils.getTransactionBadge(txn.transaction_type)}">
+                                                    ${txn.transaction_type}
+                                                </span>
+                                            </td>
+                                            <td>${Utils.formatNumber(txn.quantity)} ${txn.unit}</td>
+                                            <td>${txn.user_name}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+
+                    document.getElementById('recentTransactionsContainer').innerHTML = tableHTML;
+                } else {
+                    document.getElementById('recentTransactionsContainer').innerHTML = `
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox" style="font-size: 48px;"></i>
+                            <p class="mt-3">No transactions yet</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load recent transactions:', error);
+                document.getElementById('recentTransactionsContainer').innerHTML = `
+                    <div class="alert alert-danger">Failed to load transactions</div>
+                `;
+            }
+        }
+
+        // Load category chart
+        async function loadCategoryChart() {
+            try {
+                const response = await API.getInventoryStatus();
+
+                if (response.success && response.data.items_by_category) {
+                    const categories = response.data.items_by_category;
+                    const labels = Object.keys(categories);
+                    const data = Object.values(categories).map(cat => cat.count);
+
+                    const ctx = document.getElementById('categoryChart').getContext('2d');
+                    
+                    if (categoryChart) {
+                        categoryChart.destroy();
+                    }
+
+                    categoryChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: [
+                                    '#667eea',
+                                    '#764ba2',
+                                    '#f093fb',
+                                    '#4facfe',
+                                    '#43e97b',
+                                    '#fa709a'
+                                ],
+                                borderWidth: 2,
+                                borderColor: '#fff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load category chart:', error);
+            }
+        }
+
+        // Handle logout
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                API.logout();
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+</body>
+</html>
