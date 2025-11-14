@@ -4,11 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Janstro Inventory System</title>
-    <link href="assets/css/responsive.css" rel="stylesheet">
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     
     <style>
@@ -39,6 +35,10 @@
             color: white;
             padding: 40px 30px;
             text-align: center;
+        }
+
+        .icon-header {
+            font-size: 48px;
         }
 
         .login-header h1 {
@@ -141,42 +141,20 @@
             height: 1rem;
             border-width: 0.15em;
         }
-
-        @media (max-width: 576px) {
-            .login-container {
-                padding: 10px;
-            }
-
-            .login-header {
-                padding: 30px 20px;
-            }
-
-            .login-header h1 {
-                font-size: 24px;
-            }
-
-            .login-body {
-                padding: 30px 20px;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-card">
-            <!-- Login Header -->
             <div class="login-header">
-                <i class="bi bi-box-seam" style="font-size: 48px;"></i>
+                <i class="bi bi-box-seam icon-header"></i>
                 <h1>Janstro Inventory</h1>
                 <p>Enterprise Inventory Management System</p>
             </div>
 
-            <!-- Login Body -->
             <div class="login-body">
-                <!-- Error/Success Messages -->
                 <div id="alertContainer"></div>
 
-                <!-- Login Form -->
                 <form id="loginForm">
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
@@ -212,7 +190,11 @@
                                 required
                                 autocomplete="current-password"
                             >
-                            <button class="btn btn-outline-secondary" type="button" id="togglePassword" title="Toggle password visibility">
+                            <button 
+                                class="btn btn-outline-secondary" 
+                                type="button" 
+                                id="togglePassword"
+                                aria-label="Toggle password visibility">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
@@ -229,45 +211,32 @@
                     </button>
                 </form>
 
-                <!-- System Info -->
                 <div class="system-info">
                     <small><strong>Default Credentials:</strong></small>
                     <div>
-                        <span class="badge bg-primary">admin / admin123</span>
-                        <span class="badge bg-secondary">staff1 / staff123</span>
+                        <span class="badge bg-primary">admin / password123</span>
+                        <span class="badge bg-secondary">staff1 / password123</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
         <div class="text-center mt-4">
             <p class="text-white mb-1">
-                <small>© 2025 Janstro Inventory System v2.0.0</small>
-            </p>
-            <p class="text-white-50 mb-0">
-                <small>
-                    <i class="bi bi-shield-check me-1"></i>
-                    Secure • Immutable Transactions • SAP-Inspired
-                </small>
+                <small>© 2025 Janstro Inventory System v3.0.0</small>
             </p>
         </div>
     </div>
 
-    <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- API & Utils -->
     <script src="assets/js/api.js"></script>
     <script src="assets/js/utils.js"></script>
 
     <script>
-        // Check if already logged in
         if (API.isAuthenticated()) {
             window.location.href = 'dashboard.html';
         }
 
-        // Toggle password visibility
         document.getElementById('togglePassword').addEventListener('click', function() {
             const passwordInput = document.getElementById('password');
             const icon = this.querySelector('i');
@@ -283,7 +252,6 @@
             }
         });
 
-        // Handle login form submission
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -294,42 +262,33 @@
             const loginBtnText = document.getElementById('loginBtnText');
             const loginSpinner = document.getElementById('loginSpinner');
 
-            // Validate inputs
             if (!username || !password) {
                 showAlert('Please enter both username and password', 'danger');
                 return;
             }
 
-            // Clear previous alerts
             alertContainer.innerHTML = '';
-
-            // Disable button and show spinner
             loginBtn.disabled = true;
             loginBtnText.classList.add('d-none');
             loginSpinner.classList.remove('d-none');
 
             try {
-                // Call login API
                 console.log('🔐 Attempting login for:', username);
                 const response = await API.login(username, password);
                 
                 console.log('📥 Login response:', response);
 
                 if (response.success) {
-                    // Success - Show success message briefly then redirect
-                    console.log('✅ Login successful! Token:', response.data.token.substring(0, 20) + '...');
+                    console.log('✅ Login successful!');
                     showAlert('Login successful! Redirecting...', 'success');
                     
                     setTimeout(() => {
-                        console.log('🔀 Redirecting to dashboard...');
                         window.location.href = 'dashboard.html';
                     }, 1000);
                 } else {
-                    // Failed - Show error
                     console.error('❌ Login failed:', response.message);
                     showAlert(response.message || 'Login failed. Please try again.', 'danger');
                     
-                    // Re-enable button
                     loginBtn.disabled = false;
                     loginBtnText.classList.remove('d-none');
                     loginSpinner.classList.add('d-none');
@@ -338,14 +297,12 @@
                 console.error('💥 Login error:', error);
                 showAlert('Connection error. Please check if the server is running.', 'danger');
                 
-                // Re-enable button
                 loginBtn.disabled = false;
                 loginBtnText.classList.remove('d-none');
                 loginSpinner.classList.add('d-none');
             }
         });
 
-        // Helper function to show alerts
         function showAlert(message, type) {
             const alertContainer = document.getElementById('alertContainer');
             const alertHTML = `
@@ -358,7 +315,6 @@
             alertContainer.innerHTML = alertHTML;
         }
 
-        // Test API health on page load
         (async function testAPI() {
             try {
                 const health = await API.healthCheck();

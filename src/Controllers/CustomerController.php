@@ -2,191 +2,131 @@
 
 namespace Janstro\InventorySystem\Controllers;
 
-use Janstro\InventorySystem\Services\CustomerService;
-use Janstro\InventorySystem\Middleware\AuthMiddleware;
 use Janstro\InventorySystem\Utils\Response;
-use Janstro\InventorySystem\Utils\Security;
+use Janstro\InventorySystem\Middleware\AuthMiddleware;
 
 /**
- * Customer Controller
- * Handles customer management HTTP requests
- * ISO/IEC 25010: Functional Suitability, Security, Usability
+ * Customer Controller - Placeholder
+ * TODO: Implement full customer management
  */
 class CustomerController
 {
-    private CustomerService $customerService;
-
-    public function __construct()
-    {
-        $this->customerService = new CustomerService();
-    }
-
     /**
-     * GET /customers
      * Get all customers
      */
-    public function getAll(): void
+    public function getAll()
     {
         $user = AuthMiddleware::authenticate();
         if (!$user) return;
 
         try {
-            $customers = $this->customerService->getAllCustomers();
-            Response::success($customers, 'Customers retrieved successfully');
+            // TODO: Implement customer retrieval
+            Response::success([], 'Customers feature coming soon');
         } catch (\Exception $e) {
-            Response::error($e->getMessage());
+            error_log("Get customers error: " . $e->getMessage());
+            Response::serverError('Failed to retrieve customers');
         }
     }
 
     /**
-     * GET /customers/{id}
-     * Get single customer
+     * Get customer by ID
      */
-    public function getById(int $id): void
+    public function getById(int $customerId)
     {
         $user = AuthMiddleware::authenticate();
         if (!$user) return;
 
         try {
-            $customer = $this->customerService->getCustomerById($id);
-
-            if (!$customer) {
-                Response::notFound('Customer not found');
-                return;
-            }
-
-            Response::success($customer, 'Customer found');
+            // TODO: Implement single customer retrieval
+            Response::success(null, 'Customer details feature coming soon');
         } catch (\Exception $e) {
-            Response::error($e->getMessage());
+            error_log("Get customer error: " . $e->getMessage());
+            Response::serverError('Failed to retrieve customer');
         }
     }
 
     /**
-     * GET /customers/search?q={query}
      * Search customers
      */
-    public function search(): void
+    public function search()
     {
         $user = AuthMiddleware::authenticate();
         if (!$user) return;
 
-        $query = $_GET['q'] ?? '';
-
-        if (empty($query)) {
-            Response::error('Search query is required', null, 400);
-            return;
-        }
-
         try {
-            $customers = $this->customerService->searchCustomers($query);
-            Response::success($customers, 'Search results retrieved');
+            // TODO: Implement customer search
+            Response::success([], 'Customer search feature coming soon');
         } catch (\Exception $e) {
-            Response::error($e->getMessage());
+            error_log("Search customers error: " . $e->getMessage());
+            Response::serverError('Failed to search customers');
         }
     }
 
     /**
-     * POST /customers
-     * Create new customer
+     * Get customer orders
      */
-    public function create(): void
+    public function getOrders(int $customerId)
     {
         $user = AuthMiddleware::authenticate();
         if (!$user) return;
 
-        // Only staff and above can create customers
-        if (!in_array($user->role, ['staff', 'admin', 'superadmin'])) {
-            Response::forbidden('Insufficient permissions');
-            return;
-        }
-
         try {
-            $data = json_decode(file_get_contents('php://input'), true);
-
-            // Sanitize inputs
-            $data = array_map([Security::class, 'escapeInput'], $data);
-
-            $result = $this->customerService->createCustomer($data);
-
-            Response::success($result, 'Customer created successfully', 201);
+            // TODO: Implement customer orders retrieval
+            Response::success([], 'Customer orders feature coming soon');
         } catch (\Exception $e) {
-            Response::error($e->getMessage());
+            error_log("Get customer orders error: " . $e->getMessage());
+            Response::serverError('Failed to retrieve customer orders');
         }
     }
 
     /**
-     * PUT /customers/{id}
+     * Create customer
+     */
+    public function create()
+    {
+        $user = AuthMiddleware::authenticate();
+        if (!$user) return;
+
+        try {
+            // TODO: Implement customer creation
+            Response::success(['customer_id' => null], 'Customer creation feature coming soon', 201);
+        } catch (\Exception $e) {
+            error_log("Create customer error: " . $e->getMessage());
+            Response::serverError('Failed to create customer');
+        }
+    }
+
+    /**
      * Update customer
      */
-    public function update(int $id): void
+    public function update(int $customerId)
     {
         $user = AuthMiddleware::authenticate();
         if (!$user) return;
 
-        if (!in_array($user->role, ['staff', 'admin', 'superadmin'])) {
-            Response::forbidden('Insufficient permissions');
-            return;
-        }
-
         try {
-            $data = json_decode(file_get_contents('php://input'), true);
-
-            // Sanitize inputs
-            $data = array_map([Security::class, 'escapeInput'], $data);
-
-            $success = $this->customerService->updateCustomer($id, $data);
-
-            if ($success) {
-                Response::success(null, 'Customer updated successfully');
-            } else {
-                Response::error('Failed to update customer');
-            }
+            // TODO: Implement customer update
+            Response::success(null, 'Customer update feature coming soon');
         } catch (\Exception $e) {
-            Response::error($e->getMessage());
+            error_log("Update customer error: " . $e->getMessage());
+            Response::serverError('Failed to update customer');
         }
     }
 
     /**
-     * DELETE /customers/{id}
-     * Delete customer (only if no orders)
+     * Delete customer
      */
-    public function delete(int $id): void
-    {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        if ($user->role !== 'superadmin') {
-            Response::forbidden('Only superadmin can delete customers');
-            return;
-        }
-
-        try {
-            $success = $this->customerService->deleteCustomer($id);
-
-            if ($success) {
-                Response::success(null, 'Customer deleted successfully');
-            } else {
-                Response::error('Failed to delete customer');
-            }
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
-        }
-    }
-
-    /**
-     * GET /customers/{id}/orders
-     * Get customer's order history
-     */
-    public function getOrders(int $id): void
+    public function delete(int $customerId)
     {
         $user = AuthMiddleware::authenticate();
         if (!$user) return;
 
         try {
-            $orders = $this->customerService->getCustomerOrders($id);
-            Response::success($orders, 'Customer orders retrieved');
+            // TODO: Implement customer deletion
+            Response::success(null, 'Customer deletion feature coming soon');
         } catch (\Exception $e) {
-            Response::error($e->getMessage());
+            error_log("Delete customer error: " . $e->getMessage());
+            Response::serverError('Failed to delete customer');
         }
     }
 }
