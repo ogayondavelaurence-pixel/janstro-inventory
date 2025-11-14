@@ -8,17 +8,11 @@ use Janstro\InventorySystem\Repositories\UserRepository;
 use Janstro\InventorySystem\Config\Database;
 
 /**
- * Complete Inventory Service - FIXED VERSION
- * IMMUTABLE TRANSACTION MODEL - No Direct Stock Editing
+ * Complete Inventory Service - FIXED v2.2
+ * MATCHES NEW SCHEMA: customers table, order_id, multi-item support
  * 
- * @version 2.1.0
- * @date 2025-11-11
- * 
- * FIXES:
- * - Updated sales order column names to match database schema
- * - Added order_date column
- * - Fixed sales_order_items foreign key reference
- * - Improved error handling and validation
+ * @version 2.2.0
+ * @date 2025-11-14
  */
 class CompleteInventoryService
 {
@@ -35,10 +29,9 @@ class CompleteInventoryService
         $this->db = Database::connect();
     }
 
-    /**
-     * SAP: MMBE - Check Stock Availability
-     * READ-ONLY: View current stock levels
-     */
+    // ============================================
+    // SAP: MMBE - Check Stock Availability
+    // ============================================
     public function checkStockAvailability(int $itemId): array
     {
         $item = $this->inventoryRepo->findById($itemId);
@@ -59,10 +52,9 @@ class CompleteInventoryService
         ];
     }
 
-    /**
-     * Get Full Inventory Status Report
-     * Dashboard overview
-     */
+    // ============================================
+    // Dashboard Overview
+    // ============================================
     public function getInventoryStatus(): array
     {
         $allItems = $this->inventoryRepo->getAll();
@@ -81,10 +73,9 @@ class CompleteInventoryService
         ];
     }
 
-    /**
-     * SAP: MD04 - Check Stock Requirements
-     * Determine if replenishment needed
-     */
+    // ============================================
+    // SAP: MD04 - Check Stock Requirements
+    // ============================================
     public function checkStockRequirements(int $itemId): array
     {
         $item = $this->inventoryRepo->findById($itemId);
@@ -95,15 +86,15 @@ class CompleteInventoryService
 
         // Check pending purchase orders
         $stmt = $this->db->prepare("
-            SELECT SUM(quantity) as pending_qty
-            FROM purchase_orders
-            WHERE item_id = ? AND status IN ('pending', 'approved')
+            SELECT SUM(poi.quantity) AS pending_qty
+            FROM purchase_orders po
+            JOIN purchase_order_items poi ON po.po_id = poi.po_id
+            WHERE poi.item_id = ? AND po.status IN ('pending','approved')
         ");
         $stmt->execute([$itemId]);
         $result = $stmt->fetch();
-        $pendingQty = (int)($result['pending_qty'] ?? 0);
+        $pendingQty = (float)($result['pending_qty'] ?? 0);
 
-        // Calculate projected stock
         $projectedStock = $item->quantity + $pendingQty;
         $needsReplenishment = $projectedStock <= $item->reorder_level;
 
@@ -120,52 +111,62 @@ class CompleteInventoryService
         ];
     }
 
-    /**
-     * SAP: ME21N - Create Purchase Order
-     * STOCK IN STEP 1: Initiate procurement
-     */
+    // ============================================
+    // SAP: ME21N - Create Purchase Order (Multi-Item)
+    // ============================================
     public function createPurchaseOrder(array $data): array
     {
-        // Validate required fields
-        $required = ['supplier_id', 'item_id', 'quantity', 'created_by'];
-        foreach ($required as $field) {
-            if (!isset($data[$field])) {
-                throw new \Exception("Missing required field: $field");
-            }
+        // Validate
+        if (empty($data['supplier_id']) || empty($data['items']) || empty($data['created_by'])) {
+            throw new \Exception("Missing required fields: supplier_id, items, created_by");
         }
-
-        // Validate item exists
-        $item = $this->inventoryRepo->findById($data['item_id']);
-        if (!$item) {
-            throw new \Exception("Item not found: ID {$data['item_id']}");
-        }
-
-        // Calculate total amount
-        $totalAmount = $item->unit_price * $data['quantity'];
 
         try {
             $this->db->beginTransaction();
 
-            // Create PO
+            // Create PO header
             $stmt = $this->db->prepare("
-                INSERT INTO purchase_orders 
-                (supplier_id, item_id, quantity, total_amount, status, created_by, po_date)
-                VALUES (?, ?, ?, ?, 'pending', ?, NOW())
+                INSERT INTO purchase_orders (supplier_id, status, created_by, notes)
+                VALUES (?, 'pending', ?, ?)
             ");
             $stmt->execute([
                 $data['supplier_id'],
-                $data['item_id'],
-                $data['quantity'],
-                $totalAmount,
-                $data['created_by']
+                $data['created_by'],
+                $data['notes'] ?? null
             ]);
 
             $poId = (int)$this->db->lastInsertId();
 
+            // Insert PO items
+            $totalAmount = 0;
+            foreach ($data['items'] as $item) {
+                // Get item price
+                $itemData = $this->inventoryRepo->findById($item['item_id']);
+                if (!$itemData) {
+                    throw new \Exception("Item not found: " . $item['item_id']);
+                }
+
+                $unitPrice = $item['unit_price'] ?? $itemData->unit_price;
+                $lineTotal = $item['quantity'] * $unitPrice;
+                $totalAmount += $lineTotal;
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO purchase_order_items (po_id, item_id, quantity, unit_price, line_total)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $poId,
+                    $item['item_id'],
+                    $item['quantity'],
+                    $unitPrice,
+                    $lineTotal
+                ]);
+            }
+
             // Log audit
             $this->userRepo->logAudit(
                 $data['created_by'],
-                "Created Purchase Order #$poId: {$item->item_name} x {$data['quantity']}"
+                "Created Purchase Order #$poId with " . count($data['items']) . " items | Total: ₱" . number_format($totalAmount, 2)
             );
 
             $this->db->commit();
@@ -173,10 +174,9 @@ class CompleteInventoryService
             return [
                 'po_id' => $poId,
                 'status' => 'pending',
-                'message' => "Purchase Order #$poId created successfully",
-                'item_name' => $item->item_name,
-                'quantity' => $data['quantity'],
-                'total_amount' => $totalAmount
+                'total_items' => count($data['items']),
+                'total_amount' => $totalAmount,
+                'message' => "Purchase Order #$poId created successfully"
             ];
         } catch (\Exception $e) {
             $this->db->rollBack();
@@ -184,81 +184,45 @@ class CompleteInventoryService
         }
     }
 
-    /**
-     * SAP: MIGO - Goods Receipt (Stock In)
-     * STOCK IN STEP 2: Receive delivery and increase stock
-     * THIS IS THE ONLY WAY TO INCREASE STOCK!
-     */
-    public function receiveGoods(int $poId, array $data): array
+    // ============================================
+    // SAP: MIGO - Receive Goods (Stock IN via Stored Procedure)
+    // ============================================
+    public function receiveGoods(int $poId, int $userId): array
     {
-        // Get PO details
-        $po = $this->poRepo->findById($poId);
-        if (!$po) {
-            throw new \Exception("Purchase Order #$poId not found");
-        }
-
-        if ($po->status === 'delivered') {
-            throw new \Exception("Purchase Order #$poId already received");
-        }
-
-        if ($po->status === 'cancelled') {
-            throw new \Exception("Purchase Order #$poId is cancelled");
-        }
-
-        $receivedQty = $data['received_quantity'] ?? $po->quantity;
-        $userId = $data['user_id'];
-        $notes = $data['notes'] ?? "Goods received from supplier";
-
         try {
             $this->db->beginTransaction();
 
-            // Update PO status
+            // Call stored procedure
+            $stmt = $this->db->prepare("CALL sp_receive_purchase_order(?, ?)");
+            $stmt->execute([$poId, $userId]);
+
+            // Get updated PO details
             $stmt = $this->db->prepare("
-                UPDATE purchase_orders 
-                SET status = 'delivered', 
-                    delivered_date = NOW()
-                WHERE po_id = ?
+                SELECT po.po_id, s.supplier_name, COUNT(poi.po_item_id) AS item_count,
+                       SUM(poi.line_total) AS total_amount
+                FROM purchase_orders po
+                JOIN suppliers s ON po.supplier_id = s.supplier_id
+                JOIN purchase_order_items poi ON po.po_id = poi.po_id
+                WHERE po.po_id = ?
+                GROUP BY po.po_id
             ");
             $stmt->execute([$poId]);
-
-            // INCREASE STOCK - IMMUTABLE TRANSACTION
-            $stmt = $this->db->prepare("
-                UPDATE items 
-                SET quantity = quantity + ? 
-                WHERE item_id = ?
-            ");
-            $stmt->execute([$receivedQty, $po->item_id]);
-
-            // Log transaction (STOCK IN)
-            $stmt = $this->db->prepare("
-                INSERT INTO transactions 
-                (item_id, user_id, transaction_type, quantity, notes, date_time)
-                VALUES (?, ?, 'IN', ?, ?, NOW())
-            ");
-            $stmt->execute([
-                $po->item_id,
-                $userId,
-                $receivedQty,
-                "$notes | PO #$poId"
-            ]);
+            $poDetails = $stmt->fetch();
 
             // Audit log
             $this->userRepo->logAudit(
                 $userId,
-                "Received goods: PO #$poId | {$po->item_name} x $receivedQty | Stock IN"
+                "Received goods: PO #$poId | {$poDetails['item_count']} items | Stock IN completed"
             );
 
             $this->db->commit();
 
-            // Get updated stock
-            $item = $this->inventoryRepo->findById($po->item_id);
-
             return [
                 'success' => true,
                 'po_id' => $poId,
-                'item_name' => $po->item_name,
-                'received_quantity' => $receivedQty,
-                'new_stock_level' => $item->quantity,
+                'supplier' => $poDetails['supplier_name'],
+                'items_received' => $poDetails['item_count'],
+                'total_amount' => $poDetails['total_amount'],
                 'message' => "Goods received successfully. Stock updated."
             ];
         } catch (\Exception $e) {
@@ -267,22 +231,14 @@ class CompleteInventoryService
         }
     }
 
-    /**
-     * SAP: MB51 - Material Document List
-     * READ-ONLY: View all stock movements (audit trail)
-     */
+    // ============================================
+    // SAP: MB51 - Material Document List
+    // ============================================
     public function getMaterialDocuments(array $filters = []): array
     {
         $sql = "
-            SELECT 
-                t.transaction_id,
-                t.transaction_type,
-                t.quantity,
-                t.notes,
-                t.date_time,
-                i.item_name,
-                i.unit,
-                u.name as user_name
+            SELECT t.transaction_id, t.transaction_type, t.quantity, t.notes, t.date_time,
+                   i.item_name, i.unit, u.name AS user_name
             FROM transactions t
             JOIN items i ON t.item_id = i.item_id
             JOIN users u ON t.user_id = u.user_id
@@ -311,7 +267,7 @@ class CompleteInventoryService
             $params[] = $filters['date_to'];
         }
 
-        $sql .= " ORDER BY t.date_time DESC LIMIT 100";
+        $sql .= " ORDER BY t.date_time DESC LIMIT 200";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -320,67 +276,18 @@ class CompleteInventoryService
     }
 
     // ============================================
-    // SALES ORDER METHODS - FIXED VERSION
+    // SALES ORDER METHODS - FIXED FOR NEW SCHEMA
     // ============================================
 
     /**
-     * Get all sales orders
-     * 
-     * @return array List of all sales orders with details
+     * Create Multi-Item Sales Order - FIXED
+     * Uses customers table + order_id column
      */
-    public function getAllSalesOrders(): array
+    public function createSalesOrder(array $data): array
     {
-        $query = "
-            SELECT 
-                so.sales_order_id,
-                so.customer_name,
-                so.contact_number,
-                so.delivery_address,
-                so.order_date,
-                so.installation_date,
-                so.total_amount,
-                so.status,
-                so.created_at,
-                so.notes,
-                u.name AS created_by_name,
-                -- Get first item details for simple display
-                (SELECT i.item_name 
-                 FROM sales_order_items soi 
-                 JOIN items i ON soi.item_id = i.item_id 
-                 WHERE soi.sales_order_id = so.sales_order_id 
-                 LIMIT 1) AS item_name,
-                (SELECT soi.quantity 
-                 FROM sales_order_items soi 
-                 WHERE soi.sales_order_id = so.sales_order_id 
-                 LIMIT 1) AS quantity,
-                (SELECT i.unit 
-                 FROM sales_order_items soi 
-                 JOIN items i ON soi.item_id = i.item_id 
-                 WHERE soi.sales_order_id = so.sales_order_id 
-                 LIMIT 1) AS unit
-            FROM sales_orders so
-            LEFT JOIN users u ON so.created_by = u.user_id
-            ORDER BY so.created_at DESC
-        ";
-
-        $stmt = $this->db->query($query);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * Create simple sales order (single item) - FIXED VERSION
-     * 
-     * @param array $data Order data with correct column names
-     * @return array Created order details
-     * @throws \Exception If validation fails or insufficient stock
-     */
-    public function createSimpleSalesOrder(array $data): array
-    {
-        // ============================================
-        // STEP 1: VALIDATE REQUIRED FIELDS
-        // ============================================
-        $requiredFields = ['customer_name', 'item_id', 'quantity', 'created_by'];
-        foreach ($requiredFields as $field) {
+        // Validate
+        $required = ['customer_id', 'items', 'created_by'];
+        foreach ($required as $field) {
             if (empty($data[$field])) {
                 throw new \Exception("Missing required field: $field");
             }
@@ -389,130 +296,68 @@ class CompleteInventoryService
         try {
             $this->db->beginTransaction();
 
-            // ============================================
-            // STEP 2: GET ITEM DETAILS & VALIDATE STOCK
-            // ============================================
-            $stmt = $this->db->prepare("
-                SELECT item_id, item_name, unit_price, unit, quantity AS current_stock
-                FROM items 
-                WHERE item_id = :item_id
-            ");
-            $stmt->execute(['item_id' => $data['item_id']]);
-            $item = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-            if (!$item) {
-                throw new \Exception('Item not found');
+            // Calculate total
+            $totalAmount = 0;
+            foreach ($data['items'] as $item) {
+                $itemData = $this->inventoryRepo->findById($item['item_id']);
+                if (!$itemData) {
+                    throw new \Exception("Item not found: " . $item['item_id']);
+                }
+                $totalAmount += $item['quantity'] * $itemData->unit_price;
             }
 
-            // Check stock availability
-            $requestedQty = (int)$data['quantity'];
-            if ($item['current_stock'] < $requestedQty) {
-                throw new \Exception(
-                    "Insufficient stock. Available: {$item['current_stock']}, Requested: $requestedQty"
-                );
-            }
-
-            // ============================================
-            // STEP 3: CALCULATE AMOUNTS
-            // ============================================
-            $unitPrice = (float)$item['unit_price'];
-            $totalAmount = $unitPrice * $requestedQty;
-
-            // Default installation date to 7 days from now
-            $installationDate = !empty($data['installation_date'])
-                ? $data['installation_date']
-                : date('Y-m-d', strtotime('+7 days'));
-
-            // ============================================
-            // STEP 4: CREATE SALES ORDER - FIXED COLUMNS
-            // ============================================
+            // Create sales order header
             $stmt = $this->db->prepare("
                 INSERT INTO sales_orders (
-                    customer_name,
-                    contact_number,
-                    delivery_address,
-                    order_date,
-                    installation_date,
-                    total_amount,
-                    status,
-                    created_by,
-                    notes
-                ) VALUES (
-                    :customer_name,
-                    :contact_number,
-                    :delivery_address,
-                    :order_date,
-                    :installation_date,
-                    :total_amount,
-                    'pending',
-                    :created_by,
-                    :notes
-                )
+                    customer_id, installation_address, installation_date,
+                    total_amount, status, created_by, notes
+                ) VALUES (?, ?, ?, ?, 'pending', ?, ?)
             ");
-
             $stmt->execute([
-                'customer_name' => $data['customer_name'],
-                'contact_number' => $data['contact_number'] ?? null,
-                'delivery_address' => $data['delivery_address'] ?? null,
-                'order_date' => date('Y-m-d H:i:s'),
-                'installation_date' => $installationDate,
-                'total_amount' => $totalAmount,
-                'created_by' => $data['created_by'],
-                'notes' => $data['notes'] ?? null
+                $data['customer_id'],
+                $data['installation_address'] ?? null,
+                $data['installation_date'] ?? date('Y-m-d', strtotime('+7 days')),
+                $totalAmount,
+                $data['created_by'],
+                $data['notes'] ?? null
             ]);
 
-            $salesOrderId = (int)$this->db->lastInsertId();
+            $orderId = (int)$this->db->lastInsertId();
 
-            // ============================================
-            // STEP 5: CREATE SALES ORDER ITEM - FIXED FK
-            // ============================================
-            $stmt = $this->db->prepare("
-                INSERT INTO sales_order_items (
-                    sales_order_id,
-                    item_id,
-                    quantity,
-                    unit_price,
-                    line_total
-                ) VALUES (
-                    :sales_order_id,
-                    :item_id,
-                    :quantity,
-                    :unit_price,
-                    :line_total
-                )
-            ");
+            // Insert order items
+            foreach ($data['items'] as $item) {
+                $itemData = $this->inventoryRepo->findById($item['item_id']);
+                $unitPrice = $itemData->unit_price;
+                $lineTotal = $item['quantity'] * $unitPrice;
 
-            $stmt->execute([
-                'sales_order_id' => $salesOrderId,
-                'item_id' => $data['item_id'],
-                'quantity' => $requestedQty,
-                'unit_price' => $unitPrice,
-                'line_total' => $totalAmount
-            ]);
+                $stmt = $this->db->prepare("
+                    INSERT INTO sales_order_items (order_id, item_id, quantity, unit_price, line_total)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $orderId,
+                    $item['item_id'],
+                    $item['quantity'],
+                    $unitPrice,
+                    $lineTotal
+                ]);
+            }
 
-            // ============================================
-            // STEP 6: LOG AUDIT TRAIL
-            // ============================================
+            // Audit log
             $this->userRepo->logAudit(
                 $data['created_by'],
-                "Created Sales Order #{$salesOrderId} for {$data['customer_name']} | {$item['item_name']} x {$requestedQty}"
+                "Created Sales Order #$orderId | " . count($data['items']) . " items | Total: ₱" . number_format($totalAmount, 2)
             );
 
             $this->db->commit();
 
-            // ============================================
-            // STEP 7: RETURN SUCCESS RESPONSE
-            // ============================================
             return [
                 'success' => true,
-                'sales_order_id' => $salesOrderId,
-                'customer_name' => $data['customer_name'],
-                'item_name' => $item['item_name'],
-                'quantity' => $requestedQty,
-                'unit' => $item['unit'],
+                'order_id' => $orderId,
+                'total_items' => count($data['items']),
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
-                'message' => "Sales Order #{$salesOrderId} created successfully"
+                'message' => "Sales Order #$orderId created successfully"
             ];
         } catch (\Exception $e) {
             $this->db->rollBack();
@@ -521,117 +366,79 @@ class CompleteInventoryService
     }
 
     /**
-     * Process simple invoice (Stock OUT)
-     * This decreases stock and marks order as completed
+     * Get All Sales Orders
      */
-    public function processSimpleInvoice(int $salesOrderId, int $userId): array
+    public function getAllSalesOrders(): array
     {
-        $db = Database::connect();
-
-        try {
-            $db->beginTransaction();
-
-            // Get sales order details
-            $stmt = $db->prepare("
-            SELECT 
-                so.order_id AS sales_order_id,
-                so.customer_name,
-                so.total_amount,
-                so.status,
-                soi.item_id,
-                soi.quantity,
-                soi.unit_price,
-                i.item_name,
-                i.unit,
-                i.quantity AS current_stock
+        $query = "
+            SELECT so.order_id, c.customer_name, c.contact_no,
+                   so.installation_address, so.installation_date,
+                   so.total_amount, so.status, so.created_at,
+                   u.name AS created_by_name,
+                   COUNT(soi.order_item_id) AS item_count
             FROM sales_orders so
-            JOIN sales_order_items soi ON so.order_id = soi.order_id
-            JOIN items i ON soi.item_id = i.item_id
-            WHERE so.order_id = :order_id
-        ");
-            $stmt->execute(['order_id' => $salesOrderId]);
-            $order = $stmt->fetch(\PDO::FETCH_ASSOC);
+            JOIN customers c ON so.customer_id = c.customer_id
+            LEFT JOIN users u ON so.created_by = u.user_id
+            LEFT JOIN sales_order_items soi ON so.order_id = soi.order_id
+            GROUP BY so.order_id
+            ORDER BY so.created_at DESC
+        ";
 
-            if (!$order) {
-                throw new \Exception('Sales order not found');
-            }
+        $stmt = $this->db->query($query);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
 
-            if ($order['status'] === 'completed') {
-                throw new \Exception('Invoice already processed');
-            }
+    /**
+     * Complete Installation & Generate Invoice (SAP: VF01)
+     */
+    public function completeInstallation(int $orderId, int $userId): array
+    {
+        try {
+            $this->db->beginTransaction();
 
-            // Check stock availability
-            if ($order['current_stock'] < $order['quantity']) {
-                throw new \Exception('Insufficient stock to process this order');
-            }
+            // Reserve stock (calls stored procedure)
+            $stmt = $this->db->prepare("CALL sp_reserve_stock(?)");
+            $stmt->execute([$orderId]);
 
-            // Decrease stock (Stock OUT)
-            $stmt = $db->prepare("
-            UPDATE items 
-            SET quantity = quantity - :quantity 
-            WHERE item_id = :item_id
-        ");
-            $stmt->execute([
-                'quantity' => $order['quantity'],
-                'item_id' => $order['item_id']
-            ]);
+            // Update order status
+            $stmt = $this->db->prepare("
+                UPDATE sales_orders
+                SET status = 'completed', completed_by = ?, completed_date = CURRENT_TIMESTAMP
+                WHERE order_id = ?
+            ");
+            $stmt->execute([$userId, $orderId]);
 
-            // Create transaction record (Material Document - MB51)
-            $stmt = $db->prepare("
-            INSERT INTO transactions (
-                item_id,
-                user_id,
-                transaction_type,
-                quantity,
-                notes
-            ) VALUES (
-                :item_id,
-                :user_id,
-                'OUT',
-                :quantity,
-                :notes
-            )
-        ");
+            // Generate invoice (stored procedure)
+            $stmt = $this->db->prepare("CALL sp_generate_invoice(?, ?)");
+            $stmt->execute([$orderId, $userId]);
 
-            $stmt->execute([
-                'item_id' => $order['item_id'],
-                'user_id' => $userId,
-                'quantity' => $order['quantity'],
-                'notes' => "Sales Order #$salesOrderId - Invoice processed for {$order['customer_name']}"
-            ]);
+            // Get invoice number
+            $stmt = $this->db->prepare("
+                SELECT invoice_number, total_amount
+                FROM invoices
+                WHERE order_id = ?
+                ORDER BY invoice_id DESC LIMIT 1
+            ");
+            $stmt->execute([$orderId]);
+            $invoice = $stmt->fetch();
 
-            // Update sales order status
-            $stmt = $db->prepare("
-            UPDATE sales_orders 
-            SET status = 'completed',
-                completed_by = :user_id,
-                completed_date = NOW()
-            WHERE order_id = :order_id
-        ");
-            $stmt->execute([
-                'user_id' => $userId,
-                'order_id' => $salesOrderId
-            ]);
+            // Audit log
+            $this->userRepo->logAudit(
+                $userId,
+                "Completed Sales Order #$orderId | Invoice: {$invoice['invoice_number']}"
+            );
 
-            $db->commit();
-
-            // Get new stock level
-            $newStock = $order['current_stock'] - $order['quantity'];
+            $this->db->commit();
 
             return [
-                'sales_order_id' => $salesOrderId,
-                'customer_name' => $order['customer_name'],
-                'item_name' => $order['item_name'],
-                'quantity' => $order['quantity'],
-                'unit' => $order['unit'],
-                'previous_stock' => $order['current_stock'],
-                'new_stock_level' => $newStock,
-                'total_amount' => $order['total_amount'],
-                'status' => 'completed',
-                'material_document_created' => true
+                'success' => true,
+                'order_id' => $orderId,
+                'invoice_number' => $invoice['invoice_number'],
+                'total_amount' => $invoice['total_amount'],
+                'message' => "Installation completed and invoice generated successfully"
             ];
         } catch (\Exception $e) {
-            $db->rollBack();
+            $this->db->rollBack();
             throw $e;
         }
     }

@@ -3,22 +3,61 @@
 namespace Janstro\InventorySystem\Utils;
 
 /**
- * Security Utility Class
- * Comprehensive security functions for the system
- * ISO/IEC 25010:2023 - Security Compliance
+ * Security Utility Class - ENHANCED v2.0
+ * ISO/IEC 25010: Security, Reliability
+ * 
+ * Features:
+ * - XSS Protection
+ * - CSRF Token Management
+ * - Rate Limiting
+ * - Input Sanitization
+ * - SQL Injection Prevention Helpers
  */
 class Security
 {
+    // ==============================
+    // XSS PROTECTION
+    // ==============================
+
     /**
-     * Generate CSRF Token
+     * Sanitize output to prevent XSS attacks
+     * Converts HTML special characters to entities
      */
-    public static function generateCSRFToken(): string
+    public static function sanitizeOutput(string $data): string
     {
-        if (session_status() === PHP_SESSION_NONE) {
+        return htmlspecialchars($data, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    /**
+     * Sanitize array recursively
+     */
+    public static function sanitizeArray(array $data): array
+    {
+        return array_map(function ($value) {
+            if (is_string($value)) {
+                return self::sanitizeOutput($value);
+            } elseif (is_array($value)) {
+                return self::sanitizeArray($value);
+            }
+            return $value;
+        }, $data);
+    }
+
+    // ==============================
+    // CSRF PROTECTION
+    // ==============================
+
+    /**
+     * Generate CSRF token
+     * Stored in session for verification
+     */
+    public static function generateCsrfToken(): string
+    {
+        if (!session_id()) {
             session_start();
         }
 
-        if (!isset($_SESSION['csrf_token'])) {
+        if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             $_SESSION['csrf_token_time'] = time();
         }
@@ -27,22 +66,23 @@ class Security
     }
 
     /**
-     * Verify CSRF Token
+     * Verify CSRF token
+     * Uses timing-safe comparison
      */
-    public static function verifyCSRFToken(?string $token): bool
+    public static function verifyCsrfToken(string $token): bool
     {
-        if (session_status() === PHP_SESSION_NONE) {
+        if (!session_id()) {
             session_start();
         }
 
-        if (!isset($_SESSION['csrf_token']) || !$token) {
+        if (empty($_SESSION['csrf_token'])) {
             return false;
         }
 
-        // Check token age (expire after 1 hour)
+        // Check token age (1 hour expiry)
         if (isset($_SESSION['csrf_token_time'])) {
             $tokenAge = time() - $_SESSION['csrf_token_time'];
-            if ($tokenAge > 3600) {
+            if ($tokenAge > 3600) { // 1 hour
                 unset($_SESSION['csrf_token']);
                 unset($_SESSION['csrf_token_time']);
                 return false;
@@ -53,61 +93,36 @@ class Security
     }
 
     /**
-     * Sanitize Input (XSS Prevention)
+     * Regenerate CSRF token
+     * Called after successful form submission
      */
-    public static function sanitize($input)
+    public static function regenerateCsrfToken(): string
     {
-        if (is_array($input)) {
-            return array_map([self::class, 'sanitize'], $input);
+        if (!session_id()) {
+            session_start();
         }
 
-        if (is_string($input)) {
-            return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
-        }
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        $_SESSION['csrf_token_time'] = time();
 
-        return $input;
+        return $_SESSION['csrf_token'];
     }
 
-    /**
-     * Validate Email
-     */
-    public static function validateEmail(string $email): bool
-    {
-        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
-    }
+    // ==============================
+    // RATE LIMITING
+    // ==============================
 
     /**
-     * Validate Philippine Phone Number
+     * Check rate limit (IP-based)
+     * 
+     * @param string $key Unique identifier for rate limit (e.g., "login_192.168.1.1")
+     * @param int $limit Maximum requests allowed
+     * @param int $seconds Time window in seconds
+     * @return bool True if within limit, false if exceeded
      */
-    public static function validatePhone(string $phone): bool
+    public static function checkRateLimit(string $key, int $limit = 5, int $seconds = 60): bool
     {
-        // Format: 09XXXXXXXXX or +639XXXXXXXXX
-        return preg_match('/^(\+639|09)\d{9}$/', $phone) === 1;
-    }
-
-    /**
-     * Hash Password (Modern bcrypt)
-     */
-    public static function hashPassword(string $password): string
-    {
-        return password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
-    }
-
-    /**
-     * Verify Password
-     */
-    public static function verifyPassword(string $password, string $hash): bool
-    {
-        return password_verify($password, $hash);
-    }
-
-    /**
-     * Rate Limiting Check
-     * Prevents brute force attacks
-     */
-    public static function checkRateLimit(string $key, int $maxAttempts = 5, int $timeWindow = 300): bool
-    {
-        if (session_status() === PHP_SESSION_NONE) {
+        if (!session_id()) {
             session_start();
         }
 
@@ -115,252 +130,280 @@ class Security
             $_SESSION['rate_limit'] = [];
         }
 
+        $now = time();
+
+        // Initialize key if not exists
         if (!isset($_SESSION['rate_limit'][$key])) {
-            $_SESSION['rate_limit'][$key] = [
-                'attempts' => 1,
-                'first_attempt' => time()
-            ];
-            return true;
+            $_SESSION['rate_limit'][$key] = [];
         }
 
-        $data = $_SESSION['rate_limit'][$key];
-        $timeElapsed = time() - $data['first_attempt'];
-
-        // Reset if time window expired
-        if ($timeElapsed > $timeWindow) {
-            $_SESSION['rate_limit'][$key] = [
-                'attempts' => 1,
-                'first_attempt' => time()
-            ];
-            return true;
-        }
+        // Remove old timestamps outside the time window
+        $_SESSION['rate_limit'][$key] = array_filter(
+            $_SESSION['rate_limit'][$key],
+            fn($timestamp) => ($timestamp + $seconds) > $now
+        );
 
         // Check if limit exceeded
-        if ($data['attempts'] >= $maxAttempts) {
+        if (count($_SESSION['rate_limit'][$key]) >= $limit) {
+            error_log("Rate limit exceeded for key: $key");
             return false;
         }
 
-        // Increment attempts
-        $_SESSION['rate_limit'][$key]['attempts']++;
+        // Add current timestamp
+        $_SESSION['rate_limit'][$key][] = $now;
+
         return true;
     }
 
     /**
-     * Reset Rate Limit
+     * Reset rate limit for specific key
      */
     public static function resetRateLimit(string $key): void
     {
+        if (!session_id()) {
+            session_start();
+        }
+
         if (isset($_SESSION['rate_limit'][$key])) {
             unset($_SESSION['rate_limit'][$key]);
         }
     }
 
+    // ==============================
+    // INPUT SANITIZATION
+    // ==============================
+
     /**
-     * Configure Secure Session
+     * Escape input to prevent XSS
+     * Use this for user-generated content before storing
      */
-    public static function configureSession(): void
+    public static function escapeInput(string $input): string
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            // Prevent session fixation
-            ini_set('session.cookie_httponly', '1');
-            ini_set('session.use_only_cookies', '1');
-            ini_set('session.cookie_secure', '1'); // HTTPS only
-            ini_set('session.cookie_samesite', 'Strict');
-            ini_set('session.use_strict_mode', '1');
-
-            // Session name
-            session_name('JANSTRO_SESSION');
-
-            session_start();
-
-            // Regenerate session ID periodically
-            if (!isset($_SESSION['last_regeneration'])) {
-                $_SESSION['last_regeneration'] = time();
-            } elseif (time() - $_SESSION['last_regeneration'] > 300) {
-                session_regenerate_id(true);
-                $_SESSION['last_regeneration'] = time();
-            }
-
-            // Session timeout (30 minutes)
-            if (isset($_SESSION['last_activity'])) {
-                $inactiveTime = time() - $_SESSION['last_activity'];
-                if ($inactiveTime > 1800) {
-                    session_destroy();
-                    session_start();
-                }
-            }
-            $_SESSION['last_activity'] = time();
-        }
+        return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
     }
 
     /**
-     * Log Security Event
+     * Validate and sanitize email
      */
-    public static function logSecurityEvent(string $eventType, string $details = '', string $severity = 'INFO'): void
+    public static function sanitizeEmail(string $email): ?string
     {
-        $logDir = __DIR__ . '/../../logs';
-        $logFile = $logDir . '/security.log';
+        $email = filter_var($email, FILTER_SANITIZE_EMAIL);
 
-        if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
+        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $email;
         }
 
-        $ipAddress = self::getClientIP();
-        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-        $userId = $_SESSION['user_id'] ?? 'Guest';
-
-        $logEntry = sprintf(
-            "[%s] [%s] %s | User: %s | IP: %s | Details: %s | UA: %s\n",
-            date('Y-m-d H:i:s'),
-            $severity,
-            $eventType,
-            $userId,
-            $ipAddress,
-            $details,
-            substr($userAgent, 0, 100)
-        );
-
-        file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+        return null;
     }
 
     /**
-     * Get Client IP Address
+     * Sanitize integer
      */
-    public static function getClientIP(): string
+    public static function sanitizeInt($value): ?int
     {
-        $ipKeys = [
-            'HTTP_CLIENT_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_FORWARDED',
-            'HTTP_X_CLUSTER_CLIENT_IP',
-            'HTTP_FORWARDED_FOR',
-            'HTTP_FORWARDED',
-            'REMOTE_ADDR'
-        ];
+        $sanitized = filter_var($value, FILTER_VALIDATE_INT);
+        return $sanitized !== false ? $sanitized : null;
+    }
 
-        foreach ($ipKeys as $key) {
-            if (isset($_SERVER[$key])) {
-                $ips = explode(',', $_SERVER[$key]);
-                $ip = trim($ips[0]);
+    /**
+     * Sanitize float
+     */
+    public static function sanitizeFloat($value): ?float
+    {
+        $sanitized = filter_var($value, FILTER_VALIDATE_FLOAT);
+        return $sanitized !== false ? $sanitized : null;
+    }
 
-                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                    return $ip;
-                }
-            }
+    /**
+     * Sanitize string (remove HTML tags)
+     */
+    public static function sanitizeString(string $input): string
+    {
+        return strip_tags(trim($input));
+    }
+
+    // ==============================
+    // SQL INJECTION PREVENTION HELPERS
+    // ==============================
+
+    /**
+     * Validate table name (alphanumeric + underscore only)
+     * Prevents SQL injection in dynamic table names
+     */
+    public static function validateTableName(string $tableName): bool
+    {
+        return preg_match('/^[a-zA-Z0-9_]+$/', $tableName) === 1;
+    }
+
+    /**
+     * Validate column name (alphanumeric + underscore only)
+     * Prevents SQL injection in dynamic column names
+     */
+    public static function validateColumnName(string $columnName): bool
+    {
+        return preg_match('/^[a-zA-Z0-9_]+$/', $columnName) === 1;
+    }
+
+    /**
+     * Escape SQL LIKE wildcards
+     * Use before binding LIKE parameters
+     */
+    public static function escapeLikeWildcards(string $input): string
+    {
+        return str_replace(['%', '_'], ['\%', '\_'], $input);
+    }
+
+    // ==============================
+    // PASSWORD SECURITY
+    // ==============================
+
+    /**
+     * Validate password strength
+     * Minimum 8 chars, at least 1 letter and 1 number
+     */
+    public static function validatePasswordStrength(string $password): bool
+    {
+        if (strlen($password) < 8) {
+            return false;
         }
 
-        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        // At least one letter and one number
+        return preg_match('/[A-Za-z]/', $password) && preg_match('/[0-9]/', $password);
     }
 
     /**
-     * Prevent SQL Injection (validate input patterns)
+     * Hash password using bcrypt (recommended)
      */
-    public static function validateAlphanumeric(string $input): bool
+    public static function hashPassword(string $password): string
     {
-        return preg_match('/^[a-zA-Z0-9_-]+$/', $input) === 1;
+        return password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
     }
 
     /**
-     * Validate Integer ID
+     * Verify password against hash
      */
-    public static function validateId($id): bool
+    public static function verifyPassword(string $password, string $hash): bool
     {
-        return is_numeric($id) && $id > 0;
+        return password_verify($password, $hash);
+    }
+
+    // ==============================
+    // FILE UPLOAD SECURITY
+    // ==============================
+
+    /**
+     * Validate file extension
+     */
+    public static function validateFileExtension(string $filename, array $allowedExtensions): bool
+    {
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        return in_array($extension, $allowedExtensions);
     }
 
     /**
-     * Generate Secure Random Token
+     * Generate safe filename
      */
-    public static function generateToken(int $length = 32): string
+    public static function generateSafeFilename(string $originalFilename): string
+    {
+        $extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
+        $basename = pathinfo($originalFilename, PATHINFO_FILENAME);
+
+        // Remove special characters
+        $safe = preg_replace('/[^a-zA-Z0-9_-]/', '_', $basename);
+
+        return $safe . '_' . time() . '.' . $extension;
+    }
+
+    // ==============================
+    // SECURE RANDOM GENERATION
+    // ==============================
+
+    /**
+     * Generate cryptographically secure random token
+     */
+    public static function generateSecureToken(int $length = 32): string
     {
         return bin2hex(random_bytes($length));
     }
 
     /**
-     * Encrypt Data (AES-256-CBC)
+     * Generate secure numeric code
      */
-    public static function encrypt(string $data): string
+    public static function generateSecureCode(int $length = 6): string
     {
-        $key = $_ENV['ENCRYPTION_KEY'] ?? 'default-key-change-me';
-        $iv = random_bytes(16);
-        $encrypted = openssl_encrypt($data, 'AES-256-CBC', $key, 0, $iv);
-        return base64_encode($iv . $encrypted);
-    }
-
-    /**
-     * Decrypt Data
-     */
-    public static function decrypt(string $data): string
-    {
-        $key = $_ENV['ENCRYPTION_KEY'] ?? 'default-key-change-me';
-        $data = base64_decode($data);
-        $iv = substr($data, 0, 16);
-        $encrypted = substr($data, 16);
-        return openssl_decrypt($encrypted, 'AES-256-CBC', $key, 0, $iv);
-    }
-
-    /**
-     * Check if request is HTTPS
-     */
-    public static function isSecureConnection(): bool
-    {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || $_SERVER['SERVER_PORT'] == 443;
-    }
-
-    /**
-     * Enforce HTTPS
-     */
-    public static function enforceHTTPS(): void
-    {
-        if (!self::isSecureConnection() && $_ENV['APP_ENV'] === 'production') {
-            $redirectUrl = 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-            header('Location: ' . $redirectUrl, true, 301);
-            exit;
+        $code = '';
+        for ($i = 0; $i < $length; $i++) {
+            $code .= random_int(0, 9);
         }
+        return $code;
     }
 
+    // ==============================
+    // IP ADDRESS VALIDATION
+    // ==============================
+
     /**
-     * Check for common SQL injection patterns
+     * Get client IP address (handles proxies)
      */
-    public static function detectSQLInjection(string $input): bool
+    public static function getClientIp(): string
     {
-        $sqlPatterns = [
-            '/(\bSELECT\b|\bUNION\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bDROP\b)/i',
-            '/(--|\#|\/\*|\*\/)/i',
-            '/(\bOR\b\s+\d+\s*=\s*\d+)/i',
-            '/(\bAND\b\s+\d+\s*=\s*\d+)/i'
+        $headers = [
+            'HTTP_CF_CONNECTING_IP', // Cloudflare
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'REMOTE_ADDR'
         ];
 
-        foreach ($sqlPatterns as $pattern) {
-            if (preg_match($pattern, $input)) {
-                self::logSecurityEvent('SQL_INJECTION_ATTEMPT', $input, 'CRITICAL');
-                return true;
+        foreach ($headers as $header) {
+            if (!empty($_SERVER[$header])) {
+                $ip = $_SERVER[$header];
+
+                // Handle comma-separated IPs (X-Forwarded-For)
+                if (strpos($ip, ',') !== false) {
+                    $ips = explode(',', $ip);
+                    $ip = trim($ips[0]);
+                }
+
+                // Validate IP
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
             }
         }
 
-        return false;
+        return 'unknown';
     }
 
     /**
-     * Check for XSS patterns
+     * Check if IP is in whitelist
      */
-    public static function detectXSS(string $input): bool
+    public static function isIpWhitelisted(string $ip, array $whitelist): bool
     {
-        $xssPatterns = [
-            '/<script\b[^>]*>(.*?)<\/script>/is',
-            '/javascript:/i',
-            '/on\w+\s*=/i',
-            '/<iframe/i'
-        ];
+        return in_array($ip, $whitelist);
+    }
 
-        foreach ($xssPatterns as $pattern) {
-            if (preg_match($pattern, $input)) {
-                self::logSecurityEvent('XSS_ATTEMPT', $input, 'CRITICAL');
-                return true;
-            }
+    // ==============================
+    // SECURITY LOGGING
+    // ==============================
+
+    /**
+     * Log security event
+     */
+    public static function logSecurityEvent(string $event, array $context = []): void
+    {
+        $logDir = __DIR__ . '/../../logs';
+
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
         }
 
-        return false;
+        $logFile = $logDir . '/security.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $ip = self::getClientIp();
+        $contextJson = json_encode($context);
+
+        $logEntry = "[$timestamp] $event - IP: $ip - Details: $contextJson\n";
+
+        file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
     }
 }

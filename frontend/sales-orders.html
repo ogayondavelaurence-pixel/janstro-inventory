@@ -3,371 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Orders (VA01) - Janstro Inventory System</title>
+    <title>Sales Orders - Janstro Inventory System</title>
     
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/responsive.css" rel="stylesheet">
     
     <style>
         :root {
-            --primary-color: #667eea;
-            --secondary-color: #764ba2;
-            --sidebar-width: 260px;
+            --primary-color: #0066cc;
+            --secondary-color: #00a86b;
+            --warning-color: #ff9500;
+            --danger-color: #ff3b30;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f8f9fa;
-        }
-
-        /* Sidebar Styles */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            width: var(--sidebar-width);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            overflow-y: auto;
-            z-index: 1000;
-        }
-
-        .sidebar-header {
-            padding: 30px 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .sidebar-header i {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-
-        .sidebar-header h4 {
-            font-weight: 700;
-            margin: 0;
-        }
-
-        .sidebar-menu {
-            padding: 20px 0;
-        }
-
-        .menu-item {
-            padding: 12px 25px;
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
-        }
-
-        .menu-item:hover,
-        .menu-item.active {
-            background: rgba(255, 255, 255, 0.1);
-            border-left-color: white;
-            color: white;
-        }
-
-        .menu-item i {
-            font-size: 20px;
-            margin-right: 15px;
-            width: 24px;
-        }
-
-        .menu-section {
-            padding: 10px 25px;
-            font-size: 12px;
-            text-transform: uppercase;
-            opacity: 0.7;
-            letter-spacing: 1px;
-        }
-
-        /* Main Content */
-        .main-content {
-            margin-left: var(--sidebar-width);
-            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
         }
 
-        /* Top Navigation */
-        .top-nav {
-            background: white;
-            padding: 15px 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
+        /* Stock Warning Badge */
+        .stock-warning {
+            display: inline-flex;
             align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 999;
-        }
-
-        .top-nav h5 {
-            margin: 0;
-            font-weight: 700;
-            color: #333;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-        }
-
-        .btn-logout {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-
-        /* Content Area */
-        .content-area {
-            padding: 30px;
-        }
-
-        /* Form Card */
-        .form-card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-
-        /* Sales Order Card */
-        .so-card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-        }
-
-        .so-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .so-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .so-number {
-            font-size: 20px;
-            font-weight: 700;
-            color: #333;
-        }
-
-        .so-status {
-            padding: 6px 16px;
-            border-radius: 20px;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
             font-size: 13px;
             font-weight: 600;
+            margin-top: 10px;
+            animation: pulse 2s infinite;
         }
 
-        .so-status.pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .so-status.completed {
+        .stock-warning.available {
             background: #d4edda;
             color: #155724;
         }
 
-        .so-status.cancelled {
+        .stock-warning.low {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .stock-warning.unavailable {
             background: #f8d7da;
             color: #721c24;
         }
 
-        .so-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
         }
 
-        .so-detail-item {
+        /* Progress Indicator */
+        .progress-indicator {
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            position: relative;
         }
 
-        .so-detail-label {
-            font-size: 12px;
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .progress-step::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            width: 100%;
+            height: 3px;
+            background: #e0e0e0;
+            z-index: -1;
+        }
+
+        .progress-step:last-child::before {
+            display: none;
+        }
+
+        .progress-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
             color: #666;
-            margin-bottom: 5px;
+            transition: all 0.3s ease;
         }
 
-        .so-detail-value {
-            font-size: 15px;
-            font-weight: 600;
-            color: #333;
+        .progress-step.active .progress-dot {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
         }
 
-        /* Form Styling */
-        .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
+        .progress-step.completed .progress-dot {
+            background: var(--secondary-color);
+            color: white;
         }
 
-        .form-control,
-        .form-select {
-            border-radius: 8px;
-            padding: 10px 15px;
+        /* SO Cards */
+        .so-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border-left: 5px solid var(--secondary-color);
+        }
+
+        .so-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 12px 16px;
             border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
         }
 
-        .form-control:focus,
-        .form-select:focus {
+        .form-control:focus, .form-select:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.15);
         }
 
-        /* Action Buttons */
+        .form-control.is-invalid {
+            border-color: var(--danger-color);
+        }
+
+        .form-control.is-valid {
+            border-color: var(--secondary-color);
+        }
+
         .btn-action {
-            padding: 8px 16px;
-            font-size: 14px;
-            border-radius: 8px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
             transition: all 0.3s ease;
             border: none;
         }
 
         .btn-action:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #6c757d;
-        }
-
-        .empty-state i {
-            font-size: 64px;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        /* Stock Info Badge */
-        .stock-info {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-left: 10px;
-        }
-
-        .stock-info.available {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .stock-info.low {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .stock-info.unavailable {
-            background: #f8d7da;
-            color: #721c24;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
         }
     </style>
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <i class="bi bi-box-seam"></i>
+            <i class="bi bi-sun"></i>
             <h4>Janstro</h4>
-            <small>Inventory System v2.0</small>
+            <small>Solar Inventory v2.0</small>
         </div>
-
         <div class="sidebar-menu">
             <div class="menu-section">Main</div>
             <a href="dashboard.html" class="menu-item">
-                <i class="bi bi-speedometer2"></i>
-                <span>Dashboard</span>
+                <i class="bi bi-speedometer2"></i><span>Dashboard</span>
             </a>
-            
-            <div class="menu-section">Inventory (SAP: MMBE)</div>
-            <a href="inventory.html" class="menu-item">
-                <i class="bi bi-box"></i>
-                <span>All Items</span>
-            </a>
-            <a href="stock-movements.html" class="menu-item">
-                <i class="bi bi-arrow-left-right"></i>
-                <span>Stock Movements (MB51)</span>
-            </a>
-
-            <div class="menu-section">Procurement (SAP: ME21N)</div>
-            <a href="purchase-orders.html" class="menu-item">
-                <i class="bi bi-cart-plus"></i>
-                <span>Purchase Orders</span>
-            </a>
-            <a href="goods-receipt.html" class="menu-item">
-                <i class="bi bi-box-arrow-in-down"></i>
-                <span>Goods Receipt (MIGO)</span>
-            </a>
-            <a href="suppliers.html" class="menu-item">
-                <i class="bi bi-truck"></i>
-                <span>Suppliers</span>
-            </a>
-
-            <div class="menu-section">Sales (SAP: VA01)</div>
+            <div class="menu-section">Sales</div>
             <a href="sales-orders.html" class="menu-item active">
-                <i class="bi bi-cart-check"></i>
-                <span>Sales Orders</span>
-            </a>
-
-            <div class="menu-section">Reports</div>
-            <a href="reports.html" class="menu-item">
-                <i class="bi bi-graph-up"></i>
-                <span>Analytics</span>
-            </a>
-
-            <div class="menu-section">Administration</div>
-            <a href="users.html" class="menu-item">
-                <i class="bi bi-people"></i>
-                <span>Users</span>
+                <i class="bi bi-cart-check"></i><span>Sales Orders</span>
             </a>
         </div>
     </div>
 
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Top Navigation -->
         <div class="top-nav">
-            <h5><i class="bi bi-cart-check me-2"></i>Sales Orders (SAP: VA01)</h5>
-            
+            <h5><i class="bi bi-cart-check me-2"></i>Sales Orders</h5>
             <div class="user-info">
                 <div class="user-avatar" id="userAvatar">A</div>
                 <button class="btn-logout" onclick="handleLogout()">
@@ -376,42 +200,69 @@
             </div>
         </div>
 
-        <!-- Content Area -->
         <div class="content-area">
-            <!-- Create Sales Order Section -->
+            <!-- Progress Indicator -->
+            <div class="progress-indicator">
+                <div class="progress-step active">
+                    <div class="progress-dot">1</div>
+                    <div>Customer Info</div>
+                </div>
+                <div class="progress-step">
+                    <div class="progress-dot">2</div>
+                    <div>Item Selection</div>
+                </div>
+                <div class="progress-step">
+                    <div class="progress-dot">3</div>
+                    <div>Delivery Details</div>
+                </div>
+                <div class="progress-step">
+                    <div class="progress-dot">4</div>
+                    <div>Review & Submit</div>
+                </div>
+            </div>
+
+            <!-- Create SO Form -->
             <div class="form-card">
                 <h5 class="mb-4">
-                    <i class="bi bi-plus-circle me-2"></i>Create Sales Order (SAP: VA01)
+                    <i class="bi bi-plus-circle me-2"></i>Create Sales Order
                 </h5>
 
-                <form id="createSOForm">
+                <form id="createSOForm" novalidate>
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <!-- Customer Info -->
+                        <div class="col-md-6">
                             <label class="form-label">Customer Name *</label>
                             <input type="text" class="form-control" id="customerName" required placeholder="Enter customer name">
+                            <div class="invalid-feedback">Customer name is required</div>
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label" id="itemLabel">Item *</label>
-                            <select class="form-select" id="itemId" required onchange="updateStockInfo()" aria-labelledby="itemLabel">
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Number *</label>
+                            <input type="tel" class="form-control" id="contactNumber" required placeholder="09XX XXX XXXX" pattern="^(09|\+639)\d{9}$">
+                            <div class="invalid-feedback">Valid Philippine number required (09XXXXXXXXX)</div>
+                        </div>
+
+                        <!-- Item Selection -->
+                        <div class="col-md-8">
+                            <label class="form-label">Item *</label>
+                            <select class="form-select" id="itemId" required>
                                 <option value="">Select Item...</option>
                             </select>
-                            <div id="stockInfoDisplay"></div>
+                            <div class="invalid-feedback">Please select an item</div>
+                            <div id="stockWarning"></div>
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Quantity *</label>
                             <input type="number" class="form-control" id="quantity" min="1" required placeholder="Enter quantity">
+                            <div class="invalid-feedback">Quantity must be greater than 0</div>
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label">Contact Number *</label>
-                            <input type="tel" class="form-control" id="contactNumber" required placeholder="09XX XXX XXXX">
-                        </div>
-
-                        <div class="col-md-6">
+                        <!-- Delivery Details -->
+                        <div class="col-12">
                             <label class="form-label">Delivery Address *</label>
-                            <input type="text" class="form-control" id="deliveryAddress" required placeholder="Enter delivery address">
+                            <textarea class="form-control" id="deliveryAddress" rows="2" required placeholder="Enter complete delivery address"></textarea>
+                            <div class="invalid-feedback">Delivery address is required</div>
                         </div>
 
                         <div class="col-12">
@@ -419,8 +270,9 @@
                             <textarea class="form-control" id="notes" rows="2" placeholder="Additional notes..."></textarea>
                         </div>
 
+                        <!-- Submit -->
                         <div class="col-12">
-                            <button type="submit" class="btn btn-primary btn-action">
+                            <button type="submit" class="btn btn-primary btn-action" id="submitBtn">
                                 <i class="bi bi-cart-plus me-2"></i>Create Sales Order
                             </button>
                             <button type="reset" class="btn btn-secondary btn-action ms-2">
@@ -431,173 +283,180 @@
                 </form>
             </div>
 
-            <!-- Filter Bar -->
+            <!-- SO List -->
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0">
                     <i class="bi bi-list-check me-2"></i>All Sales Orders
                     <span class="badge bg-primary" id="soCount">0</span>
                 </h5>
-
-                <div class="d-flex gap-2 align-items-center">
-                    <label for="statusFilter" class="form-label mb-0 me-2 visually-hidden">Filter by Status</label>
-                    <select class="form-select" id="statusFilter" onchange="filterSalesOrders()" aria-label="Filter by Status">
-                        <option value="">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-
-                    <button class="btn btn-primary btn-action" onclick="loadSalesOrders()" title="Reload Sales Orders">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
             </div>
 
-            <!-- Sales Orders List -->
             <div id="soListContainer">
                 <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-3 text-muted">Loading sales orders...</p>
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Process Invoice Modal (SAP: VF01) -->
-    <div class="modal fade" id="invoiceModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">
-                        <i class="bi bi-receipt me-2"></i>Process Invoice (SAP: VF01 - Stock OUT)
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        <strong>Warning:</strong> Processing this invoice will permanently decrease stock levels. This action cannot be undone.
-                    </div>
-
-                    <div id="invoiceDetails"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" onclick="confirmProcessInvoice()">
-                        <i class="bi bi-arrow-up me-2"></i>Process Invoice & Update Stock
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- API & Utils -->
     <script src="assets/js/api.js"></script>
     <script src="assets/js/utils.js"></script>
 
     <script>
-        // Check authentication
-        if (!API.isAuthenticated()) {
-            window.location.href = 'index.html';
-        }
+        if (!API.isAuthenticated()) window.location.href = 'index.html';
 
-        // Global variables
         let allSalesOrders = [];
         let items = [];
-        let selectedSO = null;
+        let selectedItem = null;
 
-        // Initialize page
         async function initPage() {
             try {
-                // Update user info
                 const user = API.getUser();
                 if (user) {
                     document.getElementById('userAvatar').textContent = 
                         (user.name || user.username).charAt(0).toUpperCase();
                 }
 
-                // Load data
                 await Promise.all([
                     loadItems(),
                     loadSalesOrders()
                 ]);
 
-                // Setup event listeners
                 setupEventListeners();
-
             } catch (error) {
-                console.error('Page initialization error:', error);
+                console.error('Init error:', error);
                 Utils.showToast('Failed to load page data', 'error');
             }
         }
 
-        // Load items for dropdown
         async function loadItems() {
-            try {
-                const response = await API.getInventory();
-
-                if (response.success && response.data) {
-                    items = response.data;
-
-                    const itemSelect = document.getElementById('itemId');
-                    items.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.item_id;
-                        option.textContent = `${item.item_name} (Stock: ${item.quantity} ${item.unit})`;
-                        option.dataset.stock = item.quantity;
-                        option.dataset.price = item.unit_price;
-                        option.dataset.unit = item.unit;
-                        itemSelect.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Failed to load items:', error);
+            const response = await API.getInventory();
+            if (response.success && response.data) {
+                items = response.data;
+                const select = document.getElementById('itemId');
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.item_id;
+                    option.textContent = `${item.item_name} (Stock: ${item.quantity} ${item.unit})`;
+                    option.dataset.stock = item.quantity;
+                    option.dataset.unit = item.unit;
+                    option.dataset.price = item.unit_price;
+                    select.appendChild(option);
+                });
             }
         }
 
-               // Update stock info display - FIXED VERSION
-        function updateStockInfo() {
-            const select = document.getElementById('itemId');
-            const selectedOption = select.options[select.selectedIndex];
-            const stockDisplay = document.getElementById('stockInfoDisplay');
+        function setupEventListeners() {
+            const form = document.getElementById('createSOForm');
+            const itemSelect = document.getElementById('itemId');
+            const quantityInput = document.getElementById('quantity');
+            const contactInput = document.getElementById('contactNumber');
 
-            // Clear display if no item selected
-            if (!selectedOption || !selectedOption.value) {
-                stockDisplay.innerHTML = '';
-                return;
+            itemSelect.addEventListener('change', function() {
+                const selected = this.options[this.selectedIndex];
+                if (selected.value) {
+                    selectedItem = {
+                        id: selected.value,
+                        stock: parseInt(selected.dataset.stock),
+                        unit: selected.dataset.unit
+                    };
+                    updateStockWarning();
+                }
+            });
+
+            quantityInput.addEventListener('input', updateStockWarning);
+
+            contactInput.addEventListener('blur', function() {
+                if (!Utils.validatePhone(this.value) && this.value) {
+                    this.classList.add('is-invalid');
+                } else {
+                    this.classList.remove('is-invalid');
+                    if (this.value) this.classList.add('is-valid');
+                }
+            });
+
+            form.addEventListener('submit', handleSubmit);
+        }
+
+        function updateStockWarning() {
+            if (!selectedItem) return;
+
+            const quantity = parseInt(document.getElementById('quantity').value) || 0;
+            const warningDiv = document.getElementById('stockWarning');
+
+            let warningClass = 'available';
+            let warningIcon = 'bi-check-circle';
+            let warningText = `${selectedItem.stock} ${selectedItem.unit} available`;
+
+            if (quantity > selectedItem.stock) {
+                warningClass = 'unavailable';
+                warningIcon = 'bi-x-circle';
+                warningText = `Insufficient stock! Only ${selectedItem.stock} ${selectedItem.unit} available`;
+            } else if (selectedItem.stock <= 10) {
+                warningClass = 'low';
+                warningIcon = 'bi-exclamation-triangle';
+                warningText = `Low stock warning: ${selectedItem.stock} ${selectedItem.unit} available`;
             }
 
-            // Get stock info from dataset
-            const stock = parseInt(selectedOption.dataset.stock || '0');
-            const unit = selectedOption.dataset.unit || 'pcs';
-
-            // Determine stock status
-            let stockClass = 'available';
-            let stockText = `${stock} ${unit} available`;
-            let iconClass = 'bi-check-circle';
-
-            if (stock === 0) {
-                stockClass = 'unavailable';
-                stockText = 'Out of stock';
-                iconClass = 'bi-x-circle';
-            } else if (stock < 10) {
-                stockClass = 'low';
-                stockText = `Low stock: ${stock} ${unit}`;
-                iconClass = 'bi-exclamation-triangle';
-            }
-
-            // Display stock info
-            stockDisplay.innerHTML = `
-                <div class="stock-info ${stockClass} mt-2">
-                    <i class="bi ${iconClass} me-1"></i>${stockText}
+            warningDiv.innerHTML = `
+                <div class="stock-warning ${warningClass}">
+                    <i class="bi ${warningIcon}"></i>
+                    <span>${warningText}</span>
                 </div>
             `;
         }
 
-        // Load sales orders
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            const form = e.target;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                Utils.showToast('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const quantity = parseInt(document.getElementById('quantity').value);
+            if (selectedItem && quantity > selectedItem.stock) {
+                Utils.showToast('Insufficient stock for this order', 'error');
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+
+            try {
+                const data = {
+                    customer_name: document.getElementById('customerName').value.trim(),
+                    item_id: parseInt(document.getElementById('itemId').value),
+                    quantity: quantity,
+                    contact_number: document.getElementById('contactNumber').value.trim(),
+                    delivery_address: document.getElementById('deliveryAddress').value.trim(),
+                    notes: document.getElementById('notes').value.trim()
+                };
+
+                const response = await API.createSalesOrder(data);
+
+                if (response.success) {
+                    Utils.showToast('Sales Order created successfully!', 'success');
+                    form.reset();
+                    form.classList.remove('was-validated');
+                    document.getElementById('stockWarning').innerHTML = '';
+                    await loadSalesOrders();
+                } else {
+                    Utils.showToast(response.message || 'Failed to create sales order', 'error');
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                Utils.showToast('Failed to create sales order', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-cart-plus me-2"></i>Create Sales Order';
+            }
+        }
+
         async function loadSalesOrders() {
             try {
                 const response = await API.getSalesOrders();
@@ -607,85 +466,50 @@
                     renderSalesOrders(allSalesOrders);
                     document.getElementById('soCount').textContent = allSalesOrders.length;
                 } else {
-                    showEmptyState();
+                    document.getElementById('soListContainer').innerHTML = `
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-cart-x" style="font-size: 64px; opacity: 0.3;"></i>
+                            <p class="mt-3">No sales orders yet</p>
+                        </div>
+                    `;
+                    document.getElementById('soCount').textContent = '0';
                 }
             } catch (error) {
-                console.error('Failed to load sales orders:', error);
-                showError('Failed to load sales orders');
+                console.error('Load SOs error:', error);
             }
         }
 
-        // Render sales orders
         function renderSalesOrders(orders) {
-            if (!orders || orders.length === 0) {
-                showEmptyState();
-                return;
-            }
-
             const html = orders.map(so => `
                 <div class="so-card">
-                    <div class="so-header">
-                        <div class="so-number">
-                            <i class="bi bi-receipt me-2"></i>
-                            SO #${so.sales_order_id}
-                        </div>
-                        <span class="so-status ${so.status}">${so.status.toUpperCase()}</span>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0"><i class="bi bi-receipt me-2"></i>SO #${so.sales_order_id}</h6>
+                        <span class="badge ${so.status === 'pending' ? 'bg-warning' : 'bg-success'}">${so.status.toUpperCase()}</span>
                     </div>
-
-                    <div class="so-details">
-                        <div class="so-detail-item">
-                            <span class="so-detail-label">Customer</span>
-                            <span class="so-detail-value">${so.customer_name || 'N/A'}</span>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <small class="text-muted">Customer</small>
+                            <div class="fw-bold">${so.customer_name}</div>
                         </div>
-
-                        <div class="so-detail-item">
-                            <span class="so-detail-label">Item</span>
-                            <span class="so-detail-value">${so.item_name || 'N/A'}</span>
+                        <div class="col-md-3">
+                            <small class="text-muted">Item</small>
+                            <div class="fw-bold">${so.item_name}</div>
                         </div>
-
-                        <div class="so-detail-item">
-                            <span class="so-detail-label">Quantity</span>
-                            <span class="so-detail-value">${Utils.formatNumber(so.quantity)} ${so.unit || 'pcs'}</span>
+                        <div class="col-md-2">
+                            <small class="text-muted">Quantity</small>
+                            <div class="fw-bold">${Utils.formatNumber(so.quantity)} ${so.unit || 'pcs'}</div>
                         </div>
-
-                        <div class="so-detail-item">
-                            <span class="so-detail-label">Total Amount</span>
-                            <span class="so-detail-value">${Utils.formatCurrency(so.total_amount)}</span>
+                        <div class="col-md-2">
+                            <small class="text-muted">Amount</small>
+                            <div class="fw-bold">${Utils.formatCurrency(so.total_amount)}</div>
                         </div>
-
-                        <div class="so-detail-item">
-                            <span class="so-detail-label">Order Date</span>
-                            <span class="so-detail-value">${Utils.formatDate(so.order_date)}</span>
+                        <div class="col-md-2">
+                            ${so.status === 'pending' ? `
+                                <button class="btn btn-sm btn-danger w-100" onclick="processInvoice(${so.sales_order_id})">
+                                    <i class="bi bi-receipt"></i> Process
+                                </button>
+                            ` : '<span class="badge bg-success w-100">Completed</span>'}
                         </div>
-
-                        <div class="so-detail-item">
-                            <span class="so-detail-label">Contact</span>
-                            <span class="so-detail-value">${so.contact_number || 'N/A'}</span>
-                        </div>
-                    </div>
-
-                    ${so.delivery_address ? `
-                        <div class="mt-3 pt-3" style="border-top: 1px solid #f0f0f0;">
-                            <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>${so.delivery_address}</small>
-                        </div>
-                    ` : ''}
-
-                    ${so.notes ? `
-                        <div class="mt-2">
-                            <small class="text-muted"><strong>Notes:</strong> ${so.notes}</small>
-                        </div>
-                    ` : ''}
-
-                    <div class="mt-3 pt-3" style="border-top: 1px solid #f0f0f0;">
-                        ${so.status === 'pending' ? `
-                            <button class="btn btn-danger btn-action" onclick="processInvoice(${so.sales_order_id})">
-                                <i class="bi bi-receipt me-2"></i>Process Invoice (VF01)
-                            </button>
-                        ` : so.status === 'completed' ? `
-                            <span class="badge bg-success">
-                                <i class="bi bi-check-circle me-1"></i>Invoice Processed
-                            </span>
-                        ` : ''}
                     </div>
                 </div>
             `).join('');
@@ -693,147 +517,18 @@
             document.getElementById('soListContainer').innerHTML = html;
         }
 
-        // Setup event listeners
-        function setupEventListeners() {
-            // Create SO form submit
-            document.getElementById('createSOForm').addEventListener('submit', handleCreateSO);
-        }
-
-        // Handle create SO
-        async function handleCreateSO(e) {
-            e.preventDefault();
-
-            const select = document.getElementById('itemId');
-            const selectedOption = select.options[select.selectedIndex];
-            const stock = parseInt(selectedOption.dataset.stock);
-            const quantity = parseInt(document.getElementById('quantity').value);
-
-            // Check stock availability
-            if (quantity > stock) {
-                Utils.showToast(`Insufficient stock. Only ${stock} units available`, 'error');
-                return;
-            }
-
-            const data = {
-                customer_name: document.getElementById('customerName').value.trim(),
-                item_id: parseInt(select.value),
-                quantity: quantity,
-                contact_number: document.getElementById('contactNumber').value.trim(),
-                delivery_address: document.getElementById('deliveryAddress').value.trim()
-            };
-
-            const notes = document.getElementById('notes').value.trim();
-            if (notes) {
-                data.notes = notes;
-            }
-
-            try {
-                const response = await API.createSalesOrder(data);
-
-                if (response.success) {
-                    Utils.showToast('Sales Order created successfully!', 'success');
-                    
-                    // Reset form
-                    document.getElementById('createSOForm').reset();
-                    document.getElementById('stockInfoDisplay').innerHTML = '';
-                    
-                    // Reload orders
-                    await loadSalesOrders();
-                } else {
-                    Utils.showToast(response.message || 'Failed to create sales order', 'error');
-                }
-            } catch (error) {
-                console.error('Create SO error:', error);
-                Utils.showToast('Failed to create sales order', 'error');
-            }
-        }
-
-        // Process invoice (VF01)
-        async function processInvoice(salesOrderId) {
-            try {
-                const so = allSalesOrders.find(s => s.sales_order_id === salesOrderId);
-                if (!so) return;
-
-                selectedSO = so;
-
-                // Check current stock
-                const stockResponse = await API.checkStock(so.item_id);
-                const currentStock = stockResponse.success ? stockResponse.data.current_stock : 0;
-
-                const detailsHTML = `
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="text-muted small">Sales Order #</label>
-                            <p class="mb-0 fw-bold">SO #${so.sales_order_id}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="text-muted small">Customer</label>
-                            <p class="mb-0">${so.customer_name}</p>
-                        </div>
-                        <div class="col-12"><hr></div>
-                        <div class="col-md-6">
-                            <label class="text-muted small">Item</label>
-                            <p class="mb-0 fw-bold">${so.item_name}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="text-muted small">Current Stock</label>
-                            <p class="mb-0">${Utils.formatNumber(currentStock)} ${so.unit}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="text-muted small">Quantity to Ship</label>
-                            <p class="mb-0 fw-bold text-danger">-${Utils.formatNumber(so.quantity)} ${so.unit}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="text-muted small">New Stock Level</label>
-                            <p class="mb-0 fw-bold">${Utils.formatNumber(currentStock - so.quantity)} ${so.unit}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="text-muted small">Total Amount</label>
-                            <p class="mb-0 fw-bold">${Utils.formatCurrency(so.total_amount)}</p>
-                        </div>
-                    </div>
-                `;
-
-                document.getElementById('invoiceDetails').innerHTML = detailsHTML;
-
-                // Check if stock is sufficient
-                if (currentStock < so.quantity) {
-                    Utils.showToast('Insufficient stock to process this order', 'error');
-                    return;
-                }
-
-                new bootstrap.Modal(document.getElementById('invoiceModal')).show();
-            } catch (error) {
-                console.error('Failed to load invoice details:', error);
-                Utils.showToast('Failed to load invoice details', 'error');
-            }
-        }
-
-        // Confirm process invoice
-        async function confirmProcessInvoice() {
-            if (!selectedSO) return;
-
+        async function processInvoice(soId) {
             const confirmed = await Utils.confirmAction(
-                'Confirm Invoice Processing',
-                `Are you sure you want to process this invoice? This will decrease stock by ${selectedSO.quantity} ${selectedSO.unit} and cannot be undone.`
+                'Process Invoice',
+                'This will decrease stock levels. Continue?'
             );
 
             if (!confirmed) return;
 
             try {
-                const data = {
-                    sales_order_id: selectedSO.sales_order_id
-                };
-
-                const response = await API.processInvoice(selectedSO.sales_order_id, data);
-
+                const response = await API.processInvoice(soId, { sales_order_id: soId });
                 if (response.success) {
-                    // Close modal
-                    bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
-
-                    Utils.showToast('Invoice processed successfully! Stock updated.', 'success');
-                    
-                    selectedSO = null;
+                    Utils.showToast('Invoice processed successfully!', 'success');
                     await loadSalesOrders();
                 } else {
                     Utils.showToast(response.message || 'Failed to process invoice', 'error');
@@ -844,50 +539,10 @@
             }
         }
 
-        // Filter sales orders
-        function filterSalesOrders() {
-            const status = document.getElementById('statusFilter').value;
-
-            if (!status) {
-                renderSalesOrders(allSalesOrders);
-                document.getElementById('soCount').textContent = allSalesOrders.length;
-            } else {
-                const filtered = allSalesOrders.filter(so => so.status === status);
-                renderSalesOrders(filtered);
-                document.getElementById('soCount').textContent = filtered.length;
-            }
-        }
-
-        // Show empty state
-        function showEmptyState() {
-            document.getElementById('soListContainer').innerHTML = `
-                <div class="empty-state">
-                    <i class="bi bi-cart-x"></i>
-                    <h5>No Sales Orders</h5>
-                    <p class="text-muted">Create your first sales order above</p>
-                </div>
-            `;
-            document.getElementById('soCount').textContent = '0';
-        }
-
-        // Show error
-        function showError(message) {
-            document.getElementById('soListContainer').innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    ${message}
-                </div>
-            `;
-        }
-
-        // Handle logout
         function handleLogout() {
-            if (confirm('Are you sure you want to logout?')) {
-                API.logout();
-            }
+            if (confirm('Are you sure you want to logout?')) API.logout();
         }
 
-        // Initialize on page load
         document.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
