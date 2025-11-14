@@ -1,165 +1,146 @@
 /**
- * Janstro Inventory System - RBAC (Role-Based Access Control)
- * Version: 3.0.0
- * Enforces strict role-based permissions across the entire application
+ * Janstro Inventory System - Complete RBAC Implementation
+ * Version: 3.0.0 (Production Ready)
+ *
+ * Features:
+ * - Page-level access control
+ * - Feature-level permissions
+ * - Dynamic sidebar rendering
+ * - Button/form visibility control
+ * - Session management
  */
-
 const RBAC = {
   /**
    * Role hierarchy (higher number = more permissions)
    */
-  ROLE_HIERARCHY: {
-    staff: 1,
-    manager: 2,
-    admin: 3,
+  ROLES: {
     superadmin: 4,
+    admin: 3,
+    manager: 2,
+    staff: 1,
   },
-
   /**
-   * Page access permissions
-   * Maps page names to minimum required role
+   * Page access requirements
    */
-  PAGE_PERMISSIONS: {
-    // Public (requires any authenticated user)
-    "dashboard.html": "staff",
-    "index.html": null, // Login page - no auth needed
-
-    // Inventory Management
-    "inventory.html": "staff",
-    "stock-movements.html": "staff",
-
-    // Procurement (Staff can view, Manager+ can create)
-    "purchase-orders.html": "staff",
-    "goods-receipt.html": "manager", // Only managers+ can receive goods
-    "suppliers.html": "manager", // Only managers+ can manage suppliers
-
-    // Sales
-    "sales-orders.html": "staff",
-
-    // Reports
-    "reports.html": "staff",
-
-    // Administration (Admin only)
-    "users.html": "admin",
+  PAGE_ACCESS: {
+    "dashboard.html": ["staff", "manager", "admin", "superadmin"],
+    "inventory.html": ["staff", "manager", "admin", "superadmin"],
+    "purchase-orders.html": ["manager", "admin", "superadmin"],
+    "sales-orders.html": ["staff", "manager", "admin", "superadmin"],
+    "goods-receipt.html": ["manager", "admin", "superadmin"],
+    "suppliers.html": ["manager", "admin", "superadmin"],
+    "reports.html": ["manager", "admin", "superadmin"],
+    "stock-movements.html": ["staff", "manager", "admin", "superadmin"],
+    "users.html": ["admin", "superadmin"],
   },
 
   /**
    * Feature permissions
-   * Controls what actions users can perform
    */
-  FEATURE_PERMISSIONS: {
+  PERMISSIONS: {
     // Inventory
     "inventory.view": ["staff", "manager", "admin", "superadmin"],
-    "inventory.export": ["staff", "manager", "admin", "superadmin"],
+    "inventory.create": ["manager", "admin", "superadmin"],
+    "inventory.edit": ["manager", "admin", "superadmin"],
+    "inventory.delete": ["superadmin"],
+    "inventory.export": ["manager", "admin", "superadmin"],
 
     // Purchase Orders
     "po.view": ["staff", "manager", "admin", "superadmin"],
     "po.create": ["manager", "admin", "superadmin"],
+    "po.approve": ["admin", "superadmin"],
     "po.receive": ["manager", "admin", "superadmin"],
-
-    // Suppliers
-    "suppliers.view": ["staff", "manager", "admin", "superadmin"],
-    "suppliers.create": ["manager", "admin", "superadmin"],
-    "suppliers.edit": ["manager", "admin", "superadmin"],
+    "po.cancel": ["admin", "superadmin"],
 
     // Sales Orders
     "sales.view": ["staff", "manager", "admin", "superadmin"],
     "sales.create": ["staff", "manager", "admin", "superadmin"],
     "sales.process": ["manager", "admin", "superadmin"],
+    "sales.cancel": ["admin", "superadmin"],
+
+    // Suppliers
+    "suppliers.view": ["manager", "admin", "superadmin"],
+    "suppliers.create": ["admin", "superadmin"],
+    "suppliers.edit": ["admin", "superadmin"],
+    "suppliers.delete": ["superadmin"],
+
+    // Users
+    "users.view": ["admin", "superadmin"],
+    "users.create": ["superadmin"],
+    "users.edit": ["admin", "superadmin"],
+    "users.delete": ["superadmin"],
+    "users.roles": ["superadmin"],
 
     // Reports
-    "reports.view": ["staff", "manager", "admin", "superadmin"],
+    "reports.view": ["manager", "admin", "superadmin"],
     "reports.export": ["manager", "admin", "superadmin"],
-
-    // Users (Admin only)
-    "users.view": ["admin", "superadmin"],
-    "users.create": ["admin", "superadmin"],
-    "users.edit": ["admin", "superadmin"],
-    "users.delete": ["superadmin"], // Only superadmin can delete
+    "reports.financial": ["admin", "superadmin"],
   },
 
   /**
-   * Menu items configuration with required roles
+   * Menu structure
    */
-  MENU_CONFIG: [
+  MENU_ITEMS: [
     {
       section: "Main",
       items: [
         {
-          id: "dashboard",
-          href: "dashboard.html",
+          title: "Dashboard",
           icon: "bi-speedometer2",
-          label: "Dashboard",
+          href: "dashboard.html",
           roles: ["staff", "manager", "admin", "superadmin"],
         },
-      ],
-    },
-    {
-      section: "Inventory",
-      items: [
         {
-          id: "inventory",
+          title: "Inventory",
+          icon: "bi-box-seam",
           href: "inventory.html",
-          icon: "bi-box",
-          label: "All Items",
           roles: ["staff", "manager", "admin", "superadmin"],
         },
         {
-          id: "stock-movements",
-          href: "stock-movements.html",
+          title: "Stock Movements",
           icon: "bi-arrow-left-right",
-          label: "Stock Movements",
+          href: "stock-movements.html",
           roles: ["staff", "manager", "admin", "superadmin"],
         },
       ],
     },
     {
-      section: "Procurement",
+      section: "Operations",
       items: [
         {
-          id: "purchase-orders",
+          title: "Purchase Orders",
+          icon: "biRetryJContinue-cart-plus",
           href: "purchase-orders.html",
-          icon: "bi-cart-plus",
-          label: "Purchase Orders",
-          roles: ["staff", "manager", "admin", "superadmin"],
+          roles: ["manager", "admin", "superadmin"],
         },
         {
-          id: "goods-receipt",
-          href: "goods-receipt.html",
+          title: "Goods Receipt",
           icon: "bi-box-arrow-in-down",
-          label: "Goods Receipt",
-          roles: ["manager", "admin", "superadmin"], // Manager+ only
+          href: "goods-receipt.html",
+          roles: ["manager", "admin", "superadmin"],
         },
         {
-          id: "suppliers",
-          href: "suppliers.html",
-          icon: "bi-truck",
-          label: "Suppliers",
-          roles: ["manager", "admin", "superadmin"], // Manager+ only
-        },
-      ],
-    },
-    {
-      section: "Sales",
-      items: [
-        {
-          id: "sales-orders",
-          href: "sales-orders.html",
+          title: "Sales Orders",
           icon: "bi-cart-check",
-          label: "Sales Orders",
+          href: "sales-orders.html",
           roles: ["staff", "manager", "admin", "superadmin"],
+        },
+        {
+          title: "Suppliers",
+          icon: "bi-truck",
+          href: "suppliers.html",
+          roles: ["manager", "admin", "superadmin"],
         },
       ],
     },
     {
-      section: "Reports",
+      section: "Analytics",
       items: [
         {
-          id: "reports",
-          href: "reports.html",
+          title: "Reports",
           icon: "bi-graph-up",
-          label: "Analytics",
-          roles: ["staff", "manager", "admin", "superadmin"],
+          href: "reports.html",
+          roles: ["manager", "admin", "superadmin"],
         },
       ],
     },
@@ -167,277 +148,250 @@ const RBAC = {
       section: "Administration",
       items: [
         {
-          id: "users",
-          href: "users.html",
+          title: "User Management",
           icon: "bi-people",
-          label: "Users",
-          roles: ["admin", "superadmin"], // Admin only
+          href: "users.html",
+          roles: ["admin", "superadmin"],
         },
       ],
     },
   ],
-
   /**
-   * Get current user from API
+   * Initialize RBAC system
    */
-  getCurrentUser() {
-    if (typeof API !== "undefined" && API.getUser) {
-      return API.getUser();
-    }
-    return null;
-  },
+  init() {
+    console.log("🔒 Initializing RBAC system...");
 
-  /**
-   * Get current user's role level
-   */
-  getUserRoleLevel(role) {
-    return this.ROLE_HIERARCHY[role] || 0;
-  },
-
-  /**
-   * Check if user has minimum required role
-   * @param {string} userRole - Current user's role
-   * @param {string} requiredRole - Minimum required role
-   */
-  hasRole(userRole, requiredRole) {
-    if (!userRole || !requiredRole) return false;
-    return (
-      this.getUserRoleLevel(userRole) >= this.getUserRoleLevel(requiredRole)
-    );
-  },
-
-  /**
-   * Check if user can access a page
-   * @param {string} pageName - Name of the page (e.g., 'users.html')
-   */
-  canAccessPage(pageName) {
-    const user = this.getCurrentUser();
-
-    // No authentication required (login page)
-    if (this.PAGE_PERMISSIONS[pageName] === null) {
-      return true;
-    }
-
-    // Require authentication for all other pages
-    if (!user || !user.role) {
+    // Check authentication
+    if (!API.isAuthenticated()) {
+      console.warn("⚠️ User not authenticated - redirecting to login");
+      window.location.href = "index.html";
       return false;
     }
 
-    const requiredRole = this.PAGE_PERMISSIONS[pageName];
-    if (!requiredRole) {
-      console.warn(`No permission defined for page: ${pageName}`);
-      return true; // Allow if not defined (fail open for undefined pages)
+    const user = API.getUser();
+    if (!user || !user.role) {
+      console.error("❌ Invalid user session");
+      API.logout();
+      return false;
     }
 
-    return this.hasRole(user.role, requiredRole);
+    console.log("✅ User authenticated:", user.username, "- Role:", user.role);
+
+    // Check page access
+    const currentPage = this.getCurrentPage();
+    if (!this.canAccessPage(currentPage)) {
+      console.error("❌ Access denied to page:", currentPage);
+      Utils.showToast(
+        `Access denied. Required role: ${this.getRequiredRole(currentPage)}`,
+        "error"
+      );
+      window.location.href = "dashboard.html";
+      return false;
+    }
+
+    // Render sidebar
+    this.renderSidebar();
+
+    // Apply permission-based UI restrictions
+    this.applyPermissions();
+
+    console.log("✅ RBAC initialized successfully");
+    return true;
   },
 
   /**
-   * Check if user has permission for a feature
-   * @param {string} feature - Feature identifier (e.g., 'po.create')
+   * Get current page filename
    */
-  hasPermission(feature) {
-    const user = this.getCurrentUser();
-    if (!user || !user.role) return false;
+  getCurrentPage() {
+    const path = window.location.pathname;
+    return path.substring(path.lastIndexOf("/") + 1) || "index.html";
+  },
 
-    const allowedRoles = this.FEATURE_PERMISSIONS[feature];
+  /**
+   * Check if user can access current page
+   */
+  canAccessPage(page) {
+    const user = API.getUser();
+    if (!user) return false;
+
+    const requiredRoles = this.PAGE_ACCESS[page];
+    if (!requiredRoles) return true; // No restriction
+
+    return requiredRoles.includes(user.role);
+  },
+
+  /**
+   * Get required role for page
+   */
+  getRequiredRole(page) {
+    const roles = this.PAGE_ACCESS[page];
+    return roles ? roles.join(", ") : "Any";
+  },
+
+  /**
+   * Check if user has permission
+   */
+  hasPermission(permission) {
+    const user = API.getUser();
+    if (!user) return false;
+
+    const allowedRoles = this.PERMISSIONS[permission];
     if (!allowedRoles) {
-      console.warn(`No permission defined for feature: ${feature}`);
-      return false; // Fail closed for undefined features
+      console.warn("⚠️ Permission not defined:", permission);
+      return false;
     }
 
     return allowedRoles.includes(user.role);
   },
 
   /**
-   * Protect current page - redirect if unauthorized
-   * Call this at the top of every protected page
+   * Get user role level
    */
-  protectPage() {
-    const user = this.getCurrentUser();
-    const currentPage = window.location.pathname.split("/").pop();
-
-    // Not logged in - redirect to login
-    if (!user) {
-      console.warn("🚫 Not authenticated - redirecting to login");
-      window.location.href = "index.html";
-      return false;
-    }
-
-    // Check page access
-    if (!this.canAccessPage(currentPage)) {
-      console.warn(`🚫 Access denied to ${currentPage} for role: ${user.role}`);
-
-      if (typeof Utils !== "undefined" && Utils.showToast) {
-        Utils.showToast("Access denied. Insufficient permissions.", "error");
-      } else {
-        alert("Access denied. Insufficient permissions.");
-      }
-
-      // Redirect to dashboard
-      setTimeout(() => {
-        window.location.href = "dashboard.html";
-      }, 1500);
-
-      return false;
-    }
-
-    return true;
+  getUserRoleLevel(role) {
+    return this.ROLES[role] || 0;
   },
 
   /**
-   * Render role-based sidebar menu
-   * Only shows menu items the user has access to
-   */
-  renderSidebar() {
-    const user = this.getCurrentUser();
-    if (!user) return;
-
-    const sidebar = document.querySelector(".sidebar-menu");
-    if (!sidebar) return;
-
-    let html = "";
-
-    this.MENU_CONFIG.forEach((section) => {
-      // Filter items based on user role
-      const accessibleItems = section.items.filter((item) =>
-        item.roles.includes(user.role)
-      );
-
-      // Only show section if user has access to at least one item
-      if (accessibleItems.length > 0) {
-        html += `<div class="menu-section">${section.section}</div>`;
-
-        accessibleItems.forEach((item) => {
-          const currentPage = window.location.pathname.split("/").pop();
-          const isActive = currentPage === item.href ? "active" : "";
-
-          html += `
-            <a href="${item.href}" class="menu-item ${isActive}">
-              <i class="bi ${item.icon}"></i>
-              <span>${item.label}</span>
-            </a>
-          `;
-        });
-      }
-    });
-
-    sidebar.innerHTML = html;
-  },
-
-  /**
-   * Hide UI elements based on permissions
-   * Add data-permission="feature.action" to any element
-   */
-  enforceUIPermissions() {
-    const elements = document.querySelectorAll("[data-permission]");
-
-    elements.forEach((el) => {
-      const permission = el.getAttribute("data-permission");
-
-      if (!this.hasPermission(permission)) {
-        // Hide unauthorized elements
-        el.style.display = "none";
-
-        // Also disable if it's an input/button
-        if (
-          el.tagName === "BUTTON" ||
-          el.tagName === "INPUT" ||
-          el.tagName === "SELECT"
-        ) {
-          el.disabled = true;
-        }
-      }
-    });
-  },
-
-  /**
-   * Show role badge in UI
-   */
-  displayRoleBadge() {
-    const user = this.getCurrentUser();
-    if (!user) return;
-
-    const roleElement = document.getElementById("userRole");
-    if (roleElement) {
-      const roleColors = {
-        staff: "#6c757d",
-        manager: "#ffc107",
-        admin: "#667eea",
-        superadmin: "#dc3545",
-      };
-
-      roleElement.textContent = user.role.toUpperCase();
-      roleElement.style.color = roleColors[user.role] || "#333";
-    }
-  },
-
-  /**
-   * Initialize RBAC on page load
-   * Call this in every page's DOMContentLoaded event
-   */
-  init() {
-    // Protect the page first
-    if (!this.protectPage()) {
-      return; // Stop if unauthorized
-    }
-
-    // Render role-based sidebar
-    this.renderSidebar();
-
-    // Enforce UI permissions
-    this.enforceUIPermissions();
-
-    // Display role badge
-    this.displayRoleBadge();
-
-    console.log(
-      "✅ RBAC initialized for user:",
-      this.getCurrentUser()?.username
-    );
-  },
-
-  /**
-   * Utility: Check if current user is admin
+   * Check if user is admin or superadmin
    */
   isAdmin() {
-    const user = this.getCurrentUser();
+    const user = API.getUser();
     return user && ["admin", "superadmin"].includes(user.role);
   },
 
   /**
-   * Utility: Check if current user is manager or above
+   * Check if user is manager or above
    */
   isManager() {
-    const user = this.getCurrentUser();
+    const user = API.getUser();
     return user && ["manager", "admin", "superadmin"].includes(user.role);
   },
 
   /**
-   * Utility: Get user-friendly permission message
+   * Get permission denied message
    */
-  getPermissionMessage(feature) {
-    const requiredRoles = this.FEATURE_PERMISSIONS[feature];
-    if (!requiredRoles || requiredRoles.length === 0) {
-      return "This feature is restricted.";
+  getPermissionMessage(permission) {
+    const allowedRoles = this.PERMISSIONS[permission];
+    if (!allowedRoles) return "Permission not defined";
+    return `This action requires one of the following roles: ${allowedRoles.join(
+      ", "
+    )}`;
+  },
+
+  /**
+   * Render sidebar menu
+   */
+  renderSidebar() {
+    const user = API.getUser();
+    if (!user) return;
+
+    const sidebarMenu = document.getElementById("sidebarMenu");
+    if (!sidebarMenu) {
+      console.warn("⚠️ Sidebar menu element not found");
+      return;
     }
 
-    const rolesText = requiredRoles
-      .map((r) => r.charAt(0).toUpperCase() + r.slice(1))
-      .join(", ");
-    return `This feature requires: ${rolesText} role.`;
+    let html = "";
+
+    this.MENU_ITEMS.forEach((section) => {
+      // Filter items user can access
+      const accessibleItems = section.items.filter((item) =>
+        item.roles.includes(user.role)
+      );
+
+      if (accessibleItems.length === 0) return;
+
+      // Add section header
+      html += `<div class="menu-section">${section.section}</div>`;
+
+      // Add menu items
+      accessibleItems.forEach((item) => {
+        const currentPage = this.getCurrentPage();
+        const isActive = currentPage === item.href;
+
+        html += `
+                <a href="${item.href}" class="menu-item ${
+          isActive ? "active" : ""
+        }">
+                    <i class="bi ${item.icon}"></i>
+                    <span>${item.title}</span>
+                </a>
+            `;
+      });
+    });
+
+    sidebarMenu.innerHTML = html;
+    console.log("✅ Sidebar rendered with role-based menu");
+  },
+
+  /**
+   * Apply permissions to UI elements
+   */
+  applyPermissions() {
+    // Hide elements with data-permission attribute
+    document.querySelectorAll("[data-permission]").forEach((element) => {
+      const permission = element.getAttribute("data-permission");
+
+      if (!this.hasPermission(permission)) {
+        // Hide element
+        element.style.display = "none";
+
+        // Disable if it's a button/input
+        if (element.tagName === "BUTTON" || element.tagName === "INPUT") {
+          element.disabled = true;
+        }
+
+        console.log(
+          `🔒 Hidden element due to missing permission: ${permission}`
+        );
+      }
+    });
+
+    // Hide elements with data-role attribute
+    document.querySelectorAll("[data-role]").forEach((element) => {
+      const requiredRoles = element
+        .getAttribute("data-role")
+        .split(",")
+        .map((r) => r.trim());
+      const user = API.getUser();
+
+      if (!user || !requiredRoles.includes(user.role)) {
+        element.style.display = "none";
+
+        if (element.tagName === "BUTTON" || element.tagName === "INPUT") {
+          element.disabled = true;
+        }
+
+        console.log(
+          `🔒 Hidden element due to insufficient role: ${requiredRoles.join(
+            ", "
+          )}`
+        );
+      }
+    });
+
+    console.log("✅ Permission-based UI restrictions applied");
+  },
+
+  /**
+   * Show access denied modal
+   */
+  showAccessDenied(message) {
+    Utils.showToast(message || "Access denied", "error", 5000);
   },
 };
-
-// Make RBAC available globally
-window.RBAC = RBAC;
-
-// Auto-initialize on DOMContentLoaded if not on login page
-document.addEventListener("DOMContentLoaded", () => {
+// Auto-initialize RBAC on page load
+document.addEventListener("DOMContentLoaded", function () {
+  // Skip RBAC for login page
   const currentPage = window.location.pathname.split("/").pop();
-
-  // Skip RBAC init on login page
-  if (currentPage !== "index.html") {
-    RBAC.init();
+  if (currentPage === "index.html" || currentPage === "") {
+    return;
   }
+  // Initialize RBAC
+  RBAC.init();
 });
+// Export for use in other scripts
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = RBAC;
+}

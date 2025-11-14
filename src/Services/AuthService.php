@@ -1,150 +1,203 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Janstro\InventorySystem\Services;
 
 use Janstro\InventorySystem\Repositories\UserRepository;
 use Janstro\InventorySystem\Utils\JWT;
+use Janstro\InventorySystem\Utils\Security;
 
-/**
- * Authentication Service
- * Handles all authentication business logic
- * ISO/IEC 25010: Security & Functional Suitability
- */
 class AuthService
 {
     private UserRepository $userRepo;
+
+    private const MAX_LOGIN_ATTEMPTS = 5;
+    private const LOCKOUT_DURATION   = 900;
 
     public function __construct()
     {
         $this->userRepo = new UserRepository();
     }
 
-    /**
-     * Login user with username and password
-     * 
-     * @param string $username User's username
-     * @param string $password User's plain password
-     * @return array|null Returns user data with token, or null on failure
-     */
     public function login(string $username, string $password): ?array
     {
-        // Validate inputs
-        if (empty($username) || empty($password)) {
+        if (trim($username) === '' || trim($password) === '') {
+            Security::logSecurityEvent('LOGIN_FAILED', [
+                'reason' => 'Empty credentials',
+                'ip'     => Security::getClientIp()
+            ]);
             return null;
         }
 
-        // Find user by username
+        $clientIp = Security::getClientIp();
+
+        if (!Security::checkRateLimit("login_$clientIp", self::MAX_LOGIN_ATTEMPTS, self::LOCKOUT_DURATION)) {
+            Security::logSecurityEvent('LOGIN_RATE_LIMITED', [
+                'username' => $username,
+                'ip'       => $clientIp
+            ]);
+            sleep(2);
+            return null;
+        }
+
         $user = $this->userRepo->findByUsername($username);
-
         if (!$user) {
-            // User not found - log failed attempt
-            error_log("Login attempt failed: User '$username' not found");
+            Security::logSecurityEvent('LOGIN_FAILED', [
+                'reason'   => 'User not found',
+                'username' => $username,
+                'ip'       => $clientIp
+            ]);
+            sleep(2);
             return null;
         }
 
-        // FIXED: Use bcrypt verification instead of SHA-256
-        if (!password_verify($password, $user['password_hash'])) {
-            // Invalid password - log failed attempt
-            error_log("Login attempt failed: Invalid password for user '$username'");
-            $this->userRepo->logAudit($user['user_id'], "Failed login attempt");
+        if (($user['status'] ?? '') !== 'active') {
+            Security::logSecurityEvent('LOGIN_FAILED', [
+                'reason'   => 'Account inactive',
+                'username' => $username,
+                'ip'       => $clientIp
+            ]);
             return null;
         }
 
-        // Generate JWT token
+        if (!password_verify($password, (string)$user['password_hash'])) {
+            $this->userRepo->logAudit((int)$user['user_id'], "Failed login attempt from IP: $clientIp");
+
+            Security::logSecurityEvent('LOGIN_FAILED', [
+                'reason'   => 'Invalid password',
+                'username' => $username,
+                'ip'       => $clientIp
+            ]);
+            sleep(2);
+            return null;
+        }
+
+        Security::resetRateLimit("login_$clientIp");
+
         $tokenPayload = [
-            'user_id' => $user['user_id'],
-            'username' => $user['username'],
-            'role' => $user['role_name'],
-            'role_id' => $user['role_id']
+            'user_id'    => $user['user_id'],
+            'username'   => $user['username'],
+            'role'       => $user['role_name'] ?? null,
+            'role_id'    => $user['role_id'] ?? null,
+            'ip'         => $clientIp,
+            'session_id' => bin2hex(random_bytes(16))
         ];
 
         $token = JWT::generate($tokenPayload);
 
-        // Log successful login
-        $this->userRepo->logAudit($user['user_id'], "Successful login");
+        $this->userRepo->logAudit((int)$user['user_id'], "Successful login from IP: $clientIp");
 
-        // Return user data without password
+        Security::logSecurityEvent('LOGIN_SUCCESS', [
+            'username' => $username,
+            'ip'       => $clientIp
+        ]);
+
         unset($user['password_hash']);
 
         return [
-            'user' => $user,
-            'token' => $token,
+            'user'       => $user,
+            'token'      => $token,
             'expires_in' => (int)($_ENV['JWT_EXPIRATION'] ?? 3600)
         ];
     }
 
-    /**
-     * Validate JWT token
-     * 
-     * @param string $token JWT token
-     * @return object|null Returns decoded token data or null
-     */
-    public function validateToken(string $token): ?object
-    {
-        return JWT::validate($token);
-    }
-
-    /**
-     * Logout user (log audit trail)
-     * 
-     * @param int $userId User ID
-     * @return bool Success status
-     */
-    public function logout(int $userId): bool
-    {
-        return $this->userRepo->logAudit($userId, "User logged out");
-    }
-
-    /**
-     * Change user password
-     * 
-     * @param int $userId User ID
-     * @param string $currentPassword Current password
-     * @param string $newPassword New password
-     * @return bool Success status
-     */
     public function changePassword(int $userId, string $currentPassword, string $newPassword): bool
     {
-        // Get user data
         $user = $this->userRepo->findById($userId);
-
         if (!$user) {
             return false;
         }
 
-        // Find raw user data for password verification
-        $userData = $this->userRepo->findByUsername($user->username);
-
-        // FIXED: Use bcrypt verification
-        if (!password_verify($currentPassword, $userData['password_hash'])) {
-            error_log("Password change failed: Invalid current password for user ID $userId");
+        $userData = $this->userRepo->findByUsername($user['username']);
+        if (!$userData) {
             return false;
         }
 
-        // Hash new password with bcrypt
-        $hashedNewPassword = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+        if (!password_verify($currentPassword, (string)$userData['password_hash'])) {
+            Security::logSecurityEvent('PASSWORD_CHANGE_FAILED', [
+                'user_id' => $userId,
+                'reason'  => 'Invalid current password'
+            ]);
+            return false;
+        }
 
-        // Update password
+        if (!Security::validatePasswordStrength($newPassword)) {
+            Security::logSecurityEvent('PASSWORD_CHANGE_FAILED', [
+                'user_id' => $userId,
+                'reason'  => 'Weak password'
+            ]);
+            return false;
+        }
+
+        if (password_verify($newPassword, (string)$userData['password_hash'])) {
+            Security::logSecurityEvent('PASSWORD_CHANGE_FAILED', [
+                'user_id' => $userId,
+                'reason'  => 'Password reuse'
+            ]);
+            return false;
+        }
+
+        $hashedNewPassword = Security::hashPassword($newPassword);
+
         $success = $this->userRepo->update($userId, [
             'password_hash' => $hashedNewPassword
         ]);
 
         if ($success) {
             $this->userRepo->logAudit($userId, "Password changed successfully");
+
+            Security::logSecurityEvent('PASSWORD_CHANGED', [
+                'user_id' => $userId
+            ]);
         }
 
         return $success;
     }
 
-    /**
-     * Check if user has required role
-     * 
-     * @param object $user Decoded JWT user object
-     * @param array $allowedRoles Array of allowed role names
-     * @return bool True if user has required role
-     */
-    public function hasRole(object $user, array $allowedRoles): bool
+    public function validateToken(string $token): ?object
     {
-        return in_array($user->role, $allowedRoles);
+        $decoded = JWT::validate($token);
+        if (!$decoded) {
+            return null;
+        }
+
+        $currentIp = Security::getClientIp();
+
+        if (isset($decoded->ip) && $decoded->ip !== $currentIp) {
+            Security::logSecurityEvent('TOKEN_IP_MISMATCH', [
+                'user_id'    => $decoded->user_id ?? 'unknown',
+                'token_ip'   => $decoded->ip,
+                'current_ip' => $currentIp
+            ]);
+            // Enable strict mode if desired:
+            // return null;
+        }
+
+        return $decoded;
+    }
+
+    public function logout(int $userId): bool
+    {
+        Security::logSecurityEvent('LOGOUT', [
+            'user_id' => $userId,
+            'ip'      => Security::getClientIp()
+        ]);
+
+        $this->userRepo->logAudit(
+            $userId,
+            "User logged out from IP: " . Security::getClientIp()
+        );
+
+        return true;
+    }
+
+    public function hasRole(object|array $user, array $allowedRoles): bool
+    {
+        $role = is_object($user)
+            ? ($user->role ?? $user->role_name ?? null)
+            : ($user['role'] ?? $user['role_name'] ?? null);
+
+        return in_array($role, $allowedRoles, true);
     }
 }
