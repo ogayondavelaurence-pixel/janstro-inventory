@@ -1,2 +1,6 @@
 [2025-11-08 02:59:00] LOGIN_SUCCESS - IP: ::1 - Details: User: admin
 [2025-11-08 02:59:30] LOGIN_SUCCESS - IP: ::1 - Details: User: admin
+[2025-11-14 23:20:33] LOGIN_SUCCESS - IP: unknown - Details: {"username":"admin","ip":"unknown"}
+[2025-11-14 23:20:33] LOGIN_FAILED - IP: unknown - Details: {"reason":"Invalid password","username":"admin","ip":"unknown"}
+[2025-11-14 23:21:38] LOGIN_SUCCESS - IP: unknown - Details: {"username":"admin","ip":"unknown"}
+[2025-11-14 23:21:39] LOGIN_FAILED - IP: unknown - Details: {"reason":"Invalid password","username":"admin","ip":"unknown"}
