@@ -1,0 +1,361 @@
+/**
+ * Janstro Inventory Management System - Main Stylesheet
+ * ISO/IEC 25010:2023 Usability Compliance
+ * Version: 2.0.0 Production-Ready
+ */
+
+/* ============================================
+   CSS VARIABLES (Janstro Solar Brand Colors)
+   ============================================ */
+:root {
+  /* Janstro Brand Colors (from website) */
+  --janstro-orange: #FF6B00;
+  --janstro-dark-blue: #1A2332;
+  --janstro-light-blue: #3498DB;
+  --janstro-success: #27AE60;
+  --janstro-warning: #F39C12;
+  --janstro-danger: #E74C3C;
+  --janstro-light: #ECF0F1;
+  --janstro-gray: #95A5A6;
+  
+  /* Typography */
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  
+  /* Spacing */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  
+  /* Borders & Shadows */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 300ms ease;
+}
+
+/* ============================================
+   RESET & BASE
+   ============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--janstro-dark-blue);
+  background: var(--janstro-light);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: var(--space-sm);
+  color: var(--janstro-dark-blue);
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+h4 { font-size: 1.5rem; }
+
+a {
+  color: var(--janstro-orange);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: #FF8533;
+}
+
+/* ============================================
+   LAYOUT
+   ============================================ */
+.wrapper {
+  min-height: 100vh;
+  display: flex;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  background: white;
+  border-right: 1px solid #E0E0E0;
+  padding: var(--space-md);
+  z-index: 1000;
+  overflow-y: auto;
+  transition: transform var(--transition-base);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid #E0E0E0;
+  margin-bottom: var(--space-md);
+}
+
+.sidebar-logo img {
+  width: 40px;
+  height: 40px;
+}
+
+.sidebar-logo h3 {
+  color: var(--janstro-orange);
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.sidebar-menu {
+  list-style: none;
+}
+
+.sidebar-menu-item {
+  margin-bottom: var(--space-xs);
+}
+
+.sidebar-menu-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  color: var(--janstro-dark-blue);
+  transition: all var(--transition-fast);
+}
+
+.sidebar-menu-link:hover {
+  background: var(--janstro-light);
+  color: var(--janstro-orange);
+}
+
+.sidebar-menu-link.active {
+  background: var(--janstro-orange);
+  color: white;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  padding: var(--space-lg);
+  transition: margin-left var(--transition-base);
+}
+
+/* ============================================
+   NAVBAR
+   ============================================ */
+.navbar-top {
+  background: white;
+  padding: var(--space-sm) var(--space-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  border-radius: var(--radius-md);
+}
+
+.navbar-search input {
+  width: 400px;
+  padding: var(--space-sm);
+  border: 1px solid #E0E0E0;
+  border-radius: var(--radius-md);
+}
+
+.navbar-actions {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.navbar-user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+/* ============================================
+   STATS CARDS
+   ============================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.stat-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  transition: transform var(--transition-fast);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.stat-icon.orange { background: rgba(255, 107, 0, 0.1); color: var(--janstro-orange); }
+.stat-icon.green { background: rgba(39, 174, 96, 0.1); color: var(--janstro-success); }
+.stat-icon.blue { background: rgba(52, 152, 219, 0.1); color: var(--janstro-light-blue); }
+.stat-icon.red { background: rgba(231, 76, 60, 0.1); color: var(--janstro-danger); }
+
+.stat-content h3 {
+  font-size: 2rem;
+  margin: 0;
+}
+
+.stat-content p {
+  margin: 0;
+  color: var(--janstro-gray);
+  font-size: 0.875rem;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid #E0E0E0;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: var(--janstro-light);
+}
+
+th {
+  padding: var(--space-sm);
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #E0E0E0;
+}
+
+td {
+  padding: var(--space-sm);
+  border-bottom: 1px solid #F5F5F5;
+}
+
+tr:hover {
+  background: rgba(255, 107, 0, 0.05);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary {
+  background: var(--janstro-orange);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #FF8533;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-success { background: var(--janstro-success); color: white; }
+.badge-warning { background: var(--janstro-warning); color: white; }
+.badge-danger { background: var(--janstro-danger); color: white; }
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
