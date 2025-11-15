@@ -33,3 +33,25 @@
 [2025-11-15 07:48:04] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
 [2025-11-15 07:48:07] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
 [2025-11-15 07:48:15] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:28:59] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:29:03] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:29:04] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:29:05] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:29:17] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:29:18] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:30:59] LOGIN_FAILED - IP: ::1 - Details: {"reason":"Invalid password","username":"admin","ip":"::1"}
+[2025-11-15 08:31:08] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:48:17] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:48:30] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:48:31] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:48:37] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:52:59] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:03] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:04] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:04] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:24] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:25] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:25] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:26] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:26] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 08:53:35] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}

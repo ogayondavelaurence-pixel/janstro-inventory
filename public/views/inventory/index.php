@@ -499,9 +499,7 @@
         });
 
         function logout() {
-            localStorage.removeItem('token');
-            window.location.href = '/views/auth/login.php';
-
+            window.location.href = '/janstro-inventory/public/auth/logout.php';
         }
     </script>
 </body>

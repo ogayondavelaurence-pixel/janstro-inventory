@@ -2,19 +2,32 @@
 
 /**
  * Janstro IMS - Dashboard
- * Complete Working Implementation with Chart.js
  */
 
-session_start(); // only once
+// Start session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Protect the dashboard
-if (!isset($_SESSION['user_id'])) {
+// Check authentication
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in'])) {
+    session_destroy();
+    // ✅ FIXED: Use relative path since server runs from /public
     header('Location: /views/auth/login.php');
+    exit;
+}
+
+// Optional: Session timeout check (2 hours)
+$sessionLifetime = 7200;
+if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time'] > $sessionLifetime)) {
+    session_destroy();
+    header('Location: /views/auth/login.php?expired=1');
     exit;
 }
 
 $pageTitle = 'Dashboard';
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 

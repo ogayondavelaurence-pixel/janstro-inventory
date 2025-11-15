@@ -192,6 +192,7 @@
     </div>
 
     <script>
+        // ✅ CORRECTED: Since server runs from /public, base path is root
         const API_BASE = '';
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -206,6 +207,7 @@
             loginBtn.innerHTML = '<span class="spinner"></span> Logging in...';
 
             try {
+                // ✅ Step 1: API Login (goes to /auth/login via index.php router)
                 const response = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: {
@@ -220,47 +222,55 @@
                 const data = await response.json();
 
                 if (data.success) {
-
-                    // Save token
+                    // Step 2: Save token
                     localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
 
-                    // Create PHP session
-                    await fetch('/session_set.php', {
+                    // ✅ Step 3: Create PHP session (direct file, not routed)
+                    const sessionResponse = await fetch(`${API_BASE}/auth/set-session.php`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            user_id: data.data.user.id,
-                            username: data.data.user.username
+                            token: data.data.token
                         })
                     });
 
-                    alertBox.className = 'alert alert-success';
-                    alertBox.textContent = 'Login successful! Redirecting...';
-                    alertBox.style.display = 'block';
+                    const sessionData = await sessionResponse.json();
 
-                    setTimeout(() => {
-                        window.location.href = '/views/dashboard/index.php';
-                    }, 1000);
+                    if (sessionData.success) {
+                        alertBox.className = 'alert alert-success';
+                        alertBox.textContent = 'Login successful! Redirecting...';
+                        alertBox.style.display = 'block';
+
+                        // ✅ Step 4: Redirect to dashboard
+                        setTimeout(() => {
+                            window.location.href = `${API_BASE}/views/dashboard/index.php`;
+                        }, 1000);
+                    } else {
+                        throw new Error('Session creation failed');
+                    }
 
                 } else {
                     alertBox.className = 'alert alert-danger';
-                    alertBox.textContent = data.message || 'Invalid username or password';
+                    alertBox.textContent = data.message || 'Invalid credentials';
                     alertBox.style.display = 'block';
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Login';
                 }
 
             } catch (err) {
+                console.error('Login error:', err);
                 alertBox.className = 'alert alert-danger';
-                alertBox.textContent = 'Network error. Try again.';
+                alertBox.textContent = 'Login failed. Please try again.';
                 alertBox.style.display = 'block';
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login';
             }
         });
     </script>
+
 </body>
 
 </html>
