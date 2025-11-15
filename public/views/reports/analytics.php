@@ -130,22 +130,22 @@
                 JANSTRO IMS
             </h4>
         </div>
-        <a href="/janstro-inventory/public/views/dashboard/index.php">
+        <a href="/views/dashboard/index.php">
             <i class="fas fa-chart-line"></i> Dashboard
         </a>
-        <a href="/janstro-inventory/public/views/inventory/index.php">
+        <a href="/views/inventory/index.php">
             <i class="fas fa-boxes"></i> Inventory
         </a>
-        <a href="/janstro-inventory/public/views/purchase/orders.php">
+        <a href="/views/purchase/orders.php">
             <i class="fas fa-shopping-cart"></i> Purchase Orders
         </a>
-        <a href="/janstro-inventory/public/views/sales/orders.php">
+        <a href="/views/sales/orders.php">
             <i class="fas fa-dollar-sign"></i> Sales Orders
         </a>
-        <a href="/janstro-inventory/public/views/reports/analytics.php" class="active">
+        <a href="/views/reports/analytics.php" class="active">
             <i class="fas fa-chart-bar"></i> Analytics
         </a>
-        <a href="/janstro-inventory/public/views/admin/users.php">
+        <a href="/views/admin/users.php">
             <i class="fas fa-users"></i> User Management
         </a>
         <hr class="bg-light">
@@ -262,7 +262,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const API_BASE = '/janstro-inventory/public';
+        const API_BASE = '';
         let revenueChart, categoryChart, topProductsChart, lowStockChart;
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -508,7 +508,7 @@
 
         function logout() {
             localStorage.removeItem('token');
-            window.location.href = '/janstro-inventory/public/views/auth/login.php';
+            window.location.href = window.location.href = '/views/auth/login.php';
         }
     </script>
 </body>

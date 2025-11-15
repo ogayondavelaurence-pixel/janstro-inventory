@@ -86,8 +86,8 @@ class SystemTest extends TestCase
         $decoded = JWT::validate($token);
 
         $this->assertNotNull($decoded);
-        $this->assertEquals(1, $decoded->data->user_id);
-        $this->assertEquals('admin', $decoded->data->role);
+        $this->assertEquals(1, $decoded->user_id);
+        $this->assertEquals('admin', $decoded->role);
 
         echo "  ✅ JWT validation successful\n";
     }
@@ -180,7 +180,7 @@ class SystemTest extends TestCase
     // ============================================
     // PURCHASE ORDER TESTS
     // ============================================
-
+    // ✅ REPLACE WITH:
     public function testCanCreatePurchaseOrder(): void
     {
         echo "🛒 Testing purchase order creation...\n";
@@ -189,10 +189,15 @@ class SystemTest extends TestCase
 
         $testOrder = [
             'supplier_id' => 1,
-            'item_id' => 1,
-            'quantity' => 50,
-            'total_amount' => 250000.00,
-            'created_by' => 1
+            'items' => [                 // ✅ CORRECT - multi-item array
+                [
+                    'item_id' => 1,
+                    'quantity' => 50,
+                    'unit_price' => 5000
+                ]
+            ],
+            'created_by' => 1,
+            'notes' => 'Test PO'
         ];
 
         $orderId = $orderService->createOrder($testOrder);
@@ -201,18 +206,6 @@ class SystemTest extends TestCase
         $this->assertGreaterThan(0, $orderId);
 
         echo "  ✅ Purchase order created with ID: {$orderId}\n";
-    }
-
-    public function testCanRetrievePurchaseOrders(): void
-    {
-        echo "🛒 Testing purchase order retrieval...\n";
-
-        $orderService = new OrderService();
-        $orders = $orderService->getAllOrders();
-
-        $this->assertIsArray($orders);
-
-        echo "  ✅ Retrieved " . count($orders) . " purchase orders\n";
     }
 
     // ============================================

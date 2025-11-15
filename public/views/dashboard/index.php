@@ -46,31 +46,31 @@ $pageTitle = 'Dashboard';
             <nav>
                 <ul class="sidebar-menu">
                     <li class="sidebar-menu-item">
-                        <a href="/janstro-inventory/public/views/dashboard/index.php" class="sidebar-menu-link active">
+                        <a href="/views/dashboard/index.php" class="sidebar-menu-link active">
                             <i class="bi bi-speedometer2"></i>
                             <span>Dashboard</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
-                        <a href="/janstro-inventory/public/views/inventory/index.php" class="sidebar-menu-link">
+                        <a href="/views/inventory/index.php" class="sidebar-menu-link">
                             <i class="bi bi-box-seam"></i>
                             <span>Inventory</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
-                        <a href="/janstro-inventory/public/views/purchase/orders.php" class="sidebar-menu-link">
+                        <a href="/views/purchase/orders.php" class="sidebar-menu-link">
                             <i class="bi bi-cart3"></i>
                             <span>Purchase Orders</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
-                        <a href="/janstro-inventory/public/views/sales/orders.php" class="sidebar-menu-link">
+                        <a href="/views/sales/orders.php" class="sidebar-menu-link">
                             <i class="bi bi-bag-check"></i>
                             <span>Sales Orders</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
-                        <a href="/janstro-inventory/public/views/reports/analytics.php" class="sidebar-menu-link">
+                        <a href="/views/reports/analytics.php" class="sidebar-menu-link">
                             <i class="bi bi-graph-up-arrow"></i>
                             <span>Analytics</span>
                         </a>
@@ -168,7 +168,7 @@ $pageTitle = 'Dashboard';
                 <div class="card">
                     <div class="card-header">
                         <h5>Recent Orders</h5>
-                        <a href="/janstro-inventory/public/views/sales/orders.php" class="btn btn-primary">View All</a>
+                        <a href="/views/sales/orders.php" class="btn btn-primary">View All</a>
                     </div>
                     <table>
                         <thead>
@@ -190,7 +190,7 @@ $pageTitle = 'Dashboard';
                 <div class="card">
                     <div class="card-header">
                         <h5>Low Stock Alerts</h5>
-                        <a href="/janstro-inventory/public/views/inventory/index.php?filter=low_stock" class="btn btn-primary">View All</a>
+                        <a href="/views/inventory/index.php?filter=low_stock" class="btn btn-primary">View All</a>
                     </div>
                     <table>
                         <thead>
@@ -213,7 +213,7 @@ $pageTitle = 'Dashboard';
     </div>
 
     <script>
-        const API_BASE = '/janstro-inventory/public';
+        const API_BASE = '';
         let revenueChart, inventoryPieChart;
 
         // Initialize on load

@@ -196,7 +196,7 @@
     </div>
 
     <script>
-        const API_BASE = '/janstro-inventory/public';
+        const API_BASE = '';
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -236,7 +236,7 @@
 
                     // Redirect
                     setTimeout(() => {
-                        window.location.href = '/janstro-inventory/public/views/dashboard/index.php';
+                        window.location.href = window.location.href = '/views/auth/login.php';
                     }, 1000);
                 } else {
                     // Show error
