@@ -8,9 +8,8 @@ use Janstro\InventorySystem\Repositories\SupplierRepository;
 use Janstro\InventorySystem\Repositories\UserRepository;
 
 /**
- * Order Service
- * Handles purchase order management business logic
- * ISO/IEC 25010: Functional Suitability, Reliability
+ * Order Service - FIXED v2.1
+ * Now supports multi-item purchase orders
  */
 class OrderService
 {
@@ -29,38 +28,30 @@ class OrderService
 
     /**
      * Get all purchase orders
-     * 
-     * @param string|null $status Filter by status (pending, delivered, cancelled)
-     * @return array Array of purchase orders
      */
     public function getAllOrders(?string $status = null): array
     {
-        $orders = $this->orderRepo->getAll($status);
-        return array_map(fn($order) => $order->toArray(), $orders);
+        return $this->orderRepo->getAll($status);
     }
 
     /**
      * Get single purchase order by ID
-     * 
-     * @param int $poId Purchase order ID
-     * @return array|null Order data or null
      */
     public function getOrder(int $poId): ?array
     {
-        $order = $this->orderRepo->findById($poId);
-        return $order ? $order->toArray() : null;
+        return $this->orderRepo->findById($poId);
     }
 
     /**
-     * Create new purchase order
+     * Create new purchase order (FIXED - Multi-item support)
      * 
-     * @param array $data Order data
+     * @param array $data Order data with 'items' array
      * @return int|null New order ID or null on failure
      */
     public function createOrder(array $data): ?int
     {
         // Validate required fields
-        $required = ['supplier_id', 'item_id', 'quantity', 'created_by'];
+        $required = ['supplier_id', 'items', 'created_by'];
         foreach ($required as $field) {
             if (!isset($data[$field]) || empty($data[$field])) {
                 error_log("OrderService::createOrder - Missing required field: $field");
@@ -75,13 +66,6 @@ class OrderService
             return null;
         }
 
-        // Validate item exists
-        $item = $this->inventoryRepo->findById($data['item_id']);
-        if (!$item) {
-            error_log("OrderService::createOrder - Item {$data['item_id']} not found");
-            return null;
-        }
-
         // Validate user exists
         $user = $this->userRepo->findById($data['created_by']);
         if (!$user) {
@@ -89,28 +73,52 @@ class OrderService
             return null;
         }
 
-        // Validate quantity
-        if (!is_numeric($data['quantity']) || $data['quantity'] <= 0) {
-            error_log("OrderService::createOrder - Invalid quantity: {$data['quantity']}");
-            return null;
+        // Validate and prepare items
+        $preparedItems = [];
+        foreach ($data['items'] as $item) {
+            // Validate item exists
+            $itemData = $this->inventoryRepo->findById($item['item_id']);
+            if (!$itemData) {
+                error_log("OrderService::createOrder - Item {$item['item_id']} not found");
+                return null;
+            }
+
+            // Validate quantity
+            if (!is_numeric($item['quantity']) || $item['quantity'] <= 0) {
+                error_log("OrderService::createOrder - Invalid quantity: {$item['quantity']}");
+                return null;
+            }
+
+            // Use provided price or default to item's unit price
+            $unitPrice = isset($item['unit_price']) && $item['unit_price'] > 0
+                ? $item['unit_price']
+                : $itemData->unit_price;
+
+            $preparedItems[] = [
+                'item_id' => $item['item_id'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $unitPrice
+            ];
         }
 
-        // Calculate total amount if not provided
-        if (!isset($data['total_amount'])) {
-            $data['total_amount'] = $item->unit_price * $data['quantity'];
-        }
-
-        // Set default status
+        // Update data with prepared items
+        $data['items'] = $preparedItems;
         $data['status'] = $data['status'] ?? 'pending';
 
         // Create order
         $orderId = $this->orderRepo->create($data);
 
         if ($orderId) {
+            // Calculate total for audit log
+            $totalAmount = 0;
+            foreach ($preparedItems as $item) {
+                $totalAmount += $item['quantity'] * $item['unit_price'];
+            }
+
             // Log audit
             $this->userRepo->logAudit(
                 $data['created_by'],
-                "Created purchase order #$orderId for {$item->item_name} (Qty: {$data['quantity']})"
+                "Created purchase order #$orderId with " . count($preparedItems) . " items (Total: ₱" . number_format($totalAmount, 2) . ")"
             );
         }
 
@@ -119,11 +127,6 @@ class OrderService
 
     /**
      * Update purchase order status
-     * 
-     * @param int $poId Purchase order ID
-     * @param string $status New status
-     * @param int $userId User performing the update
-     * @return bool Success status
      */
     public function updateOrderStatus(int $poId, string $status, int $userId): bool
     {
@@ -145,17 +148,8 @@ class OrderService
         $success = $this->orderRepo->updateStatus($poId, $status);
 
         if ($success) {
-            // If status is 'delivered', update inventory stock
-            if ($status === 'delivered') {
-                $this->inventoryRepo->updateStock($order->item_id, $order->quantity, 'IN');
-                $this->inventoryRepo->logTransaction(
-                    $order->item_id,
-                    $userId,
-                    'IN',
-                    $order->quantity,
-                    "Purchase Order #$poId delivered"
-                );
-            }
+            // If status is 'delivered', inventory is handled by stored procedure
+            // (sp_receive_purchase_order should be called separately via API)
 
             // Log audit
             $this->userRepo->logAudit(
@@ -169,8 +163,6 @@ class OrderService
 
     /**
      * Get pending orders count
-     * 
-     * @return int Number of pending orders
      */
     public function getPendingCount(): int
     {
@@ -179,8 +171,6 @@ class OrderService
 
     /**
      * Get order statistics
-     * 
-     * @return array Order statistics
      */
     public function getOrderStatistics(): array
     {
@@ -190,7 +180,7 @@ class OrderService
 
         $totalAmount = 0;
         foreach ($deliveredOrders as $order) {
-            $totalAmount += $order->total_amount;
+            $totalAmount += $order['total_amount'] ?? 0;
         }
 
         return [

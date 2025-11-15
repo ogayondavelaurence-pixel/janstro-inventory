@@ -4,3 +4,11 @@
 [2025-11-14 23:20:33] LOGIN_FAILED - IP: unknown - Details: {"reason":"Invalid password","username":"admin","ip":"unknown"}
 [2025-11-14 23:21:38] LOGIN_SUCCESS - IP: unknown - Details: {"username":"admin","ip":"unknown"}
 [2025-11-14 23:21:39] LOGIN_FAILED - IP: unknown - Details: {"reason":"Invalid password","username":"admin","ip":"unknown"}
+[2025-11-15 04:29:58] LOGIN_SUCCESS - IP: unknown - Details: {"username":"admin","ip":"unknown"}
+[2025-11-15 04:29:58] LOGIN_FAILED - IP: unknown - Details: {"reason":"Invalid password","username":"admin","ip":"unknown"}
+[2025-11-15 04:30:24] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"superadmin","ip":"::1"}
+[2025-11-15 04:38:01] LOGIN_FAILED - IP: ::1 - Details: {"reason":"Invalid password","username":"admin","ip":"::1"}
+[2025-11-15 04:38:32] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}
+[2025-11-15 04:59:34] LOGIN_SUCCESS - IP: unknown - Details: {"username":"admin","ip":"unknown"}
+[2025-11-15 04:59:34] LOGIN_FAILED - IP: unknown - Details: {"reason":"Invalid password","username":"admin","ip":"unknown"}
+[2025-11-15 05:00:37] LOGIN_SUCCESS - IP: ::1 - Details: {"username":"admin","ip":"::1"}

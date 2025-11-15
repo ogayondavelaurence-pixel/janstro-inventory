@@ -3,10 +3,13 @@
 namespace Janstro\InventorySystem\Repositories;
 
 use Janstro\InventorySystem\Config\Database;
-use Janstro\InventorySystem\Models\PurchaseOrder;
 use PDO;
 use PDOException;
 
+/**
+ * Purchase Order Repository - FIXED v2.1
+ * Now supports multi-item purchase orders
+ */
 class PurchaseOrderRepository
 {
     private PDO $db;
@@ -17,33 +20,44 @@ class PurchaseOrderRepository
     }
 
     /**
-     * Get all purchase orders
+     * Get all purchase orders (FIXED - Multi-item support)
      */
     public function getAll(?string $status = null): array
     {
         try {
             $sql = "
-                SELECT po.*, s.supplier_name, i.item_name, u.name as created_by_name
+                SELECT 
+                    po.po_id,
+                    po.supplier_id,
+                    s.supplier_name,
+                    po.status,
+                    po.po_date,
+                    po.delivered_date,
+                    po.notes,
+                    po.created_by,
+                    u.name as created_by_name,
+                    COUNT(poi.po_item_id) AS item_count,
+                    SUM(poi.line_total) AS total_amount
                 FROM purchase_orders po
                 LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
-                LEFT JOIN items i ON po.item_id = i.item_id
                 LEFT JOIN users u ON po.created_by = u.user_id
+                LEFT JOIN purchase_order_items poi ON po.po_id = poi.po_id
             ";
 
             if ($status) {
                 $sql .= " WHERE po.status = ?";
-                $stmt = $this->db->prepare($sql . " ORDER BY po.po_date DESC");
+            }
+
+            $sql .= " GROUP BY po.po_id ORDER BY po.po_date DESC";
+
+            if ($status) {
+                $stmt = $this->db->prepare($sql);
                 $stmt->execute([$status]);
             } else {
-                $stmt = $this->db->query($sql . " ORDER BY po.po_date DESC");
+                $stmt = $this->db->query($sql);
             }
 
-            $orders = [];
-            while ($row = $stmt->fetch()) {
-                $orders[] = new PurchaseOrder($row);
-            }
-
-            return $orders;
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("PurchaseOrderRepository::getAll Error: " . $e->getMessage());
             return [];
@@ -51,23 +65,47 @@ class PurchaseOrderRepository
     }
 
     /**
-     * Find purchase order by ID
+     * Find purchase order by ID (FIXED)
      */
-    public function findById(int $poId): ?PurchaseOrder
+    public function findById(int $poId): ?array
     {
         try {
+            // Get PO header
             $stmt = $this->db->prepare("
-                SELECT po.*, s.supplier_name, i.item_name, u.name as created_by_name
+                SELECT 
+                    po.*,
+                    s.supplier_name,
+                    u.name as created_by_name
                 FROM purchase_orders po
                 LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
-                LEFT JOIN items i ON po.item_id = i.item_id
                 LEFT JOIN users u ON po.created_by = u.user_id
                 WHERE po.po_id = ?
             ");
             $stmt->execute([$poId]);
+            $po = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            $result = $stmt->fetch();
-            return $result ? new PurchaseOrder($result) : null;
+            if (!$po) {
+                return null;
+            }
+
+            // Get PO items
+            $stmt = $this->db->prepare("
+                SELECT 
+                    poi.*,
+                    i.item_name,
+                    i.unit
+                FROM purchase_order_items poi
+                LEFT JOIN items i ON poi.item_id = i.item_id
+                WHERE poi.po_id = ?
+            ");
+            $stmt->execute([$poId]);
+            $po['items'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Calculate total
+            $po['total_amount'] = array_sum(array_column($po['items'], 'line_total'));
+            $po['item_count'] = count($po['items']);
+
+            return $po;
         } catch (PDOException $e) {
             error_log("PurchaseOrderRepository::findById Error: " . $e->getMessage());
             return null;
@@ -75,27 +113,52 @@ class PurchaseOrderRepository
     }
 
     /**
-     * Create purchase order
+     * Create purchase order (FIXED - Multi-item support)
+     * Now accepts items array instead of single item
      */
     public function create(array $data): ?int
     {
         try {
+            $this->db->beginTransaction();
+
+            // Create PO header
             $stmt = $this->db->prepare("
-                INSERT INTO purchase_orders (supplier_id, item_id, quantity, total_amount, created_by, status)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO purchase_orders (supplier_id, status, created_by, notes)
+                VALUES (?, ?, ?, ?)
             ");
 
             $stmt->execute([
                 $data['supplier_id'],
-                $data['item_id'],
-                $data['quantity'],
-                $data['total_amount'],
+                $data['status'] ?? 'pending',
                 $data['created_by'],
-                $data['status'] ?? 'pending'
+                $data['notes'] ?? null
             ]);
 
-            return (int)$this->db->lastInsertId();
+            $poId = (int)$this->db->lastInsertId();
+
+            // Insert PO items
+            if (!empty($data['items'])) {
+                $stmt = $this->db->prepare("
+                    INSERT INTO purchase_order_items (po_id, item_id, quantity, unit_price, line_total)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+
+                foreach ($data['items'] as $item) {
+                    $lineTotal = $item['quantity'] * $item['unit_price'];
+                    $stmt->execute([
+                        $poId,
+                        $item['item_id'],
+                        $item['quantity'],
+                        $item['unit_price'],
+                        $lineTotal
+                    ]);
+                }
+            }
+
+            $this->db->commit();
+            return $poId;
         } catch (PDOException $e) {
+            $this->db->rollBack();
             error_log("PurchaseOrderRepository::create Error: " . $e->getMessage());
             return null;
         }
