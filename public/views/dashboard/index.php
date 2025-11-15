@@ -5,9 +5,11 @@
  * Complete Working Implementation with Chart.js
  */
 
-session_start();
+session_start(); // only once
+
+// Protect the dashboard
 if (!isset($_SESSION['user_id'])) {
-    header('Location: /janstro-inventory/public/views/auth/login.php');
+    header('Location: /views/auth/login.php');
     exit;
 }
 
@@ -216,18 +218,15 @@ $pageTitle = 'Dashboard';
         const API_BASE = '';
         let revenueChart, inventoryPieChart;
 
-        // Initialize on load
         document.addEventListener('DOMContentLoaded', async () => {
             await loadDashboardData();
             initCharts();
         });
 
-        // Load dashboard statistics
         async function loadDashboardData() {
             try {
                 const token = localStorage.getItem('auth_token');
 
-                // Load stats
                 const statsResponse = await fetch(`${API_BASE}/reports/dashboard`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -243,13 +242,10 @@ $pageTitle = 'Dashboard';
                     document.getElementById('pendingOrders').textContent =
                         stats.data.pending_pos || 0;
                     document.getElementById('monthlyRevenue').textContent =
-                        '₱0'; // Will be calculated from invoices
+                        '₱0';
                 }
 
-                // Load recent orders
                 await loadRecentOrders();
-
-                // Load low stock items
                 await loadLowStock();
 
             } catch (error) {
@@ -271,15 +267,16 @@ $pageTitle = 'Dashboard';
 
                 if (data.success && data.data.length > 0) {
                     tbody.innerHTML = data.data.map(order => `
-                    <tr>
-                        <td>#${order.order_id}</td>
-                        <td>${order.customer_name}</td>
-                        <td><span class="badge badge-warning">${order.status}</span></td>
-                        <td>₱${parseFloat(order.total_amount).toLocaleString('en-PH')}</td>
-                    </tr>
-                `).join('');
+                        <tr>
+                            <td>#${order.order_id}</td>
+                            <td>${order.customer_name}</td>
+                            <td><span class="badge badge-warning">${order.status}</span></td>
+                            <td>₱${parseFloat(order.total_amount).toLocaleString('en-PH')}</td>
+                        </tr>
+                    `).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No recent orders</td></tr>';
+                    tbody.innerHTML =
+                        '<tr><td colspan="4" style="text-align: center;">No recent orders</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading recent orders:', error);
@@ -300,15 +297,16 @@ $pageTitle = 'Dashboard';
 
                 if (data.success && data.data.length > 0) {
                     tbody.innerHTML = data.data.slice(0, 5).map(item => `
-                    <tr>
-                        <td>${item.item_name}</td>
-                        <td><span class="badge badge-danger">${item.quantity}</span></td>
-                        <td>${item.reorder_level}</td>
-                        <td><button class="btn btn-primary" onclick="createPO(${item.item_id})">Order</button></td>
-                    </tr>
-                `).join('');
+                        <tr>
+                            <td>${item.item_name}</td>
+                            <td><span class="badge badge-danger">${item.quantity}</span></td>
+                            <td>${item.reorder_level}</td>
+                            <td><button class="btn btn-primary" onclick="createPO(${item.item_id})">Order</button></td>
+                        </tr>
+                    `).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: green;">All items well stocked!</td></tr>';
+                    tbody.innerHTML =
+                        '<tr><td colspan="4" style="text-align: center; color: green;">All items well stocked!</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading low stock:', error);
@@ -316,7 +314,6 @@ $pageTitle = 'Dashboard';
         }
 
         function initCharts() {
-            // Revenue Chart
             const revenueCtx = document.getElementById('revenueChart').getContext('2d');
             revenueChart = new Chart(revenueCtx, {
                 type: 'line',
@@ -332,16 +329,10 @@ $pageTitle = 'Dashboard';
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true
-                        }
-                    }
+                    maintainAspectRatio: false
                 }
             });
 
-            // Inventory Pie Chart
             const pieCtx = document.getElementById('inventoryPieChart').getContext('2d');
             inventoryPieChart = new Chart(pieCtx, {
                 type: 'doughnut',
@@ -360,10 +351,10 @@ $pageTitle = 'Dashboard';
         }
 
         function createPO(itemId) {
-            window.location.href = `/janstro-inventory/public/views/purchase/create.php?item=${itemId}`;
+            window.location.href =
+                `/janstro-inventory/public/views/purchase/create.php?item=${itemId}`;
         }
 
-        // Refresh button
         document.getElementById('refreshData').addEventListener('click', () => {
             location.reload();
         });

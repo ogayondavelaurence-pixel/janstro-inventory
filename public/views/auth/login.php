@@ -1,3 +1,4 @@
+<?php session_start(); ?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,10 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Janstro Inventory System</title>
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <style>
@@ -184,9 +182,7 @@
                 <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required>
             </div>
 
-            <button type="submit" class="btn-login" id="loginBtn">
-                Login
-            </button>
+            <button type="submit" class="btn-login" id="loginBtn">Login</button>
         </form>
 
         <div class="footer">
@@ -206,7 +202,6 @@
             const loginBtn = document.getElementById('loginBtn');
             const alertBox = document.getElementById('alertBox');
 
-            // Disable button
             loginBtn.disabled = true;
             loginBtn.innerHTML = '<span class="spinner"></span> Logging in...';
 
@@ -225,44 +220,45 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Store token
-                    localStorage.setItem('auth_token', data.data.token);
-                    localStorage.setItem('user', JSON.stringify(data.data.user));
 
-                    // Show success
+                    // Save token
+                    localStorage.setItem('token', data.data.token);
+
+                    // Create PHP session
+                    await fetch('/session_set.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            user_id: data.data.user.id,
+                            username: data.data.user.username
+                        })
+                    });
+
                     alertBox.className = 'alert alert-success';
                     alertBox.textContent = 'Login successful! Redirecting...';
                     alertBox.style.display = 'block';
 
-                    // Redirect
                     setTimeout(() => {
-                        window.location.href = window.location.href = '/views/auth/login.php';
+                        window.location.href = '/views/dashboard/index.php';
                     }, 1000);
+
                 } else {
-                    // Show error
                     alertBox.className = 'alert alert-danger';
                     alertBox.textContent = data.message || 'Invalid username or password';
                     alertBox.style.display = 'block';
-
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Login';
                 }
-            } catch (error) {
-                console.error('Login error:', error);
-                alertBox.className = 'alert alert-danger';
-                alertBox.textContent = 'Network error. Please try again.';
-                alertBox.style.display = 'block';
 
+            } catch (err) {
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = 'Network error. Try again.';
+                alertBox.style.display = 'block';
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login';
             }
-        });
-
-        // Hide alert on input
-        document.querySelectorAll('.form-control').forEach(input => {
-            input.addEventListener('input', () => {
-                document.getElementById('alertBox').style.display = 'none';
-            });
         });
     </script>
 </body>

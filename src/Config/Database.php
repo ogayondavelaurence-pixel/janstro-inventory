@@ -5,21 +5,11 @@ namespace Janstro\InventorySystem\Config;
 use PDO;
 use PDOException;
 
-/**
- * Database Connection Manager
- * Singleton pattern for database connections
- * ISO/IEC 25010:2023 - Performance Efficiency & Reliability
- */
 class Database
 {
     private static ?PDO $connection = null;
     private static array $config = [];
 
-    /**
-     * Get database connection
-     * @return PDO Database connection instance
-     * @throws \RuntimeException If connection fails
-     */
     public static function connect(): PDO
     {
         if (self::$connection === null) {
@@ -30,9 +20,6 @@ class Database
         return self::$connection;
     }
 
-    /**
-     * Load database configuration from environment
-     */
     private static function loadConfig(): void
     {
         // Load .env if not already loaded
@@ -48,20 +35,26 @@ class Database
             }
         }
 
+        // Assign environment configuration
         self::$config = [
-            'host' => $_ENV['DB_HOST'] ?? 'localhost',
-            'database' => $_ENV['DB_DATABASE'] ?? 'janstro_inventory',
-            'username' => $_ENV['DB_USERNAME'] ?? 'root',
-            'password' => $_ENV['DB_PASSWORD'] ?? '',
-            'charset' => 'utf8mb4',
+            'host'      => $_ENV['DB_HOST'] ?? 'localhost',
+            'database'  => $_ENV['DB_DATABASE'] ?? 'janstro_inventory',
+            'username'  => $_ENV['DB_USERNAME'] ?? 'root',
+            'password'  => $_ENV['DB_PASSWORD'] ?? '',
+            'charset'   => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
         ];
+
+        // Validate configuration (FIXED: replaced $config with self::$config)
+        if (
+            self::$config['host'] === 'your_production_host' ||
+            self::$config['database'] === 'your_production_db'
+        ) {
+            error_log("CRITICAL: .env file contains placeholder values!");
+            throw new \RuntimeException("Database configuration not set. Please update .env file.");
+        }
     }
 
-    /**
-     * Create PDO connection
-     * @throws \RuntimeException If connection fails
-     */
     private static function createConnection(): void
     {
         try {
@@ -77,21 +70,35 @@ class Database
                 self::$config['username'],
                 self::$config['password'],
                 [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false,
-                    PDO::ATTR_PERSISTENT => false,
-                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . self::$config['charset'] . " COLLATE " . self::$config['collation']
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                    PDO::ATTR_PERSISTENT         => false,
+                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . self::$config['charset'] .
+                        " COLLATE " . self::$config['collation']
                 ]
             );
 
             // Test connection
             self::$connection->query("SELECT 1");
         } catch (PDOException $e) {
-            // Log error securely (don't expose details to users)
             error_log("Database Connection Error: " . $e->getMessage());
 
-            // Throw generic error
+            // Development detailed error
+            if (($_ENV['APP_ENV'] ?? 'production') === 'development') {
+                throw new \RuntimeException(
+                    "Database connection failed: " . $e->getMessage() .
+                        "\n\nConfig: " . json_encode([
+                            'host'     => self::$config['host'],
+                            'database' => self::$config['database'],
+                            'username' => self::$config['username']
+                        ]),
+                    500,
+                    $e
+                );
+            }
+
+            // Production-safe message
             throw new \RuntimeException(
                 "Database connection failed. Please contact administrator.",
                 500,
@@ -100,18 +107,11 @@ class Database
         }
     }
 
-    /**
-     * Close database connection
-     */
     public static function disconnect(): void
     {
         self::$connection = null;
     }
 
-    /**
-     * Get connection status
-     * @return bool True if connected
-     */
     public static function isConnected(): bool
     {
         try {
@@ -126,42 +126,30 @@ class Database
         }
     }
 
-    /**
-     * Begin transaction
-     */
     public static function beginTransaction(): bool
     {
         return self::connect()->beginTransaction();
     }
 
-    /**
-     * Commit transaction
-     */
     public static function commit(): bool
     {
         return self::connect()->commit();
     }
 
-    /**
-     * Rollback transaction
-     */
     public static function rollback(): bool
     {
         return self::connect()->rollBack();
     }
 
-    /**
-     * Get database configuration (without password)
-     * @return array Configuration array
-     */
     public static function getConfig(): array
     {
         self::loadConfig();
+
         return [
-            'host' => self::$config['host'],
+            'host'     => self::$config['host'],
             'database' => self::$config['database'],
             'username' => self::$config['username'],
-            'charset' => self::$config['charset'],
+            'charset'  => self::$config['charset'],
         ];
     }
 }
