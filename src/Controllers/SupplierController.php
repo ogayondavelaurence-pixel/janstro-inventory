@@ -6,11 +6,6 @@ use Janstro\InventorySystem\Services\SupplierService;
 use Janstro\InventorySystem\Middleware\AuthMiddleware;
 use Janstro\InventorySystem\Utils\Response;
 
-/**
- * Supplier Controller
- * Handles supplier management API endpoints
- * ISO/IEC 25010: Functional Suitability, Usability
- */
 class SupplierController
 {
     private SupplierService $supplierService;
@@ -21,12 +16,10 @@ class SupplierController
     }
 
     /**
-     * GET /api/suppliers
-     * Get all suppliers
+     * GET /api/suppliers - FIXED
      */
     public function getAll(): void
     {
-        // Authenticate user
         $user = AuthMiddleware::authenticate();
         if (!$user) return;
 
@@ -34,17 +27,16 @@ class SupplierController
             $suppliers = $this->supplierService->getAllSuppliers();
             Response::success($suppliers, 'Suppliers retrieved successfully', 200);
         } catch (\Exception $e) {
+            error_log("SupplierController::getAll Error: " . $e->getMessage());
             Response::error($e->getMessage(), null, 500);
         }
     }
 
     /**
      * GET /api/suppliers/{id}
-     * Get single supplier
      */
     public function getById(int $id): void
     {
-        // Authenticate user
         $user = AuthMiddleware::authenticate();
         if (!$user) return;
 
@@ -63,25 +55,21 @@ class SupplierController
 
     /**
      * POST /api/suppliers
-     * Create new supplier
      */
     public function create(): void
     {
-        // Require admin role
         $user = AuthMiddleware::requireRole(['admin', 'superadmin']);
         if (!$user) return;
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);
 
-            // Validate required fields
             if (empty($input['supplier_name'])) {
                 Response::error('Supplier name is required', null, 400);
                 return;
             }
 
             $result = $this->supplierService->createSupplier($input);
-
             Response::success($result, 'Supplier created successfully', 201);
         } catch (\Exception $e) {
             Response::error($e->getMessage(), null, 500);
@@ -90,17 +78,14 @@ class SupplierController
 
     /**
      * PUT /api/suppliers/{id}
-     * Update supplier
      */
     public function update(int $id): void
     {
-        // Require admin role
         $user = AuthMiddleware::requireRole(['admin', 'superadmin']);
         if (!$user) return;
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);
-
             $success = $this->supplierService->updateSupplier($id, $input);
 
             if ($success) {
@@ -115,11 +100,9 @@ class SupplierController
 
     /**
      * DELETE /api/suppliers/{id}
-     * Delete supplier
      */
     public function delete(int $id): void
     {
-        // Require superadmin role
         $user = AuthMiddleware::requireRole(['superadmin']);
         if (!$user) return;
 
@@ -131,24 +114,6 @@ class SupplierController
             } else {
                 Response::error('Failed to delete supplier', null, 400);
             }
-        } catch (\Exception $e) {
-            Response::error($e->getMessage(), null, 500);
-        }
-    }
-
-    /**
-     * GET /api/suppliers/{id}/orders
-     * Get supplier's purchase orders
-     */
-    public function getOrders(int $id): void
-    {
-        // Authenticate user
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        try {
-            $orders = $this->supplierService->getSupplierOrders($id);
-            Response::success($orders, 'Supplier orders retrieved', 200);
         } catch (\Exception $e) {
             Response::error($e->getMessage(), null, 500);
         }

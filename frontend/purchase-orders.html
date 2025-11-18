@@ -618,34 +618,51 @@
             document.getElementById('statusFilter').addEventListener('change', filterPOs);
         }
 
-        // Handle create PO
+        // Handle create PO - FIXED VERSION
         async function handleCreatePO(e) {
             e.preventDefault();
 
             const supplierId = document.getElementById('supplierId').value;
             const itemId = document.getElementById('itemId').value;
-            const quantity = parseInt(document.getElementById('quantity').value);
+            const quantity = parseInt(document.getElementById('quantity').value, 10);
             const notes = document.getElementById('notes').value.trim();
 
+            // Validation
             if (!supplierId || !itemId || !quantity) {
                 Utils.showToast('Please fill in all required fields', 'error');
                 return;
             }
 
+            if (quantity <= 0) {
+                Utils.showToast('Quantity must be greater than 0', 'error');
+                return;
+            }
+
             try {
+                // Get item details for price calculation
+                const itemResponse = await API.getItem(parseInt(itemId, 10));
+                
+                if (!itemResponse || !itemResponse.success || !itemResponse.data) {
+                    throw new Error('Failed to get item details');
+                }
+
+                const item = itemResponse.data;
+                const totalAmount = (Number(item.unit_price) || 0) * quantity;
+
                 const data = {
-                    supplier_id: parseInt(supplierId),
-                    item_id: parseInt(itemId),
-                    quantity: quantity
+                    supplier_id: parseInt(supplierId, 10),
+                    item_id: parseInt(itemId, 10),
+                    quantity: quantity,
+                    unit_price: item.unit_price,
+                    total_amount: totalAmount,
+                    notes: notes || null
                 };
 
-                if (notes) {
-                    data.notes = notes;
-                }
+                console.log('Creating PO with data:', data);
 
                 const response = await API.createPurchaseOrder(data);
 
-                if (response.success) {
+                if (response && response.success) {
                     Utils.showToast('Purchase Order created successfully!', 'success');
                     
                     // Reset form
@@ -654,11 +671,11 @@
                     // Reload POs
                     await loadPurchaseOrders();
                 } else {
-                    Utils.showToast(response.message || 'Failed to create purchase order', 'error');
+                    Utils.showToast((response && response.message) || 'Failed to create purchase order', 'error');
                 }
             } catch (error) {
                 console.error('Create PO error:', error);
-                Utils.showToast('Failed to create purchase order', 'error');
+                Utils.showToast(error.message || 'Failed to create purchase order', 'error');
             }
         }
 

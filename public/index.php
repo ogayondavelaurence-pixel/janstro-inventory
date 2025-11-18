@@ -228,14 +228,16 @@ try {
     }
 
     // ===============================================
-    // SUPPLIER ROUTES
+    // SUPPLIER ROUTES - FIXED
     // ===============================================
     elseif ($segments[0] === 'suppliers') {
         switch ($method) {
             case 'GET':
                 if (!isset($segments[1])) {
+                    // GET /suppliers
                     $supplierController->getAll();
                 } elseif (is_numeric($segments[1])) {
+                    // GET /suppliers/{id}
                     $supplierController->getById((int)$segments[1]);
                 } else {
                     Response::notFound('Supplier endpoint not found');
@@ -243,12 +245,27 @@ try {
                 break;
 
             case 'POST':
-                $supplierController->create();
+                if (!isset($segments[1])) {
+                    // POST /suppliers
+                    $supplierController->create();
+                } else {
+                    Response::notFound('Supplier endpoint not found');
+                }
                 break;
 
             case 'PUT':
                 if (isset($segments[1]) && is_numeric($segments[1])) {
+                    // PUT /suppliers/{id}
                     $supplierController->update((int)$segments[1]);
+                } else {
+                    Response::notFound('Supplier endpoint not found');
+                }
+                break;
+
+            case 'DELETE':
+                if (isset($segments[1]) && is_numeric($segments[1])) {
+                    // DELETE /suppliers/{id}
+                    $supplierController->delete((int)$segments[1]);
                 } else {
                     Response::notFound('Supplier endpoint not found');
                 }
