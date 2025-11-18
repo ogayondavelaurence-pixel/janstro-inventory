@@ -1,21 +1,23 @@
 /**
  * Janstro Inventory System - FIXED Utility Functions
- * Version: 3.0.0 - All missing functions added
+ * Version: 3.1.0 - Complete with escapeHtml
  */
 
 const Utils = {
   /**
-   * CRITICAL FIX: Escape HTML to prevent XSS
+   * ✅ FIXED: Escape HTML to prevent XSS attacks
    */
-  escapeHtml(unsafe) {
-    if (!unsafe) return "";
-    return unsafe
-      .toString()
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+  escapeHtml(text) {
+    if (!text) return "";
+    const map = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+      "/": "&#x2F;",
+    };
+    return String(text).replace(/[&<>"'/]/g, (m) => map[m]);
   },
 
   /**
@@ -23,7 +25,6 @@ const Utils = {
    */
   formatDate(dateString) {
     if (!dateString) return "N/A";
-
     const date = new Date(dateString);
     const options = {
       year: "numeric",
@@ -32,7 +33,6 @@ const Utils = {
       hour: "2-digit",
       minute: "2-digit",
     };
-
     return date.toLocaleDateString("en-US", options);
   },
 
@@ -41,7 +41,6 @@ const Utils = {
    */
   formatDateInput(dateString) {
     if (!dateString) return "";
-
     const date = new Date(dateString);
     return date.toISOString().split("T")[0];
   },
@@ -51,7 +50,6 @@ const Utils = {
    */
   formatCurrency(amount) {
     if (amount === null || amount === undefined) return "₱0.00";
-
     return new Intl.NumberFormat("en-PH", {
       style: "currency",
       currency: "PHP",
@@ -63,7 +61,6 @@ const Utils = {
    */
   formatNumber(number) {
     if (number === null || number === undefined) return "0";
-
     return new Intl.NumberFormat("en-US").format(number);
   },
 
@@ -74,43 +71,43 @@ const Utils = {
     const element = document.getElementById(elementId);
     if (element) {
       element.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-3 text-muted">Loading data...</p>
-                </div>
-            `;
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading data...</p>
+        </div>
+      `;
     }
   },
 
   /**
-   * Show error message (FIXED: uses escapeHtml)
+   * Show error message
    */
   showError(elementId, message) {
     const element = document.getElementById(elementId);
     if (element) {
       element.innerHTML = `
-                <div class="alert alert-danger" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <strong>Error:</strong> ${this.escapeHtml(message)}
-                </div>
-            `;
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <strong>Error:</strong> ${this.escapeHtml(message)}
+        </div>
+      `;
     }
   },
 
   /**
-   * Show success message (FIXED: uses escapeHtml)
+   * Show success message
    */
   showSuccess(elementId, message) {
     const element = document.getElementById(elementId);
     if (element) {
       element.innerHTML = `
-                <div class="alert alert-success" role="alert">
-                    <i class="bi bi-check-circle-fill"></i>
-                    <strong>Success:</strong> ${this.escapeHtml(message)}
-                </div>
-            `;
+        <div class="alert alert-success" role="alert">
+          <i class="bi bi-check-circle-fill"></i>
+          <strong>Success:</strong> ${this.escapeHtml(message)}
+        </div>
+      `;
     }
   },
 
@@ -144,19 +141,19 @@ const Utils = {
         : "bg-info";
 
     const toastHTML = `
-            <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="toast-header ${bgClass} text-white">
-                    <i class="bi ${iconClass} me-2"></i>
-                    <strong class="me-auto">${
-                      type.charAt(0).toUpperCase() + type.slice(1)
-                    }</strong>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-                </div>
-                <div class="toast-body">
-                    ${this.escapeHtml(message)}
-                </div>
-            </div>
-        `;
+      <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header ${bgClass} text-white">
+          <i class="bi ${iconClass} me-2"></i>
+          <strong class="me-auto">${
+            type.charAt(0).toUpperCase() + type.slice(1)
+          }</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+          ${this.escapeHtml(message)}
+        </div>
+      </div>
+    `;
 
     toastContainer.insertAdjacentHTML("beforeend", toastHTML);
 
@@ -175,31 +172,27 @@ const Utils = {
   async confirmAction(title, message) {
     return new Promise((resolve) => {
       const modalHTML = `
-                <div class="modal fade" id="confirmModal" tabindex="-1">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">${this.escapeHtml(
-                                  title
-                                )}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                ${this.escapeHtml(message)}
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-primary" id="confirmBtn">Confirm</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+        <div class="modal fade" id="confirmModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">${this.escapeHtml(title)}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                ${this.escapeHtml(message)}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmBtn">Confirm</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
 
       const existingModal = document.getElementById("confirmModal");
-      if (existingModal) {
-        existingModal.remove();
-      }
+      if (existingModal) existingModal.remove();
 
       document.body.insertAdjacentHTML("beforeend", modalHTML);
 
@@ -259,9 +252,7 @@ const Utils = {
       inactive: "bg-secondary",
       low_stock: "bg-danger",
       in_stock: "bg-success",
-      delivered: "bg-success",
     };
-
     return badges[status] || "bg-secondary";
   },
 
@@ -274,7 +265,6 @@ const Utils = {
       OUT: "bg-danger",
       ADJUSTMENT: "bg-warning text-dark",
     };
-
     return badges[type] || "bg-secondary";
   },
 
@@ -288,8 +278,7 @@ const Utils = {
     const roleHierarchy = {
       superadmin: 4,
       admin: 3,
-      manager: 2,
-      staff: 1,
+      staff: 2,
     };
 
     const userLevel = roleHierarchy[user.role] || 0;
@@ -400,55 +389,6 @@ const Utils = {
     tooltipTriggerList.map(
       (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl)
     );
-  },
-
-  /**
-   * Format file size
-   */
-  formatFileSize(bytes) {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
-  },
-
-  /**
-   * Generate random ID
-   */
-  generateId(prefix = "id") {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  },
-
-  /**
-   * Deep clone object
-   */
-  deepClone(obj) {
-    return JSON.parse(JSON.stringify(obj));
-  },
-
-  /**
-   * Check if object is empty
-   */
-  isEmpty(obj) {
-    return Object.keys(obj).length === 0;
-  },
-
-  /**
-   * Capitalize first letter
-   */
-  capitalize(str) {
-    if (!str) return "";
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-  },
-
-  /**
-   * Truncate text
-   */
-  truncate(text, length = 50) {
-    if (!text) return "";
-    if (text.length <= length) return text;
-    return text.substring(0, length) + "...";
   },
 };
 

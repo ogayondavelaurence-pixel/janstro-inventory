@@ -159,6 +159,23 @@ try {
         }
     }
 
+    // Add this after inventory routes
+    elseif ($segments[0] === 'inventory' && $segments[1] === 'movements' && $segments[2] === 'summary') {
+        $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+        if (!$user) return;
+
+        // Get last 7 days summary
+        $stmt = $db->query("
+        SELECT DATE(transaction_date) as date, COUNT(*) as count
+        FROM transactions
+        WHERE transaction_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY DATE(transaction_date)
+        ORDER BY date DESC
+    ");
+
+        Response::success($stmt->fetchAll(), 'Movement summary retrieved');
+    }
+
     // ===============================================
     // PURCHASE ORDER ROUTES - FIXED
     // ===============================================
