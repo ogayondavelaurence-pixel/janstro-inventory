@@ -3,21 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Janstro Inventory System</title>
+    <title>Login - Janstro Inventory System [DEBUG VERSION]</title>
     
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -27,76 +19,36 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding: 10px;
         }
-
-        .login-container {
-            width: 100%;
-            max-width: 450px;
-            padding: 0 15px;
-        }
-
+        .login-container { width: 100%; max-width: 450px; padding: 0 15px; }
         .login-card {
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
-            width: 100%;
         }
-
         .login-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: clamp(20px, 5vw, 40px);
+            padding: 40px;
             text-align: center;
         }
-
-        .login-header i {
-            font-size: clamp(32px, 8vw, 48px);
-            margin-bottom: 10px;
-        }
-
-        .login-header h1 {
-            font-size: clamp(20px, 5vw, 28px);
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        .login-header p {
-            font-size: clamp(12px, 3vw, 14px);
-            opacity: 0.9;
-            margin: 0;
-        }
-
-        .login-body {
-            padding: clamp(20px, 5vw, 40px) clamp(15px, 4vw, 30px);
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-            font-size: clamp(13px, 3vw, 14px);
-        }
-
+        .login-header i { font-size: 48px; margin-bottom: 10px; }
+        .login-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+        .login-body { padding: 40px 30px; }
+        .form-label { font-weight: 600; color: #333; margin-bottom: 8px; font-size: 14px; }
         .form-control {
             border-radius: 10px;
-            padding: clamp(10px, 2.5vw, 12px) 15px;
+            padding: 12px 15px;
             border: 2px solid #e0e0e0;
             transition: all 0.3s ease;
-            font-size: clamp(14px, 3.5vw, 16px);
+            font-size: 16px;
             width: 100%;
         }
-
         .form-control:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
-
-        .input-group {
-            display: flex;
-            align-items: stretch;
-            width: 100%;
-        }
-
+        .input-group { display: flex; align-items: stretch; width: 100%; }
         .input-group-text {
             background: #f8f9fa;
             border: 2px solid #e0e0e0;
@@ -106,13 +58,11 @@
             display: flex;
             align-items: center;
         }
-
         .input-group .form-control {
             border-left: none;
             border-radius: 0 10px 10px 0;
             flex: 1;
         }
-
         .btn-toggle-password {
             background: transparent;
             border: none;
@@ -120,148 +70,73 @@
             cursor: pointer;
             color: #666;
         }
-
         .btn-login {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 10px;
-            padding: clamp(10px, 2.5vw, 12px) 30px;
+            padding: 12px 30px;
             font-weight: 600;
-            font-size: clamp(14px, 3.5vw, 16px);
+            font-size: 16px;
             width: 100%;
             transition: all 0.3s ease;
             cursor: pointer;
         }
-
         .btn-login:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
-
-        .btn-login:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-
+        .btn-login:disabled { opacity: 0.7; cursor: not-allowed; }
         .system-info {
             background: #f8f9fa;
             border-radius: 10px;
-            padding: clamp(10px, 3vw, 15px);
+            padding: 15px;
             margin-top: 20px;
             text-align: center;
         }
-
-        .system-info small {
-            color: #666;
-            display: block;
-            margin-bottom: 5px;
-            font-size: clamp(11px, 2.5vw, 12px);
-        }
-
-        .system-info .badge {
-            margin: 3px;
-            font-size: clamp(10px, 2vw, 11px);
-            padding: 5px 10px;
-        }
-
+        .system-info small { color: #666; display: block; margin-bottom: 5px; font-size: 12px; }
+        .system-info .badge { margin: 3px; font-size: 11px; padding: 5px 10px; }
         .footer-text {
             text-align: center;
-            margin-top: clamp(15px, 4vw, 20px);
+            margin-top: 20px;
             color: white;
         }
-
-        .footer-text p {
-            margin-bottom: 5px;
-            font-size: clamp(11px, 2.5vw, 13px);
-        }
-
-        .alert {
+        .footer-text p { margin-bottom: 5px; font-size: 13px; }
+        .alert { border-radius: 10px; border: none; margin-bottom: 15px; font-size: 14px; padding: 10px 15px; }
+        .spinner-border-sm { width: 1rem; height: 1rem; border-width: 0.15em; }
+        
+        /* Debug Console */
+        #debugConsole {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
             border-radius: 10px;
-            border: none;
-            margin-bottom: 15px;
-            font-size: clamp(12px, 3vw, 14px);
-            padding: 10px 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+            display: none;
         }
-
-        .spinner-border-sm {
-            width: 1rem;
-            height: 1rem;
-            border-width: 0.15em;
-        }
-
-        /* Mobile optimizations */
-        @media (max-width: 576px) {
-            body {
-                padding: 5px;
-            }
-
-            .login-container {
-                padding: 0 10px;
-            }
-
-            .login-card {
-                border-radius: 15px;
-            }
-
-            .login-header {
-                padding: 20px 15px;
-            }
-
-            .login-body {
-                padding: 20px 15px;
-            }
-
-            .form-control {
-                padding: 10px 12px;
-            }
-
-            .btn-login {
-                padding: 10px 20px;
-            }
-
-            .system-info {
-                padding: 10px;
-            }
-
-            .system-info .badge {
-                display: block;
-                margin: 5px auto;
-                width: fit-content;
-            }
-        }
-
-        /* Tablet optimizations */
-        @media (min-width: 577px) and (max-width: 768px) {
-            .login-container {
-                max-width: 500px;
-            }
-        }
-
-        /* Desktop optimizations */
-        @media (min-width: 1200px) {
-            .login-container {
-                max-width: 450px;
-            }
-        }
+        #debugConsole.show { display: block; }
+        .debug-line { margin: 2px 0; }
+        .debug-error { color: #ff4444; }
+        .debug-success { color: #00ff00; }
+        .debug-info { color: #00bfff; }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-card">
-            <!-- Login Header -->
             <div class="login-header">
                 <i class="bi bi-box-seam"></i>
                 <h1>Janstro Inventory</h1>
                 <p>Enterprise Inventory Management System</p>
             </div>
 
-            <!-- Login Body -->
             <div class="login-body">
-                <!-- Error/Success Messages -->
                 <div id="alertContainer"></div>
 
-                <!-- Login Form -->
                 <form id="loginForm">
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
@@ -277,7 +152,7 @@
                                 placeholder="Enter username" 
                                 required 
                                 autocomplete="username"
-                                autofocus
+                                value="admin"
                             >
                         </div>
                     </div>
@@ -296,10 +171,12 @@
                                 placeholder="Enter password" 
                                 required
                                 autocomplete="current-password"
+                                value="admin123"
                             >
-                            <button class="btn-toggle-password" type="button" id="togglePassword" title="Toggle password visibility">
+                            <button class="btn-toggle-password" type="button" id="togglePassword" aria-label="Toggle password visibility" title="Show/Hide Password">
                                 <i class="bi bi-eye"></i>
                             </button>
+
                         </div>
                     </div>
 
@@ -314,7 +191,6 @@
                     </button>
                 </form>
 
-                <!-- System Info -->
                 <div class="system-info">
                     <small><strong>Default Credentials:</strong></small>
                     <div>
@@ -322,33 +198,136 @@
                         <span class="badge bg-secondary">staff1 / staff123</span>
                     </div>
                 </div>
+
+                <!-- DEBUG CONSOLE -->
+                <div id="debugConsole" class="show">
+                    <div class="debug-line debug-info">🔍 Debug Console - Watch for errors here</div>
+                </div>
             </div>
         </div>
 
-        <!-- Footer -->
         <div class="footer-text">
-            <p>
-                <small>© 2025 Janstro Inventory System v2.0.0</small>
-            </p>
-            <p>
-                <small>
-                    <i class="bi bi-shield-check me-1"></i>
-                    Secure • Immutable Transactions • SAP-Inspired
-                </small>
-            </p>
+            <p><small>© 2025 Janstro Inventory System v2.0.0</small></p>
+            <p><small><i class="bi bi-shield-check me-1"></i>Secure • Immutable Transactions • SAP-Inspired</small></p>
         </div>
     </div>
 
-    <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- API & Utils -->
-    <script src="assets/js/api.js"></script>
-    <script src="assets/js/utils.js"></script>
 
     <script>
-        // Check if already logged in
+        // DEBUG CONSOLE
+        const debugConsole = document.getElementById('debugConsole');
+        function debugLog(message, type = 'info') {
+            const line = document.createElement('div');
+            line.className = `debug-line debug-${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugConsole.appendChild(line);
+            debugConsole.scrollTop = debugConsole.scrollHeight;
+            console.log(message);
+        }
+
+        // ENHANCED API OBJECT
+        const API = {
+            baseURL: window.location.origin + "/janstro-inventory/public",
+            tokenKey: "janstro_token",
+            userKey: "janstro_user",
+
+            getToken() { return localStorage.getItem(this.tokenKey); },
+            setToken(token) { localStorage.setItem(this.tokenKey, token); },
+            removeToken() {
+                localStorage.removeItem(this.tokenKey);
+                localStorage.removeItem(this.userKey);
+            },
+            getUser() {
+                const userJson = localStorage.getItem(this.userKey);
+                return userJson ? JSON.parse(userJson) : null;
+            },
+            setUser(user) { localStorage.setItem(this.userKey, JSON.stringify(user)); },
+            isAuthenticated() { return !!this.getToken(); },
+
+            async request(endpoint, options = {}) {
+                const url = `${this.baseURL}${endpoint}`;
+                debugLog(`📤 REQUEST: ${options.method || 'GET'} ${url}`, 'info');
+
+                const config = {
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...options.headers,
+                    },
+                    ...options,
+                };
+
+                const token = this.getToken();
+                if (token) {
+                    config.headers["Authorization"] = `Bearer ${token}`;
+                }
+
+                try {
+                    debugLog(`⏳ Sending request...`, 'info');
+                    const response = await fetch(url, config);
+                    
+                    debugLog(`📥 Response Status: ${response.status} ${response.statusText}`, 
+                        response.ok ? 'success' : 'error');
+
+                    // Try to parse JSON
+                    let data;
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                        debugLog(`📊 Response Data: ${JSON.stringify(data).substring(0, 200)}...`, 'info');
+                    } else {
+                        const text = await response.text();
+                        debugLog(`⚠️ Non-JSON Response: ${text.substring(0, 200)}...`, 'error');
+                        throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+                    }
+
+                    if (response.status === 401) {
+                        debugLog('🔒 Unauthorized - removing token', 'error');
+                        this.removeToken();
+                        throw new Error('Session expired. Please login again.');
+                    }
+
+                    if (!response.ok) {
+                        debugLog(`❌ Request failed: ${data.message || 'Unknown error'}`, 'error');
+                        throw new Error(data.message || 'API request failed.');
+                    }
+
+                    debugLog('✅ Request successful', 'success');
+                    return data;
+                } catch (error) {
+                    debugLog(`💥 API Error: ${error.message}`, 'error');
+                    throw error;
+                }
+            },
+
+            async login(username, password) {
+                debugLog(`🔐 Attempting login for: ${username}`, 'info');
+                try {
+                    const response = await this.request("/auth/login", {
+                        method: "POST",
+                        body: JSON.stringify({ username, password }),
+                    });
+                    
+                    if (response.success && response.data) {
+                        debugLog('✅ Login successful!', 'success');
+                        this.setToken(response.data.token);
+                        this.setUser(response.data.user);
+                    }
+                    return response;
+                } catch (error) {
+                    debugLog(`❌ Login failed: ${error.message}`, 'error');
+                    throw error;
+                }
+            }
+        };
+
+        // Initialize
+        debugLog('🚀 Page loaded', 'info');
+        debugLog(`📍 API Base URL: ${API.baseURL}`, 'info');
+
         if (API.isAuthenticated()) {
+            debugLog('✅ Already authenticated - redirecting...', 'success');
             window.location.href = 'dashboard.html';
         }
 
@@ -368,7 +347,7 @@
             }
         });
 
-        // Handle login form submission
+        // Handle login
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -379,58 +358,45 @@
             const loginBtnText = document.getElementById('loginBtnText');
             const loginSpinner = document.getElementById('loginSpinner');
 
-            // Validate inputs
             if (!username || !password) {
                 showAlert('Please enter both username and password', 'danger');
+                debugLog('❌ Validation failed: empty fields', 'error');
                 return;
             }
 
-            // Clear previous alerts
             alertContainer.innerHTML = '';
-
-            // Disable button and show spinner
             loginBtn.disabled = true;
             loginBtnText.classList.add('d-none');
             loginSpinner.classList.remove('d-none');
 
             try {
-                // Call login API
-                console.log('🔐 Attempting login for:', username);
                 const response = await API.login(username, password);
                 
-                console.log('📥 Login response:', response);
-
                 if (response.success) {
-                    // Success - Show success message briefly then redirect
-                    console.log('✅ Login successful!');
                     showAlert('Login successful! Redirecting...', 'success');
+                    debugLog('🔀 Redirecting to dashboard...', 'success');
                     
                     setTimeout(() => {
-                        console.log('🔀 Redirecting to dashboard...');
                         window.location.href = 'dashboard.html';
                     }, 1000);
                 } else {
-                    // Failed - Show error
-                    console.error('❌ Login failed:', response.message);
+                    debugLog(`❌ Login response not successful: ${JSON.stringify(response)}`, 'error');
                     showAlert(response.message || 'Login failed. Please try again.', 'danger');
                     
-                    // Re-enable button
                     loginBtn.disabled = false;
                     loginBtnText.classList.remove('d-none');
                     loginSpinner.classList.add('d-none');
                 }
             } catch (error) {
-                console.error('💥 Login error:', error);
-                showAlert('Connection error. Please check if the server is running.', 'danger');
+                debugLog(`💥 Login exception: ${error.message}`, 'error');
+                showAlert('Connection error: ' + error.message, 'danger');
                 
-                // Re-enable button
                 loginBtn.disabled = false;
                 loginBtnText.classList.remove('d-none');
                 loginSpinner.classList.add('d-none');
             }
         });
 
-        // Helper function to show alerts
         function showAlert(message, type) {
             const alertContainer = document.getElementById('alertContainer');
             const alertHTML = `
@@ -443,17 +409,15 @@
             alertContainer.innerHTML = alertHTML;
         }
 
-        // Test API health on page load
+        // Test API health
         (async function testAPI() {
             try {
-                const health = await API.healthCheck();
-                console.log('✅ API Health:', health);
+                const health = await fetch(API.baseURL + '/health');
+                const data = await health.json();
+                debugLog('✅ API Health Check: ' + JSON.stringify(data), 'success');
             } catch (error) {
-                console.error('❌ API Connection Failed:', error);
-                showAlert(
-                    'Warning: Cannot connect to backend API. Please ensure XAMPP is running.',
-                    'warning'
-                );
+                debugLog('❌ API Health Check Failed: ' + error.message, 'error');
+                showAlert('Warning: Cannot connect to backend API. Please ensure XAMPP is running.', 'warning');
             }
         })();
     </script>

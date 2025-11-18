@@ -5,7 +5,7 @@
  */
 
 const API = {
-  baseURL: window.location.origin + "/janstro-inventory/public",
+  baseURL: window.location.origin + ":8080/janstro-inventory/public",
   tokenKey: "janstro_token",
   userKey: "janstro_user",
 

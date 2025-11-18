@@ -6,9 +6,8 @@ use Janstro\InventorySystem\Repositories\UserRepository;
 use Janstro\InventorySystem\Utils\JWT;
 
 /**
- * Authentication Service
- * Handles all authentication business logic
- * ISO/IEC 25010: Security & Functional Suitability
+ * FIXED Authentication Service
+ * Handles all authentication with proper error logging
  */
 class AuthService
 {
@@ -20,48 +19,77 @@ class AuthService
     }
 
     /**
-     * Login user with username and password
-     * 
-     * @param string $username User's username
-     * @param string $password User's plain password
-     * @return array|null Returns user data with token, or null on failure
+     * FIXED Login with detailed error logging
      */
     public function login(string $username, string $password): ?array
     {
         // Validate inputs
         if (empty($username) || empty($password)) {
+            error_log("❌ Login failed: Empty username or password");
             return null;
         }
+
+        // CRITICAL: Log the attempt
+        error_log("🔐 Login attempt for username: " . $username);
 
         // Find user by username
         $user = $this->userRepo->findByUsername($username);
 
         if (!$user) {
-            // User not found - log failed attempt
-            error_log("Login attempt failed: User '$username' not found");
+            error_log("❌ Login failed: User '$username' not found in database");
             return null;
         }
 
-        // FIXED: Use bcrypt verification instead of SHA-256
-        if (!password_verify($password, $user['password_hash'])) {
-            // Invalid password - log failed attempt
-            error_log("Login attempt failed: Invalid password for user '$username'");
-            $this->userRepo->logAudit($user['user_id'], "Failed login attempt");
+        // CRITICAL: Log what we got from database
+        error_log("✅ User found: " . $username);
+        error_log("📊 User data: " . json_encode([
+            'user_id' => $user['user_id'],
+            'username' => $user['username'],
+            'role' => $user['role_name'] ?? 'unknown',
+            'status' => $user['status'],
+            'has_password_hash' => !empty($user['password_hash'])
+        ]));
+
+        // CRITICAL: Verify password with detailed logging
+        $passwordValid = password_verify($password, $user['password_hash']);
+
+        error_log("🔑 Password verification result: " . ($passwordValid ? 'SUCCESS' : 'FAILED'));
+
+        if (!$passwordValid) {
+            // CRITICAL: Log the exact error for debugging
+            error_log("❌ Password verification failed for user '$username'");
+            error_log("💡 Expected password: admin123 (if default user)");
+            error_log("💡 Hash from DB: " . substr($user['password_hash'], 0, 20) . "...");
+
+            // Log failed attempt
+            $this->userRepo->logAudit($user['user_id'], "Failed login attempt - invalid password");
             return null;
         }
 
-        // Generate JWT token
+        // SUCCESS: Generate JWT token
+        error_log("✅ Login successful for user: " . $username);
+
         $tokenPayload = [
             'user_id' => $user['user_id'],
             'username' => $user['username'],
             'role' => $user['role_name'],
-            'role_id' => $user['role_id']
+            'role_id' => $user['role_id'],
+            'name' => $user['name'] ?? $user['username']
         ];
 
-        $token = JWT::generate($tokenPayload);
+        try {
+            $token = JWT::generate($tokenPayload);
+            error_log("✅ JWT token generated successfully");
+        } catch (\Exception $e) {
+            error_log("❌ JWT generation failed: " . $e->getMessage());
+            return null;
+        }
 
         // Log successful login
         $this->userRepo->logAudit($user['user_id'], "Successful login");
+
+        // Update last_login timestamp
+        $this->userRepo->update($user['user_id'], ['last_login' => date('Y-m-d H:i:s')]);
 
         // Return user data without password
         unset($user['password_hash']);
@@ -75,9 +103,6 @@ class AuthService
 
     /**
      * Validate JWT token
-     * 
-     * @param string $token JWT token
-     * @return object|null Returns decoded token data or null
      */
     public function validateToken(string $token): ?object
     {
@@ -85,10 +110,7 @@ class AuthService
     }
 
     /**
-     * Logout user (log audit trail)
-     * 
-     * @param int $userId User ID
-     * @return bool Success status
+     * Logout user
      */
     public function logout(int $userId): bool
     {
@@ -97,34 +119,24 @@ class AuthService
 
     /**
      * Change user password
-     * 
-     * @param int $userId User ID
-     * @param string $currentPassword Current password
-     * @param string $newPassword New password
-     * @return bool Success status
      */
     public function changePassword(int $userId, string $currentPassword, string $newPassword): bool
     {
-        // Get user data
         $user = $this->userRepo->findById($userId);
 
         if (!$user) {
             return false;
         }
 
-        // Find raw user data for password verification
         $userData = $this->userRepo->findByUsername($user->username);
 
-        // FIXED: Use bcrypt verification
         if (!password_verify($currentPassword, $userData['password_hash'])) {
             error_log("Password change failed: Invalid current password for user ID $userId");
             return false;
         }
 
-        // Hash new password with bcrypt
         $hashedNewPassword = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
 
-        // Update password
         $success = $this->userRepo->update($userId, [
             'password_hash' => $hashedNewPassword
         ]);
@@ -138,10 +150,6 @@ class AuthService
 
     /**
      * Check if user has required role
-     * 
-     * @param object $user Decoded JWT user object
-     * @param array $allowedRoles Array of allowed role names
-     * @return bool True if user has required role
      */
     public function hasRole(object $user, array $allowedRoles): bool
     {
