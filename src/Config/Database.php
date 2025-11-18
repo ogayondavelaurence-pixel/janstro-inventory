@@ -6,9 +6,7 @@ use PDO;
 use PDOException;
 
 /**
- * Database Connection Manager
- * Singleton pattern for database connections
- * ISO/IEC 25010:2023 - Performance Efficiency & Reliability
+ * Database Connection Manager - FIXED (No Dotenv Required)
  */
 class Database
 {
@@ -17,8 +15,6 @@ class Database
 
     /**
      * Get database connection
-     * @return PDO Database connection instance
-     * @throws \RuntimeException If connection fails
      */
     public static function connect(): PDO
     {
@@ -35,15 +31,20 @@ class Database
      */
     private static function loadConfig(): void
     {
-        // Load .env if not already loaded
+        // Load .env if not already loaded (using manual loader from autoload.php)
         if (!isset($_ENV['DB_HOST'])) {
-            $dotenvPath = __DIR__ . '/../../.env';
-            if (file_exists($dotenvPath)) {
-                try {
-                    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../..');
-                    $dotenv->load();
-                } catch (\Exception $e) {
-                    error_log("Failed to load .env file: " . $e->getMessage());
+            $envPath = __DIR__ . '/../../.env';
+            if (file_exists($envPath)) {
+                $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                foreach ($lines as $line) {
+                    if (strpos(trim($line), '#') === 0) continue;
+                    if (strpos($line, '=') !== false) {
+                        list($key, $value) = explode('=', $line, 2);
+                        $key = trim($key);
+                        $value = trim($value, '"\'');
+                        $_ENV[$key] = $value;
+                        putenv("$key=$value");
+                    }
                 }
             }
         }
@@ -60,7 +61,6 @@ class Database
 
     /**
      * Create PDO connection
-     * @throws \RuntimeException If connection fails
      */
     private static function createConnection(): void
     {
@@ -88,12 +88,9 @@ class Database
             // Test connection
             self::$connection->query("SELECT 1");
         } catch (PDOException $e) {
-            // Log error securely (don't expose details to users)
             error_log("Database Connection Error: " . $e->getMessage());
-
-            // Throw generic error
             throw new \RuntimeException(
-                "Database connection failed. Please contact administrator.",
+                "Database connection failed: " . $e->getMessage(),
                 500,
                 $e
             );
@@ -110,7 +107,6 @@ class Database
 
     /**
      * Get connection status
-     * @return bool True if connected
      */
     public static function isConnected(): bool
     {
@@ -118,50 +114,10 @@ class Database
             if (self::$connection === null) {
                 return false;
             }
-
             self::$connection->query("SELECT 1");
             return true;
         } catch (PDOException $e) {
             return false;
         }
-    }
-
-    /**
-     * Begin transaction
-     */
-    public static function beginTransaction(): bool
-    {
-        return self::connect()->beginTransaction();
-    }
-
-    /**
-     * Commit transaction
-     */
-    public static function commit(): bool
-    {
-        return self::connect()->commit();
-    }
-
-    /**
-     * Rollback transaction
-     */
-    public static function rollback(): bool
-    {
-        return self::connect()->rollBack();
-    }
-
-    /**
-     * Get database configuration (without password)
-     * @return array Configuration array
-     */
-    public static function getConfig(): array
-    {
-        self::loadConfig();
-        return [
-            'host' => self::$config['host'],
-            'database' => self::$config['database'],
-            'username' => self::$config['username'],
-            'charset' => self::$config['charset'],
-        ];
     }
 }

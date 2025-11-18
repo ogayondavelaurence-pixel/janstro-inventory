@@ -2,15 +2,14 @@
 
 namespace Janstro\InventorySystem\Utils;
 
-use Firebase\JWT\JWT as FirebaseJWT;
-use Firebase\JWT\Key;
-use Exception;
-
+/**
+ * JWT Utility - Works with Manual Autoloader
+ */
 class JWT
 {
     private static function getSecret(): string
     {
-        return $_ENV['JWT_SECRET'] ?? 'janstro_secret_key';
+        return $_ENV['JWT_SECRET'] ?? 'janstro_secret_key_change_in_production';
     }
 
     private static function getAlgorithm(): string
@@ -34,15 +33,17 @@ class JWT
             'data' => $payload
         ];
 
-        return FirebaseJWT::encode($token, self::getSecret(), self::getAlgorithm());
+        // Use SimpleJWT from autoloader
+        return \SimpleJWT::encode($token, self::getSecret(), self::getAlgorithm());
     }
 
     public static function validate(string $token): ?object
     {
         try {
-            $decoded = FirebaseJWT::decode($token, new Key(self::getSecret(), self::getAlgorithm()));
+            // Use SimpleJWT from autoloader
+            $decoded = \SimpleJWT::decode($token, self::getSecret());
             return $decoded->data;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log("JWT Validation Error: " . $e->getMessage());
             return null;
         }

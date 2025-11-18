@@ -1,18 +1,15 @@
 <?php
 
 /**
- * Janstro Inventory Management System - Complete API Router
- * Immutable Transaction Model Implementation
+ * Janstro Inventory Management System - API Router (FIXED)
+ * NO COMPOSER REQUIRED - Uses Manual Autoloader
  */
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
-// Load environment
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->load();
+// Load manual autoloader
+require_once __DIR__ . '/../autoload.php';
 
 // Error handling
-if ($_ENV['APP_ENV'] === 'production') {
+if (($_ENV['APP_ENV'] ?? 'development') === 'production') {
     error_reporting(0);
     ini_set('display_errors', '0');
 } else {
@@ -24,6 +21,7 @@ if ($_ENV['APP_ENV'] === 'production') {
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -57,6 +55,21 @@ $reportController = new ReportController();
 
 try {
     // ===============================================
+    // HEALTH CHECK - Test this first!
+    // ===============================================
+    if ($path === '' || $path === 'health') {
+        Response::success([
+            'name' => $_ENV['APP_NAME'] ?? 'Janstro Inventory System',
+            'version' => '2.0.0',
+            'environment' => $_ENV['APP_ENV'] ?? 'development',
+            'status' => 'running',
+            'message' => 'API is healthy!',
+            'timestamp' => date('Y-m-d H:i:s')
+        ], 'API is running');
+        exit;
+    }
+
+    // ===============================================
     // AUTHENTICATION ROUTES
     // ===============================================
     if ($segments[0] === 'auth') {
@@ -83,7 +96,7 @@ try {
     }
 
     // ===============================================
-    // INVENTORY ROUTES (Immutable Operations)
+    // INVENTORY ROUTES
     // ===============================================
     elseif ($segments[0] === 'inventory') {
         $inventoryService = new CompleteInventoryService();
@@ -91,48 +104,31 @@ try {
         switch ($method) {
             case 'GET':
                 if (!isset($segments[1])) {
-                    // GET /inventory
                     $inventoryController->getAll();
                 } elseif ($segments[1] === 'status') {
-                    // GET /inventory/status - Dashboard overview
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
-
                     $status = $inventoryService->getInventoryStatus();
                     Response::success($status, 'Inventory status retrieved');
                 } elseif ($segments[1] === 'check-stock' && isset($_GET['item_id'])) {
-                    // GET /inventory/check-stock?item_id=1
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
-
                     $stock = $inventoryService->checkStockAvailability((int)$_GET['item_id']);
-                    Response::success($stock, 'Stock availability checked');
-                } elseif ($segments[1] === 'requirements' && isset($_GET['item_id'])) {
-                    // GET /inventory/requirements?item_id=1
-                    $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-                    if (!$user) return;
-
-                    $requirements = $inventoryService->checkStockRequirements((int)$_GET['item_id']);
-                    Response::success($requirements, 'Stock requirements calculated');
+                    Response::success($stock, 'Stock checked');
                 } elseif ($segments[1] === 'movements') {
-                    // GET /inventory/movements - Material documents
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
-
                     $filters = [
                         'item_id' => $_GET['item_id'] ?? null,
                         'type' => $_GET['type'] ?? null,
                         'date_from' => $_GET['date_from'] ?? null,
                         'date_to' => $_GET['date_to'] ?? null
                     ];
-
                     $movements = $inventoryService->getMaterialDocuments($filters);
                     Response::success($movements, 'Stock movements retrieved');
                 } elseif ($segments[1] === 'low-stock') {
-                    // GET /inventory/low-stock
                     $inventoryController->getLowStock();
                 } elseif (is_numeric($segments[1])) {
-                    // GET /inventory/{id}
                     $inventoryController->getById((int)$segments[1]);
                 } else {
                     Response::notFound('Inventory endpoint not found');
@@ -141,26 +137,7 @@ try {
 
             case 'POST':
                 if (!isset($segments[1])) {
-                    // POST /inventory - Create new item
                     $inventoryController->create();
-                } else {
-                    Response::notFound('Inventory endpoint not found');
-                }
-                break;
-
-            case 'PUT':
-                if (isset($segments[1]) && is_numeric($segments[1])) {
-                    // PUT /inventory/{id}
-                    $inventoryController->update((int)$segments[1]);
-                } else {
-                    Response::notFound('Inventory endpoint not found');
-                }
-                break;
-
-            case 'DELETE':
-                if (isset($segments[1]) && is_numeric($segments[1])) {
-                    // DELETE /inventory/{id}
-                    $inventoryController->delete((int)$segments[1]);
                 } else {
                     Response::notFound('Inventory endpoint not found');
                 }
@@ -172,7 +149,7 @@ try {
     }
 
     // ===============================================
-    // PURCHASE ORDER ROUTES (Stock IN Process)
+    // PURCHASE ORDER ROUTES
     // ===============================================
     elseif ($segments[0] === 'purchase-orders') {
         $inventoryService = new CompleteInventoryService();
@@ -182,10 +159,8 @@ try {
         switch ($method) {
             case 'GET':
                 if (!isset($segments[1])) {
-                    // GET /purchase-orders
                     $orderController->getAll();
                 } elseif (is_numeric($segments[1])) {
-                    // GET /purchase-orders/{id}
                     $orderController->getById((int)$segments[1]);
                 } else {
                     Response::notFound('Purchase order endpoint not found');
@@ -194,29 +169,16 @@ try {
 
             case 'POST':
                 if (!isset($segments[1])) {
-                    // POST /purchase-orders - Create PO (SAP: ME21N)
                     $input = json_decode(file_get_contents('php://input'), true);
                     $input['created_by'] = $user->user_id;
-
                     $result = $inventoryService->createPurchaseOrder($input);
                     Response::success($result, 'Purchase order created', 201);
                 } elseif ($segments[1] === 'receive' && isset($segments[2])) {
-                    // POST /purchase-orders/receive/{po_id} - Receive goods (SAP: MIGO)
                     $poId = (int)$segments[2];
                     $input = json_decode(file_get_contents('php://input'), true);
                     $input['user_id'] = $user->user_id;
-
                     $result = $inventoryService->receiveGoods($poId, $input);
                     Response::success($result, 'Goods received successfully');
-                } else {
-                    Response::notFound('Purchase order endpoint not found');
-                }
-                break;
-
-            case 'PUT':
-                if (isset($segments[1]) && is_numeric($segments[1]) && isset($segments[2]) && $segments[2] === 'status') {
-                    // PUT /purchase-orders/{id}/status
-                    $orderController->updateStatus((int)$segments[1]);
                 } else {
                     Response::notFound('Purchase order endpoint not found');
                 }
@@ -228,7 +190,7 @@ try {
     }
 
     // ===============================================
-    // SALES ORDER ROUTES (Stock OUT Process)
+    // SALES ORDER ROUTES
     // ===============================================
     elseif ($segments[0] === 'sales-orders') {
         $inventoryService = new CompleteInventoryService();
@@ -238,7 +200,6 @@ try {
         switch ($method) {
             case 'GET':
                 if (!isset($segments[1])) {
-                    // GET /sales-orders - Get all sales orders
                     $orders = $inventoryService->getAllSalesOrders();
                     Response::success($orders, 'Sales orders retrieved');
                 } else {
@@ -248,16 +209,12 @@ try {
 
             case 'POST':
                 if (!isset($segments[1])) {
-                    // POST /sales-orders - Create simple sales order (single item)
                     $input = json_decode(file_get_contents('php://input'), true);
                     $input['created_by'] = $user->user_id;
-
                     $result = $inventoryService->createSimpleSalesOrder($input);
                     Response::success($result, 'Sales order created', 201);
                 } elseif ($segments[1] === 'invoice' && isset($segments[2])) {
-                    // POST /sales-orders/invoice/{id} - Process invoice (Stock OUT)
                     $salesOrderId = (int)$segments[2];
-
                     $result = $inventoryService->processSimpleInvoice($salesOrderId, $user->user_id);
                     Response::success($result, 'Invoice processed successfully');
                 } else {
@@ -271,23 +228,29 @@ try {
     }
 
     // ===============================================
-    // REPORT ROUTES
+    // SUPPLIER ROUTES
     // ===============================================
-    elseif ($segments[0] === 'reports') {
+    elseif ($segments[0] === 'suppliers') {
         switch ($method) {
             case 'GET':
-                if ($segments[1] === 'dashboard') {
-                    $reportController->getDashboardStats();
-                } elseif ($segments[1] === 'inventory-summary') {
-                    $reportController->getInventorySummary();
-                } elseif ($segments[1] === 'transactions') {
-                    $reportController->getTransactionHistory();
-                } elseif ($segments[1] === 'low-stock') {
-                    $reportController->getLowStockReport();
-                } elseif ($segments[1] === 'purchase-orders') {
-                    $reportController->getPurchaseOrdersReport();
+                if (!isset($segments[1])) {
+                    $supplierController->getAll();
+                } elseif (is_numeric($segments[1])) {
+                    $supplierController->getById((int)$segments[1]);
                 } else {
-                    Response::notFound('Report endpoint not found');
+                    Response::notFound('Supplier endpoint not found');
+                }
+                break;
+
+            case 'POST':
+                $supplierController->create();
+                break;
+
+            case 'PUT':
+                if (isset($segments[1]) && is_numeric($segments[1])) {
+                    $supplierController->update((int)$segments[1]);
+                } else {
+                    Response::notFound('Supplier endpoint not found');
                 }
                 break;
 
@@ -305,10 +268,8 @@ try {
                 if (!isset($segments[1])) {
                     $userController->getAll();
                 } elseif ($segments[1] === 'roles') {
-                    // Get roles list
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin']);
                     if (!$user) return;
-
                     $userService = new \Janstro\InventorySystem\Services\UserService();
                     $roles = $userService->getRoles();
                     Response::success($roles, 'Roles retrieved');
@@ -345,17 +306,29 @@ try {
     }
 
     // ===============================================
-    // HEALTH CHECK
+    // REPORT ROUTES
     // ===============================================
-    elseif ($path === '' || $path === 'health') {
-        Response::success([
-            'name' => $_ENV['APP_NAME'] ?? 'Janstro Inventory System',
-            'version' => '2.0.0',
-            'environment' => $_ENV['APP_ENV'] ?? 'development',
-            'status' => 'running',
-            'immutable_transactions' => true,
-            'timestamp' => date('Y-m-d H:i:s')
-        ], 'API is running', 200);
+    elseif ($segments[0] === 'reports') {
+        switch ($method) {
+            case 'GET':
+                if ($segments[1] === 'dashboard') {
+                    $reportController->getDashboardStats();
+                } elseif ($segments[1] === 'inventory-summary') {
+                    $reportController->getInventorySummary();
+                } elseif ($segments[1] === 'transactions') {
+                    $reportController->getTransactionHistory();
+                } elseif ($segments[1] === 'low-stock') {
+                    $reportController->getLowStockReport();
+                } elseif ($segments[1] === 'purchase-orders') {
+                    $reportController->getPurchaseOrdersReport();
+                } else {
+                    Response::notFound('Report endpoint not found');
+                }
+                break;
+
+            default:
+                Response::error('Method not allowed', null, 405);
+        }
     }
 
     // ===============================================
@@ -368,7 +341,7 @@ try {
     error_log("API Error: " . $e->getMessage());
     error_log("Stack trace: " . $e->getTraceAsString());
 
-    if ($_ENV['APP_DEBUG'] ?? false) {
+    if (($_ENV['APP_DEBUG'] ?? false)) {
         Response::serverError($e->getMessage());
     } else {
         Response::serverError('An internal error occurred');
