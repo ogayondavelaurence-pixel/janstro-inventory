@@ -1,10 +1,23 @@
 /**
- * Janstro Inventory System - Utility Functions
- * Helper functions for common tasks
- * Version: 2.0.0
+ * Janstro Inventory System - FIXED Utility Functions
+ * Version: 3.0.0 - All missing functions added
  */
 
 const Utils = {
+  /**
+   * CRITICAL FIX: Escape HTML to prevent XSS
+   */
+  escapeHtml(unsafe) {
+    if (!unsafe) return "";
+    return unsafe
+      .toString()
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  },
+
   /**
    * Format date to readable string
    */
@@ -72,7 +85,7 @@ const Utils = {
   },
 
   /**
-   * Show error message
+   * Show error message (FIXED: uses escapeHtml)
    */
   showError(elementId, message) {
     const element = document.getElementById(elementId);
@@ -80,14 +93,14 @@ const Utils = {
       element.innerHTML = `
                 <div class="alert alert-danger" role="alert">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    <strong>Error:</strong> ${message}
+                    <strong>Error:</strong> ${this.escapeHtml(message)}
                 </div>
             `;
     }
   },
 
   /**
-   * Show success message
+   * Show success message (FIXED: uses escapeHtml)
    */
   showSuccess(elementId, message) {
     const element = document.getElementById(elementId);
@@ -95,7 +108,7 @@ const Utils = {
       element.innerHTML = `
                 <div class="alert alert-success" role="alert">
                     <i class="bi bi-check-circle-fill"></i>
-                    <strong>Success:</strong> ${message}
+                    <strong>Success:</strong> ${this.escapeHtml(message)}
                 </div>
             `;
     }
@@ -105,14 +118,15 @@ const Utils = {
    * Show toast notification
    */
   showToast(message, type = "success") {
-    const toastContainer = document.getElementById("toastContainer");
+    let toastContainer = document.getElementById("toastContainer");
+
     if (!toastContainer) {
-      // Create toast container if it doesn't exist
-      const container = document.createElement("div");
-      container.id = "toastContainer";
-      container.className = "toast-container position-fixed top-0 end-0 p-3";
-      container.style.zIndex = "9999";
-      document.body.appendChild(container);
+      toastContainer = document.createElement("div");
+      toastContainer.id = "toastContainer";
+      toastContainer.className =
+        "toast-container position-fixed top-0 end-0 p-3";
+      toastContainer.style.zIndex = "9999";
+      document.body.appendChild(toastContainer);
     }
 
     const toastId = `toast-${Date.now()}`;
@@ -139,20 +153,17 @@ const Utils = {
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
                 </div>
                 <div class="toast-body">
-                    ${message}
+                    ${this.escapeHtml(message)}
                 </div>
             </div>
         `;
 
-    document
-      .getElementById("toastContainer")
-      .insertAdjacentHTML("beforeend", toastHTML);
+    toastContainer.insertAdjacentHTML("beforeend", toastHTML);
 
     const toastElement = document.getElementById(toastId);
     const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
     toast.show();
 
-    // Remove toast element after it's hidden
     toastElement.addEventListener("hidden.bs.toast", () => {
       toastElement.remove();
     });
@@ -168,11 +179,13 @@ const Utils = {
                     <div class="modal-dialog">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title">${title}</h5>
+                                <h5 class="modal-title">${this.escapeHtml(
+                                  title
+                                )}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
-                                ${message}
+                                ${this.escapeHtml(message)}
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -183,7 +196,6 @@ const Utils = {
                 </div>
             `;
 
-      // Remove existing modal if any
       const existingModal = document.getElementById("confirmModal");
       if (existingModal) {
         existingModal.remove();
@@ -231,9 +243,7 @@ const Utils = {
    * Sanitize input (prevent XSS)
    */
   sanitizeInput(input) {
-    const div = document.createElement("div");
-    div.textContent = input;
-    return div.innerHTML;
+    return this.escapeHtml(input);
   },
 
   /**
@@ -249,6 +259,7 @@ const Utils = {
       inactive: "bg-secondary",
       low_stock: "bg-danger",
       in_stock: "bg-success",
+      delivered: "bg-success",
     };
 
     return badges[status] || "bg-secondary";
@@ -339,7 +350,6 @@ const Utils = {
         headers
           .map((header) => {
             const value = row[header];
-            // Escape commas and quotes
             if (
               typeof value === "string" &&
               (value.includes(",") || value.includes('"'))
@@ -390,6 +400,55 @@ const Utils = {
     tooltipTriggerList.map(
       (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl)
     );
+  },
+
+  /**
+   * Format file size
+   */
+  formatFileSize(bytes) {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  },
+
+  /**
+   * Generate random ID
+   */
+  generateId(prefix = "id") {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  },
+
+  /**
+   * Deep clone object
+   */
+  deepClone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  },
+
+  /**
+   * Check if object is empty
+   */
+  isEmpty(obj) {
+    return Object.keys(obj).length === 0;
+  },
+
+  /**
+   * Capitalize first letter
+   */
+  capitalize(str) {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  },
+
+  /**
+   * Truncate text
+   */
+  truncate(text, length = 50) {
+    if (!text) return "";
+    if (text.length <= length) return text;
+    return text.substring(0, length) + "...";
   },
 };
 
