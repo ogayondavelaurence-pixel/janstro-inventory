@@ -799,6 +799,19 @@
         }
         // Initialize on page load
         window.onload = initPage;
+        
+        // Show error message
+        function showError(message) {
+            const container = document.getElementById('tableContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div class="alert alert-danger m-4">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Error:</strong> ${Utils.escapeHtml(message)}
+                    </div>
+                `;
+            }
+        }
     </script>
 </body>
 </html>
