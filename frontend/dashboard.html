@@ -38,6 +38,11 @@
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
         }
 
         .sidebar-header {
@@ -87,6 +92,26 @@
         .main-content {
             margin-left: var(--sidebar-width);
             min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+        }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
         }
 
         /* Top Nav */
@@ -243,17 +268,10 @@
             color: #2c3e50;
         }
 
-        /* Stat icon color themes (background tint + icon color) */
         .stat-green   { background: rgba(40, 167, 69, 0.1); color: #28a745; }
         .stat-yellow  { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
         .stat-purple  { background: rgba(102, 126, 234, 0.1); color: #667eea; }
         .stat-cyan    { background: rgba(23, 162, 184, 0.1); color: #17a2b8; }
-
-        /* Quick actions header icon color */
-        .icon-gold { color: #ffd700; }
-
-        /* Bold header text */
-        .font-700 { font-weight: 700; }
 
         .chart-container {
             position: relative;
@@ -293,7 +311,7 @@
             display: block;
         }
 
-        /* Recent Activity */
+        /* Activity */
         .activity-item {
             padding: 20px;
             border-bottom: 1px solid #f0f0f0;
@@ -320,83 +338,45 @@
         .activity-icon.in { background: rgba(40, 167, 69, 0.1); color: var(--success); }
         .activity-icon.out { background: rgba(220, 53, 69, 0.1); color: var(--danger); }
 
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        .d-flex-inline { display: flex; }
-        .mt-20-inline { margin-top: 20px; }
-        .justify-between-inline { justify-content: space-between; }
-        .gap-10-inline { gap: 10px; }
-        .w-100-inline { width: 100%; }
-        .text-center-inline { text-align: center; }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); }
-            .main-content { margin-left: 0; }
-            .stats-grid { grid-template-columns: 1fr; }
+            .mobile-menu-toggle {
+                display: block;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.mobile-show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Sidebar (will be populated by sidebar.js based on RBAC) -->
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <i class="bi bi-sun"></i>
             <h4>Janstro Prime</h4>
             <small>Solar IMS v3.0</small>
         </div>
-        <div class="sidebar-menu">
-            <div class="menu-section">Main</div>
-            <a href="dashboard.html" class="menu-item active">
-                <i class="bi bi-speedometer2"></i>
-                <span>Dashboard</span>
-            </a>
-            <div class="menu-section">Inventory</div>
-            <a href="inventory.html" class="menu-item">
-                <i class="bi bi-box"></i>
-                <span>All Items</span>
-            </a>
-            <a href="stock-movements.html" class="menu-item">
-                <i class="bi bi-arrow-left-right"></i>
-                <span>Stock Movements</span>
-            </a>
-            <div class="menu-section">Procurement</div>
-            <a href="purchase-orders.html" class="menu-item">
-                <i class="bi bi-cart-plus"></i>
-                <span>Purchase Orders</span>
-            </a>
-            <a href="suppliers.html" class="menu-item">
-                <i class="bi bi-truck"></i>
-                <span>Suppliers</span>
-            </a>
-            <div class="menu-section">Sales</div>
-            <a href="sales-orders.html" class="menu-item">
-                <i class="bi bi-cart-check"></i>
-                <span>Sales Orders</span>
-            </a>
-            <div class="menu-section">Reports</div>
-            <a href="reports.html" class="menu-item">
-                <i class="bi bi-graph-up"></i>
-                <span>Analytics</span>
-            </a>
+        <div class="sidebar-menu" id="sidebarMenu">
+            <!-- Dynamically loaded by sidebar.js -->
         </div>
     </div>
 
@@ -413,127 +393,118 @@
             </div>
         </div>
 
-    <!-- Content Area -->
-    <div class="content-area">
-
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-
-        <div class="stat-card">
-            <div class="stat-icon icon-green">
-                <i class="bi bi-box-seam"></i>
-            </div>
-            <div class="stat-value" id="totalItems">0</div>
-            <div class="stat-label">Total Items</div>
-            <div class="stat-change positive">
-                <i class="bi bi-arrow-up"></i> All active
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon icon-yellow">
-                <i class="bi bi-exclamation-triangle"></i>
-            </div>
-            <div class="stat-value" id="lowStockItems">0</div>
-            <div class="stat-label">Low Stock Alerts</div>
-            <div class="stat-change negative">
-                <i class="bi bi-arrow-down"></i> Needs attention
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon icon-indigo">
-                <i class="bi bi-cart-plus"></i>
-            </div>
-            <div class="stat-value" id="pendingPOs">0</div>
-            <div class="stat-label">Pending Orders</div>
-            <div class="stat-change">
-                <i class="bi bi-clock"></i> Awaiting receipt
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon icon-cyan">
-                <i class="bi bi-currency-dollar"></i>
-            </div>
-            <div class="stat-value" id="inventoryValue">₱0</div>
-            <div class="stat-label">Inventory Value</div>
-            <div class="stat-change positive">
-                <i class="bi bi-graph-up"></i> Total assets
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Quick Actions -->
-    <h5 class="mb-3 fw-bold">
-        <i class="bi bi-lightning-fill me-2 text-warning"></i>Quick Actions
-    </h5>
-
-    <div class="quick-actions">
-        <a href="purchase-orders.html" class="action-btn">
-            <i class="bi bi-cart-plus"></i>
-            <div>Create PO</div>
-        </a>
-        <a href="goods-receipt.html" class="action-btn">
-            <i class="bi bi-box-arrow-in-down"></i>
-            <div>Receive Goods</div>
-        </a>
-        <a href="sales-orders.html" class="action-btn">
-            <i class="bi bi-cart-check"></i>
-            <div>New Sales Order</div>
-        </a>
-        <a href="inventory.html" class="action-btn">
-            <i class="bi bi-search"></i>
-            <div>Check Stock</div>
-        </a>
-    </div>
-
-    <!-- Charts Row -->
-    <div class="row g-4 mb-4">
-
-        <div class="col-lg-6">
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h5 class="chart-title">
-                        <i class="bi bi-pie-chart me-2"></i>Inventory by Category
-                    </h5>
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon stat-green">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                    <div class="stat-value" id="totalItems">0</div>
+                    <div class="stat-label">Total Items</div>
+                    <div class="stat-change positive">
+                        <i class="bi bi-arrow-up"></i> All active
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="categoryChart"></canvas>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-yellow">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-value" id="lowStockItems">0</div>
+                    <div class="stat-label">Low Stock Alerts</div>
+                    <div class="stat-change negative">
+                        <i class="bi bi-arrow-down"></i> Needs attention
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-purple">
+                        <i class="bi bi-cart-plus"></i>
+                    </div>
+                    <div class="stat-value" id="pendingPOs">0</div>
+                    <div class="stat-label">Pending Orders</div>
+                    <div class="stat-change">
+                        <i class="bi bi-clock"></i> Awaiting receipt
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-cyan">
+                        <i class="bi bi-currency-dollar"></i>
+                    </div>
+                    <div class="stat-value" id="inventoryValue">₱0</div>
+                    <div class="stat-label">Inventory Value</div>
+                    <div class="stat-change positive">
+                        <i class="bi bi-graph-up"></i> Total assets
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-lg-6">
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h5 class="chart-title">
-                        <i class="bi bi-graph-up me-2"></i>Stock Movements (7 Days)
-                    </h5>
-                </div>
-                <div class="chart-container">
-                    <canvas id="movementsChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Low Stock Chart -->
-    <div class="chart-card">
-        <div class="chart-header">
-            <h5 class="chart-title">
-                <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Low Stock Items
+            <!-- Quick Actions -->
+            <h5 class="mb-3 fw-bold">
+                <i class="bi bi-lightning-fill me-2 text-warning"></i>Quick Actions
             </h5>
-        </div>
-        <div class="chart-container">
-            <canvas id="lowStockChart"></canvas>
-        </div>
-    </div>
+            <div class="quick-actions">
+                <a href="purchase-orders.html" class="action-btn">
+                    <i class="bi bi-cart-plus"></i>
+                    <div>Create PO</div>
+                </a>
+                <a href="goods-receipt.html" class="action-btn">
+                    <i class="bi bi-box-arrow-in-down"></i>
+                    <div>Receive Goods</div>
+                </a>
+                <a href="sales-orders.html" class="action-btn">
+                    <i class="bi bi-cart-check"></i>
+                    <div>New Sales Order</div>
+                </a>
+                <a href="inventory.html" class="action-btn">
+                    <i class="bi bi-search"></i>
+                    <div>Check Stock</div>
+                </a>
+            </div>
 
-    </div>
+            <!-- Charts Row -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h5 class="chart-title">
+                                <i class="bi bi-pie-chart me-2"></i>Inventory by Category
+                            </h5>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
 
+                <div class="col-lg-6">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h5 class="chart-title">
+                                <i class="bi bi-graph-up me-2"></i>Stock Movements (7 Days)
+                            </h5>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="movementsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Low Stock Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5 class="chart-title">
+                        <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Low Stock Items
+                    </h5>
+                </div>
+                <div class="chart-container">
+                    <canvas id="lowStockChart"></canvas>
+                </div>
+            </div>
 
             <!-- Recent Activity -->
             <div class="chart-card">
@@ -543,8 +514,8 @@
                     </h5>
                 </div>
                 <div id="recentActivity">
-                    <div class="loading">
-                        <div class="spinner"></div>
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary"></div>
                         <p class="mt-3">Loading recent activity...</p>
                     </div>
                 </div>
@@ -553,75 +524,33 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/sidebar.js"></script>
     <script>
         // Check auth
-        if (!localStorage.getItem('janstro_token')) {
+        if (!API.isAuthenticated()) {
             window.location.href = 'index.html';
         }
 
-        // API Configuration - FIXED
-        const API = {
-            baseURL: window.location.origin.replace(':5500', '') + ":8080/janstro-inventory/public",
-            
-            getToken() {
-                return localStorage.getItem('janstro_token');
-            },
-
-            async request(endpoint, options = {}) {
-                const url = `${this.baseURL}${endpoint}`;
-                const config = {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.getToken()}`
-                    },
-                    ...options
-                };
-
-                const response = await fetch(url, config);
-                return response.json();
-            },
-
-            async get(endpoint) {
-                return this.request(endpoint, { method: 'GET' });
-            }
-        };
-
-        // Format helpers
-        const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('en-PH', {
-                style: 'currency',
-                currency: 'PHP'
-            }).format(amount || 0);
-        };
-
-        const formatNumber = (num) => {
-            return new Intl.NumberFormat('en-US').format(num || 0);
-        };
-
-        const formatDate = (dateStr) => {
-            if (!dateStr) return 'N/A';
-            return new Date(dateStr).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        };
-
-        // Initialize dashboard
+        // Initialize charts
         let categoryChart, movementsChart, lowStockChart;
+
+        // Toggle mobile menu
+        function toggleMobileMenu() {
+            document.getElementById('sidebar').classList.toggle('mobile-show');
+        }
 
         async function initDashboard() {
             try {
                 // Update user info
-                const user = JSON.parse(localStorage.getItem('janstro_user'));
+                const user = API.getUser();
                 if (user) {
                     document.getElementById('userAvatar').textContent = 
                         (user.name || user.username).charAt(0).toUpperCase();
                 }
 
-                // Load all data
+                // Load all data using GLOBAL API
                 await Promise.all([
                     loadStats(),
                     loadCategoryChart(),
@@ -637,22 +566,22 @@
         async function loadStats() {
             try {
                 const [inventory, status] = await Promise.all([
-                    API.get('/inventory'),
-                    API.get('/inventory/status')
+                    API.getInventory(),
+                    API.getInventoryStatus()
                 ]);
 
                 if (inventory.success && inventory.data) {
                     document.getElementById('totalItems').textContent = 
-                        formatNumber(inventory.data.length);
+                        Utils.formatNumber(inventory.data.length);
                 }
 
                 if (status.success && status.data) {
                     document.getElementById('lowStockItems').textContent = 
-                        formatNumber(status.data.low_stock_items || 0);
+                        Utils.formatNumber(status.data.low_stock_items || 0);
                     document.getElementById('pendingPOs').textContent = 
-                        formatNumber(status.data.pending_pos || 0);
+                        Utils.formatNumber(status.data.pending_pos || 0);
                     document.getElementById('inventoryValue').textContent = 
-                        formatCurrency(status.data.total_inventory_value || 0);
+                        Utils.formatCurrency(status.data.total_inventory_value || 0);
                 }
             } catch (error) {
                 console.error('Stats error:', error);
@@ -661,7 +590,7 @@
 
         async function loadCategoryChart() {
             try {
-                const res = await API.get('/inventory/status');
+                const res = await API.getInventoryStatus();
                 if (res.success && res.data.items_by_category) {
                     const categories = res.data.items_by_category;
                     const labels = Object.keys(categories);
@@ -700,9 +629,8 @@
 
         async function loadMovementsChart() {
             try {
-                const res = await API.get('/inventory/movements');
+                const res = await API.getStockMovements();
                 if (res.success && res.data) {
-                    // Group by date
                     const grouped = {};
                     res.data.slice(0, 7).forEach(m => {
                         const date = new Date(m.transaction_date).toLocaleDateString();
@@ -742,7 +670,7 @@
 
         async function loadLowStockChart() {
             try {
-                const res = await API.get('/inventory/low-stock');
+                const res = await API.getLowStockItems();
                 if (res.success && res.data) {
                     const labels = res.data.map(i => i.item_name);
                     const data = res.data.map(i => i.quantity);
@@ -775,7 +703,7 @@
 
         async function loadRecentActivity() {
             try {
-                const res = await API.get('/inventory/movements');
+                const res = await API.getStockMovements();
                 if (res.success && res.data) {
                     const html = res.data.slice(0, 10).map(m => `
                         <div class="activity-item">
@@ -785,8 +713,8 @@
                             <div style="flex: 1;">
                                 <strong>${m.item_name}</strong>
                                 <div style="font-size: 13px; color: #6c757d;">
-                                    ${m.transaction_type === 'IN' ? '+' : '-'}${formatNumber(m.quantity)} ${m.unit}
-                                    • ${formatDate(m.transaction_date)}
+                                    ${m.transaction_type === 'IN' ? '+' : '-'}${Utils.formatNumber(m.quantity)} ${m.unit}
+                                    • ${Utils.formatDate(m.transaction_date)}
                                 </div>
                             </div>
                         </div>
@@ -800,8 +728,7 @@
 
         function handleLogout() {
             if (confirm('Logout?')) {
-                localStorage.clear();
-                window.location.href = 'index.html';
+                API.logout();
             }
         }
 

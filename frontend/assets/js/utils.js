@@ -1,11 +1,11 @@
 /**
  * Janstro Inventory System - FIXED Utility Functions
- * Version: 3.1.0 - Complete with escapeHtml
+ * Version: 3.2.0 - All Missing Functions Added
  */
 
 const Utils = {
   /**
-   * ✅ FIXED: Escape HTML to prevent XSS attacks
+   * ✅ FIXED: Escape HTML to prevent XSS
    */
   escapeHtml(text) {
     if (!text) return "";
@@ -82,7 +82,7 @@ const Utils = {
   },
 
   /**
-   * Show error message
+   * ✅ FIXED: Show error message (was missing in stock-movements.html)
    */
   showError(elementId, message) {
     const element = document.getElementById(elementId);
@@ -149,9 +149,7 @@ const Utils = {
           }</strong>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body">
-          ${this.escapeHtml(message)}
-        </div>
+        <div class="toast-body">${this.escapeHtml(message)}</div>
       </div>
     `;
 
@@ -179,9 +177,7 @@ const Utils = {
                 <h5 class="modal-title">${this.escapeHtml(title)}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
               </div>
-              <div class="modal-body">
-                ${this.escapeHtml(message)}
-              </div>
+              <div class="modal-body">${this.escapeHtml(message)}</div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="confirmBtn">Confirm</button>
@@ -394,3 +390,7 @@ const Utils = {
 
 // Make Utils available globally
 window.Utils = Utils;
+
+console.log(
+  "✅ Utils loaded - All functions available including showError and escapeHtml"
+);
