@@ -3,7 +3,7 @@
 /**
  * Janstro Inventory Management System - COMPLETE FIXED API Router
  * Date: 2025-11-18
- * Version: 3.0.0 - All endpoints working
+ * Version: 3.0.0 - All endpoints working (fixed routing/blocks)
  */
 
 // Load manual autoloader
@@ -73,7 +73,7 @@ try {
     // ===============================================
     // AUTHENTICATION ROUTES
     // ===============================================
-    if ($segments[0] === 'auth') {
+    if (($segments[0] ?? '') === 'auth') {
         switch ($method) {
             case 'POST':
                 if (($segments[1] ?? '') === 'login') {
@@ -97,24 +97,30 @@ try {
     }
 
     // ===============================================
-    // INVENTORY ROUTES - FIXED
+    // INVENTORY ROUTES - FIXED (delegates summary to controller)
     // ===============================================
-    elseif ($segments[0] === 'inventory') {
+    elseif (($segments[0] ?? '') === 'inventory') {
         $inventoryService = new CompleteInventoryService();
 
         switch ($method) {
             case 'GET':
+                // GET /inventory
                 if (empty($segments[1])) {
-                    // GET /inventory
                     $inventoryController->getAll();
-                } elseif ($segments[1] === 'status') {
-                    // GET /inventory/status
+                    break;
+                }
+
+                // GET /inventory/status
+                if ($segments[1] === 'status') {
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
                     $status = $inventoryService->getInventoryStatus();
                     Response::success($status, 'Inventory status retrieved');
-                } elseif ($segments[1] === 'check-stock') {
-                    // GET /inventory/check-stock?item_id=X
+                    break;
+                }
+
+                // GET /inventory/check-stock?item_id=X
+                if ($segments[1] === 'check-stock') {
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
                     if (!isset($_GET['item_id'])) {
@@ -123,8 +129,18 @@ try {
                     }
                     $stock = $inventoryService->checkStockAvailability((int)$_GET['item_id']);
                     Response::success($stock, 'Stock checked');
-                } elseif ($segments[1] === 'movements') {
-                    // GET /inventory/movements
+                    break;
+                }
+
+                // GET /inventory/movements/summary
+                if ($segments[1] === 'movements' && isset($segments[2]) && $segments[2] === 'summary') {
+                    // delegate to controller which will handle auth + response
+                    $inventoryController->getMovementsSummary();
+                    break;
+                }
+
+                // GET /inventory/movements (list)
+                if ($segments[1] === 'movements') {
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
                     $filters = [
@@ -135,15 +151,22 @@ try {
                     ];
                     $movements = $inventoryService->getMaterialDocuments($filters);
                     Response::success($movements, 'Stock movements retrieved');
-                } elseif ($segments[1] === 'low-stock') {
-                    // GET /inventory/low-stock
-                    $inventoryController->getLowStock();
-                } elseif (is_numeric($segments[1])) {
-                    // GET /inventory/{id}
-                    $inventoryController->getById((int)$segments[1]);
-                } else {
-                    Response::notFound('Inventory endpoint not found');
+                    break;
                 }
+
+                // GET /inventory/low-stock
+                if ($segments[1] === 'low-stock') {
+                    $inventoryController->getLowStock();
+                    break;
+                }
+
+                // GET /inventory/{id}
+                if (is_numeric($segments[1])) {
+                    $inventoryController->getById((int)$segments[1]);
+                    break;
+                }
+
+                Response::notFound('Inventory endpoint not found');
                 break;
 
             case 'POST':
@@ -159,27 +182,10 @@ try {
         }
     }
 
-    // Add this after inventory routes
-    elseif ($segments[0] === 'inventory' && $segments[1] === 'movements' && $segments[2] === 'summary') {
-        $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        // Get last 7 days summary
-        $stmt = $db->query("
-        SELECT DATE(transaction_date) as date, COUNT(*) as count
-        FROM transactions
-        WHERE transaction_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY DATE(transaction_date)
-        ORDER BY date DESC
-    ");
-
-        Response::success($stmt->fetchAll(), 'Movement summary retrieved');
-    }
-
     // ===============================================
     // PURCHASE ORDER ROUTES - FIXED
     // ===============================================
-    elseif ($segments[0] === 'purchase-orders') {
+    elseif (($segments[0] ?? '') === 'purchase-orders') {
         $inventoryService = new CompleteInventoryService();
         $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
         if (!$user) return;
@@ -220,7 +226,7 @@ try {
     // ===============================================
     // SALES ORDER ROUTES - FIXED
     // ===============================================
-    elseif ($segments[0] === 'sales-orders') {
+    elseif (($segments[0] ?? '') === 'sales-orders') {
         $inventoryService = new CompleteInventoryService();
         $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
         if (!$user) return;
@@ -258,7 +264,7 @@ try {
     // ===============================================
     // SUPPLIER ROUTES - FIXED
     // ===============================================
-    elseif ($segments[0] === 'suppliers') {
+    elseif (($segments[0] ?? '') === 'suppliers') {
         switch ($method) {
             case 'GET':
                 if (empty($segments[1])) {
@@ -302,12 +308,12 @@ try {
     // ===============================================
     // USER ROUTES - FIXED
     // ===============================================
-    elseif ($segments[0] === 'users') {
+    elseif (($segments[0] ?? '') === 'users') {
         switch ($method) {
             case 'GET':
                 if (empty($segments[1])) {
                     $userController->getAll();
-                } elseif ($segments[1] === 'roles') {
+                } elseif (($segments[1] ?? '') === 'roles') {
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
                     if (!$user) return;
                     $userService = new \Janstro\InventorySystem\Services\UserService();
@@ -348,7 +354,7 @@ try {
     // ===============================================
     // REPORT ROUTES - FIXED
     // ===============================================
-    elseif ($segments[0] === 'reports') {
+    elseif (($segments[0] ?? '') === 'reports') {
         switch ($method) {
             case 'GET':
                 if (!isset($segments[1])) {
