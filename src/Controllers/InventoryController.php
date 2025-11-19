@@ -78,7 +78,8 @@ class InventoryController
     }
 
     /**
-     * GET /inventory/movements/summary - FIXED: Added missing method
+     * GET /inventory/movements/summary
+     * Get stock movements summary statistics
      */
     public function getMovementsSummary(): void
     {
@@ -86,29 +87,28 @@ class InventoryController
         if (!$user) return;
 
         try {
-            // Get summary statistics for stock movements
             $db = \Janstro\InventorySystem\Config\Database::connect();
 
+            // Get summary stats
             $stmt = $db->query("
-                SELECT 
-                    COUNT(*) AS total_movements,
-                    SUM(CASE WHEN transaction_type = 'IN' THEN 1 ELSE 0 END) AS stock_in_count,
-                    SUM(CASE WHEN transaction_type = 'OUT' THEN 1 ELSE 0 END) AS stock_out_count,
-                    SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE 0 END) AS total_in_quantity,
-                    SUM(CASE WHEN transaction_type = 'OUT' THEN quantity ELSE 0 END) AS total_out_quantity,
-                    DATE(MAX(transaction_date)) AS last_movement_date
-                FROM transactions
-                WHERE transaction_date >= DATE_SUB(NOW(), INTERVAL 30 DAYS)
-            ");
+            SELECT 
+                COUNT(*) as total_movements,
+                SUM(CASE WHEN transaction_type = 'IN' THEN 1 ELSE 0 END) as total_in,
+                SUM(CASE WHEN transaction_type = 'OUT' THEN 1 ELSE 0 END) as total_out,
+                SUM(CASE WHEN transaction_type = 'IN' THEN quantity ELSE 0 END) as quantity_in,
+                SUM(CASE WHEN transaction_type = 'OUT' THEN quantity ELSE 0 END) as quantity_out,
+                DATE(MAX(transaction_date)) as last_movement_date
+            FROM transactions
+            WHERE DATE(transaction_date) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        ");
 
             $summary = $stmt->fetch();
 
-            Response::success($summary, 'Movement summary retrieved');
+            Response::success($summary, 'Movements summary retrieved');
         } catch (\Exception $e) {
             Response::error($e->getMessage());
         }
     }
-
     /**
      * POST /inventory
      */
