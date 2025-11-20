@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Janstro Prime - Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
@@ -127,6 +127,7 @@
         .login-card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: clamp(16px, 4vw, 28px);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             width: 100%;
@@ -626,22 +627,42 @@
             loginText.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Signing in...';
 
             try {
+                console.log("🔐 Attempting login as:", username);
+                
                 const response = await API.login(username, password);
                 
-                if (response.success) {
+                console.log("📥 Login response received:", response);
+                
+                if (response && response.success) {
                     showAlert('✅ Login successful! Redirecting...', 'success');
+                    
+                    // Verify token was stored
+                    const storedToken = API.getToken();
+                    const storedUser = API.getUser();
+                    
+                    console.log("✅ Token stored:", !!storedToken);
+                    console.log("✅ User stored:", !!storedUser);
+                    
+                    if (!storedToken || !storedUser) {
+                        showAlert('❌ Session storage failed. Please try again.', 'danger');
+                        loginBtn.disabled = false;
+                        loginText.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
+                        return;
+                    }
                     
                     // Wait briefly to show success message
                     setTimeout(() => {
+                        console.log("🔄 Redirecting to dashboard...");
                         window.location.href = 'dashboard.html';
-                    }, 800);
+                    }, 1000);
                 } else {
-                    showAlert(response.message || 'Invalid credentials', 'danger');
+                    const errorMsg = (response && response.message) || 'Invalid credentials';
+                    showAlert(errorMsg, 'danger');
                     loginBtn.disabled = false;
                     loginText.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
                 }
             } catch (error) {
-                console.error('Login error:', error);
+                console.error('❌ Login error:', error);
                 showAlert('Connection error. Please check if backend is running.', 'danger');
                 loginBtn.disabled = false;
                 loginText.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
@@ -667,6 +688,7 @@
 
         // Check if already logged in
         if (API.isAuthenticated()) {
+            console.log("✅ Already authenticated, redirecting to dashboard");
             window.location.href = 'dashboard.html';
         }
     </script>
