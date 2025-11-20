@@ -1,7 +1,7 @@
 /**
- * JANSTRO IMS - COMPLETE RBAC SYSTEM v5.0
- * Enforces both PAGE-LEVEL and ACTION-LEVEL permissions
- * Date: 2025-11-19
+ * JANSTRO IMS - COMPLETE RBAC SYSTEM v6.0
+ * Full page and action enforcement with hamburger menu
+ * Date: 2025-11-20
  */
 
 const RBAC = {
@@ -16,7 +16,7 @@ const RBAC = {
   },
 
   // ============================================
-  // PAGE-LEVEL PERMISSIONS (what pages each role can access)
+  // PAGE-LEVEL PERMISSIONS
   // ============================================
   pagePermissions: {
     superadmin: [
@@ -42,6 +42,14 @@ const RBAC = {
       "sales-orders",
       "reports",
     ],
+    manager: [
+      "dashboard",
+      "inventory",
+      "stock-movements",
+      "purchase-orders",
+      "sales-orders",
+      "reports",
+    ],
     staff: [
       "dashboard",
       "inventory",
@@ -53,7 +61,7 @@ const RBAC = {
   },
 
   // ============================================
-  // ACTION-LEVEL PERMISSIONS (what actions each role can perform)
+  // ACTION-LEVEL PERMISSIONS
   // ============================================
   actionPermissions: {
     superadmin: {
@@ -67,33 +75,30 @@ const RBAC = {
         "receive",
       ],
       salesOrders: ["view", "create", "edit", "approve", "cancel", "invoice"],
-      stockMovements: ["view", "adjust", "export"],
-      suppliers: ["view", "create", "edit", "delete"],
-      reports: ["view", "export"],
       users: ["view", "create", "edit", "delete", "deactivate"],
     },
     admin: {
       inventory: ["view", "add", "edit", "adjust", "export"],
       purchaseOrders: ["view", "create", "edit", "approve", "receive"],
       salesOrders: ["view", "create", "edit", "approve", "invoice"],
-      stockMovements: ["view", "export"],
-      suppliers: ["view", "create", "edit"],
-      reports: ["view", "export"],
+      users: [],
+    },
+    manager: {
+      inventory: ["view", "export"],
+      purchaseOrders: ["view", "create"],
+      salesOrders: ["view", "create"],
       users: [],
     },
     staff: {
       inventory: ["view"],
       purchaseOrders: ["view", "create"],
       salesOrders: ["view", "create"],
-      stockMovements: ["view"],
-      suppliers: ["view"],
-      reports: [],
       users: [],
     },
   },
 
   // ============================================
-  // UTILITY: Get Current User
+  // GET CURRENT USER
   // ============================================
   getCurrentUser() {
     const userJson = localStorage.getItem("janstro_user");
@@ -133,7 +138,6 @@ const RBAC = {
     if (!role || !module || !action) return false;
 
     role = role.toLowerCase();
-
     const roleActions = this.actionPermissions[role];
     if (!roleActions) return false;
 
@@ -144,34 +148,30 @@ const RBAC = {
   },
 
   // ============================================
-  // ENFORCE PAGE ACCESS (Block unauthorized access)
+  // ENFORCE PAGE ACCESS
   // ============================================
   enforcePage() {
     const user = this.getCurrentUser();
 
-    // Not logged in - redirect to login
     if (!user || !user.role) {
       console.warn("RBAC: No user found, redirecting to login");
       window.location.href = "index.html";
       return false;
     }
 
-    // Get current page name
     const path = window.location.pathname.split("/").pop();
     const pageName = path.replace(".html", "");
 
-    // Skip check for login page
     if (pageName === "index" || pageName === "") {
       return true;
     }
 
-    // Check if user has access to this page
     if (!this.hasPageAccess(pageName, user.role)) {
       console.warn(
         `RBAC: User "${user.username}" (${user.role}) denied access to "${pageName}"`
       );
       alert(
-        `Access Denied: You don't have permission to access this page.\n\nYour role: ${user.role.toUpperCase()}`
+        `Access Denied\n\nYou don't have permission to access this page.\n\nYour role: ${user.role.toUpperCase()}`
       );
       window.location.href = "dashboard.html";
       return false;
@@ -207,7 +207,7 @@ const RBAC = {
   },
 
   // ============================================
-  // HIDE BUTTONS BASED ON ACTION PERMISSIONS
+  // ENFORCE ACTIONS (HIDE BUTTONS)
   // ============================================
   enforceActions(moduleName, actionMap) {
     const user = this.getCurrentUser();
@@ -215,7 +215,6 @@ const RBAC = {
 
     const role = user.role.toLowerCase();
 
-    // actionMap example: { 'create': '#addBtn', 'edit': '.editBtn', 'delete': '.deleteBtn' }
     Object.keys(actionMap).forEach((action) => {
       const selector = actionMap[action];
 
@@ -230,13 +229,12 @@ const RBAC = {
   },
 
   // ============================================
-  // SHOW ROLE BADGE IN UI
+  // SHOW ROLE BADGE
   // ============================================
   displayRoleBadge() {
     const user = this.getCurrentUser();
     if (!user) return;
 
-    // Add role badge to user info if it doesn't exist
     const userInfo = document.querySelector(".user-info");
     if (userInfo && !document.getElementById("roleBadge")) {
       const badge = document.createElement("span");
@@ -251,28 +249,102 @@ const RBAC = {
   },
 
   // ============================================
-  // INITIALIZE RBAC ON EVERY PAGE
+  // HAMBURGER MENU TOGGLE
   // ============================================
-  init() {
-    console.log("🔒 RBAC System v5.0 Initializing...");
+  initHamburgerMenu() {
+    // Create hamburger button if doesn't exist
+    if (!document.querySelector(".mobile-menu-toggle")) {
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "mobile-menu-toggle";
+      toggleBtn.innerHTML = '<i class="bi bi-list"></i>';
+      toggleBtn.setAttribute("aria-label", "Toggle menu");
+      document.body.prepend(toggleBtn);
 
-    // Enforce page access
-    if (!this.enforcePage()) {
-      return; // Stop if access denied
+      // Add styles
+      const style = document.createElement("style");
+      style.textContent = `
+        .mobile-menu-toggle {
+          display: none;
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          z-index: 1001;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          border: none;
+          padding: 10px 15px;
+          border-radius: 8px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .sidebar.mobile-hidden {
+          transform: translateX(-100%);
+        }
+
+        .sidebar.mobile-show {
+          transform: translateX(0);
+        }
+
+        @media (max-width: 768px) {
+          .mobile-menu-toggle {
+            display: block;
+          }
+          
+          .sidebar {
+            transition: transform 0.3s ease;
+          }
+          
+          .main-content {
+            margin-left: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
     }
 
-    // Filter sidebar menu
-    this.filterSidebar();
+    // Add click handler
+    const toggleBtn = document.querySelector(".mobile-menu-toggle");
+    const sidebar = document.querySelector(".sidebar");
 
-    // Display role badge
+    if (toggleBtn && sidebar) {
+      toggleBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("mobile-show");
+        sidebar.classList.toggle("mobile-hidden");
+      });
+
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener("click", (e) => {
+        if (window.innerWidth <= 768) {
+          if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+            sidebar.classList.add("mobile-hidden");
+            sidebar.classList.remove("mobile-show");
+          }
+        }
+      });
+    }
+  },
+
+  // ============================================
+  // INITIALIZE RBAC
+  // ============================================
+  init() {
+    console.log("🔒 RBAC System v6.0 Initializing...");
+
+    if (!this.enforcePage()) {
+      return;
+    }
+
+    this.filterSidebar();
     this.displayRoleBadge();
+    this.initHamburgerMenu();
 
     console.log("✅ RBAC System Initialized Successfully");
   },
 };
 
 // ============================================
-// AUTO-INITIALIZE ON PAGE LOAD
+// AUTO-INITIALIZE
 // ============================================
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => RBAC.init());
@@ -280,7 +352,6 @@ if (document.readyState === "loading") {
   RBAC.init();
 }
 
-// Export for use in other scripts
 window.RBAC = RBAC;
 
-console.log("✅ RBAC Module Loaded - Full Page & Action Enforcement Active");
+console.log("✅ RBAC Module v6.0 Loaded - Full Enforcement + Hamburger Menu");
