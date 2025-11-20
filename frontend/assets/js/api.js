@@ -1,411 +1,336 @@
 /**
- * Janstro Inventory System - COMPLETE FIX
- * Version: 4.0.0 - All Issues Resolved
- * Date: 2025-11-20
- *
- * ✅ FIXES:
- * - Token persistence across page reloads
- * - Proper logout clearing
- * - 401 error handling
- * - Request retry logic
+ * RBAC v7.0 - FIXED INITIALIZATION
+ * Waits for API to be ready before executing
  */
 
-const API = {
-  // ============================================
-  // CONFIGURATION
-  // ============================================
-  baseURL: (() => {
-    const origin = window.location.origin;
-    const path = "/janstro-inventory/public";
-    const urlObj = new URL(origin);
-    const currentPort = urlObj.port;
-
-    if (currentPort === "5500") {
-      return `${urlObj.protocol}//${urlObj.hostname}:8080${path}`;
-    }
-    if (currentPort === "8080") {
-      return origin + path;
-    }
-    if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
-      return `${urlObj.protocol}//${urlObj.hostname}:8080${path}`;
-    }
-    return origin + path;
-  })(),
-
-  tokenKey: "janstro_token",
-  userKey: "janstro_user",
-
-  // ============================================
-  // TOKEN MANAGEMENT - FIXED
-  // ============================================
-  getToken() {
-    const token = localStorage.getItem(this.tokenKey);
-    console.log("🔑 Getting token:", token ? "EXISTS" : "NULL");
-    return token;
+const RBAC = {
+  roleHierarchy: {
+    superadmin: 4,
+    admin: 3,
+    manager: 2,
+    staff: 1,
   },
 
-  setToken(token) {
-    if (!token) {
-      console.error("❌ Attempted to set NULL token");
-      return;
-    }
-    console.log("💾 Storing token:", token.substring(0, 20) + "...");
-    localStorage.setItem(this.tokenKey, token);
+  pagePermissions: {
+    superadmin: [
+      "dashboard",
+      "inventory",
+      "stock-movements",
+      "purchase-orders",
+      "goods-receipt",
+      "suppliers",
+      "sales-orders",
+      "reports",
+      "users",
+      "settings",
+      "audit-logs",
+    ],
+    admin: [
+      "dashboard",
+      "inventory",
+      "stock-movements",
+      "purchase-orders",
+      "goods-receipt",
+      "suppliers",
+      "sales-orders",
+      "reports",
+    ],
+    manager: [
+      "dashboard",
+      "inventory",
+      "stock-movements",
+      "purchase-orders",
+      "sales-orders",
+      "reports",
+    ],
+    staff: [
+      "dashboard",
+      "inventory",
+      "stock-movements",
+      "purchase-orders",
+      "goods-receipt",
+      "sales-orders",
+    ],
   },
 
-  removeToken() {
-    console.log("🗑️ Removing token and user data");
-    localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem(this.userKey);
+  actionPermissions: {
+    superadmin: {
+      inventory: ["view", "add", "edit", "adjust", "delete", "export"],
+      purchaseOrders: [
+        "view",
+        "create",
+        "edit",
+        "approve",
+        "cancel",
+        "receive",
+      ],
+      salesOrders: ["view", "create", "edit", "approve", "cancel", "invoice"],
+      users: ["view", "create", "edit", "delete", "deactivate"],
+    },
+    admin: {
+      inventory: ["view", "add", "edit", "adjust", "export"],
+      purchaseOrders: ["view", "create", "edit", "approve", "receive"],
+      salesOrders: ["view", "create", "edit", "approve", "invoice"],
+      users: [],
+    },
+    manager: {
+      inventory: ["view", "export"],
+      purchaseOrders: ["view", "create"],
+      salesOrders: ["view", "create"],
+      users: [],
+    },
+    staff: {
+      inventory: ["view"],
+      purchaseOrders: ["view", "create"],
+      salesOrders: ["view", "create"],
+      users: [],
+    },
   },
 
-  getUser() {
-    const userJson = localStorage.getItem(this.userKey);
-    if (!userJson) {
-      console.log("👤 No user data in storage");
+  // Wait for API to be ready
+  waitForAPI() {
+    return new Promise((resolve) => {
+      if (typeof window.API !== "undefined" && window.API.getUser) {
+        resolve();
+      } else {
+        const interval = setInterval(() => {
+          if (typeof window.API !== "undefined" && window.API.getUser) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 50);
+
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          clearInterval(interval);
+          console.error("❌ RBAC: API not available after 5 seconds");
+          resolve();
+        }, 5000);
+      }
+    });
+  },
+
+  getCurrentUser() {
+    if (typeof window.API === "undefined") {
+      console.error("❌ RBAC: API not loaded");
       return null;
     }
-    try {
-      const user = JSON.parse(userJson);
-      console.log("👤 User loaded:", user.username, user.role);
-      return user;
-    } catch (e) {
-      console.error("❌ Invalid user JSON:", e);
-      this.removeToken();
-      return null;
-    }
+    return window.API.getUser();
   },
 
-  setUser(user) {
-    if (!user) {
-      console.error("❌ Attempted to set NULL user");
-      return;
+  hasPageAccess(pageName, userRole) {
+    if (!pageName || !userRole) return false;
+
+    const role = userRole.toLowerCase();
+    const allowedPages = this.pagePermissions[role];
+
+    if (!allowedPages) {
+      console.warn(`RBAC: Unknown role "${role}"`);
+      return false;
     }
-    console.log("💾 Storing user:", user.username, user.role);
-    localStorage.setItem(this.userKey, JSON.stringify(user));
+
+    return allowedPages.includes(pageName);
   },
 
-  isAuthenticated() {
-    const token = this.getToken();
-    const user = this.getUser();
-    const authenticated = !!(token && user);
+  can(role, module, action) {
+    if (!role || !module || !action) return false;
+
+    role = role.toLowerCase();
+    const roleActions = this.actionPermissions[role];
+    if (!roleActions) return false;
+
+    const moduleActions = roleActions[module];
+    if (!moduleActions) return false;
+
+    return moduleActions.includes(action);
+  },
+
+  async enforcePage() {
+    // Wait for API to be ready
+    await this.waitForAPI();
+
+    const user = this.getCurrentUser();
+
+    if (!user || !user.role) {
+      console.warn("RBAC: No user found, redirecting to login");
+      window.location.href = "index.html";
+      return false;
+    }
+
+    const path = window.location.pathname.split("/").pop();
+    const pageName = path.replace(".html", "");
+
+    if (pageName === "index" || pageName === "") {
+      return true;
+    }
+
+    if (!this.hasPageAccess(pageName, user.role)) {
+      console.warn(
+        `RBAC: User "${user.username}" (${user.role}) denied access to "${pageName}"`
+      );
+      alert(
+        `Access Denied\n\nYou don't have permission to access this page.\n\nYour role: ${user.role.toUpperCase()}`
+      );
+      window.location.href = "dashboard.html";
+      return false;
+    }
+
     console.log(
-      "🔒 Authentication check:",
-      authenticated ? "✅ VALID" : "❌ INVALID"
+      `✅ RBAC: User "${user.username}" (${user.role}) granted access to "${pageName}"`
     );
-    return authenticated;
+    return true;
   },
 
-  // ============================================
-  // HTTP REQUEST HANDLER - FIXED
-  // ============================================
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+  filterSidebar() {
+    const user = this.getCurrentUser();
+    if (!user || !user.role) return;
 
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    };
+    const menuItems = document.querySelectorAll(".menu-item");
 
-    // Add token if exists (except for login)
-    if (!endpoint.includes("/auth/login")) {
-      const token = this.getToken();
-      if (token) {
-        config.headers["Authorization"] = `Bearer ${token}`;
-        console.log("📤 Sending request with token");
+    menuItems.forEach((item) => {
+      const href = item.getAttribute("href");
+      if (!href) return;
+
+      const pageName = href.replace(".html", "").split("/").pop();
+
+      if (!this.hasPageAccess(pageName, user.role)) {
+        item.style.display = "none";
       } else {
-        console.warn("⚠️ No token found for authenticated request");
+        item.style.display = "";
       }
-    }
-
-    console.log(`📤 ${options.method || "GET"} ${url}`);
-
-    try {
-      const response = await fetch(url, config);
-      console.log(`📥 Response ${response.status}`);
-
-      // Handle 401 - Token expired or invalid
-      if (response.status === 401) {
-        console.warn("⚠️ 401 Unauthorized - Clearing session");
-        this.removeToken();
-
-        // Only redirect if not already on login page
-        if (!window.location.pathname.includes("index.html")) {
-          console.log("🔄 Redirecting to login");
-          window.location.href = "/janstro-inventory/frontend/index.html";
-        }
-        throw new Error("Session expired");
-      }
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        console.error("❌ Request failed:", data.message || response.status);
-        throw new Error(data.message || `Request failed: ${response.status}`);
-      }
-
-      console.log("✅ Request successful");
-      return data;
-    } catch (error) {
-      console.error("💥 API Error:", error.message);
-      throw error;
-    }
-  },
-
-  async get(endpoint) {
-    return this.request(endpoint, { method: "GET" });
-  },
-
-  async post(endpoint, data) {
-    return this.request(endpoint, {
-      method: "POST",
-      body: JSON.stringify(data),
     });
   },
 
-  async put(endpoint, data) {
-    return this.request(endpoint, {
-      method: "PUT",
-      body: JSON.stringify(data),
+  enforceActions(moduleName, actionMap) {
+    const user = this.getCurrentUser();
+    if (!user || !user.role) return;
+
+    const role = user.role.toLowerCase();
+
+    Object.keys(actionMap).forEach((action) => {
+      const selector = actionMap[action];
+
+      if (!this.can(role, moduleName, action)) {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach((el) => {
+          el.style.display = "none";
+          el.disabled = true;
+        });
+      }
     });
   },
 
-  async delete(endpoint) {
-    return this.request(endpoint, { method: "DELETE" });
-  },
+  displayRoleBadge() {
+    const user = this.getCurrentUser();
+    if (!user) return;
 
-  // ============================================
-  // AUTH - COMPLETE FIX
-  // ============================================
-  async login(username, password) {
-    try {
-      console.log("🔐 Attempting login:", username);
-
-      const response = await this.post("/auth/login", { username, password });
-
-      console.log("📥 Login response:", response);
-
-      if (response.success && response.data) {
-        // Store token and user data
-        this.setToken(response.data.token);
-        this.setUser(response.data.user);
-
-        console.log("✅ Login successful - Session established");
-
-        // Verify storage worked
-        const verifyToken = this.getToken();
-        const verifyUser = this.getUser();
-
-        if (!verifyToken || !verifyUser) {
-          console.error("❌ CRITICAL: Token/User not stored properly!");
-          return {
-            success: false,
-            message: "Failed to store session data",
-          };
-        }
-
-        console.log("✅ Session verified in localStorage");
-        return response;
-      } else {
-        console.error("❌ Login failed:", response.message);
-        return response;
-      }
-    } catch (error) {
-      console.error("❌ Login error:", error);
-      return {
-        success: false,
-        message: error.message || "Login failed",
-      };
+    const userInfo = document.querySelector(".user-info");
+    if (userInfo && !document.getElementById("roleBadge")) {
+      const badge = document.createElement("span");
+      badge.id = "roleBadge";
+      badge.className = "badge bg-primary ms-2";
+      badge.textContent = user.role.toUpperCase();
+      badge.style.fontSize = "11px";
+      badge.style.padding = "6px 12px";
+      badge.style.borderRadius = "20px";
+      userInfo.insertBefore(badge, userInfo.firstChild);
     }
   },
 
-  logout() {
-    console.log("👋 Logging out");
-    this.removeToken();
-    window.location.href = "/janstro-inventory/frontend/index.html";
+  initHamburgerMenu() {
+    if (!document.querySelector(".mobile-menu-toggle")) {
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "mobile-menu-toggle";
+      toggleBtn.innerHTML = '<i class="bi bi-list"></i>';
+      toggleBtn.setAttribute("aria-label", "Toggle menu");
+      document.body.prepend(toggleBtn);
+
+      const style = document.createElement("style");
+      style.textContent = `
+        .mobile-menu-toggle {
+          display: none;
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          z-index: 1001;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          border: none;
+          padding: 10px 15px;
+          border-radius: 8px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .sidebar.mobile-hidden {
+          transform: translateX(-100%);
+        }
+
+        .sidebar.mobile-show {
+          transform: translateX(0);
+        }
+
+        @media (max-width: 768px) {
+          .mobile-menu-toggle {
+            display: block;
+          }
+          
+          .sidebar {
+            transition: transform 0.3s ease;
+          }
+          
+          .main-content {
+            margin-left: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const toggleBtn = document.querySelector(".mobile-menu-toggle");
+    const sidebar = document.querySelector(".sidebar");
+
+    if (toggleBtn && sidebar) {
+      toggleBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("mobile-show");
+        sidebar.classList.toggle("mobile-hidden");
+      });
+
+      document.addEventListener("click", (e) => {
+        if (window.innerWidth <= 768) {
+          if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+            sidebar.classList.add("mobile-hidden");
+            sidebar.classList.remove("mobile-show");
+          }
+        }
+      });
+    }
   },
 
-  async getCurrentUser() {
-    return this.get("/auth/me");
-  },
+  async init() {
+    console.log("🔒 RBAC System v7.0 Initializing...");
 
-  // ============================================
-  // INVENTORY
-  // ============================================
-  async getInventory() {
-    return this.get("/inventory");
-  },
+    // Wait for API
+    await this.waitForAPI();
 
-  async getItem(id) {
-    return this.get(`/inventory/${id}`);
-  },
+    const hasAccess = await this.enforcePage();
+    if (!hasAccess) return;
 
-  async getInventoryStatus() {
-    return this.get("/inventory/status");
-  },
+    this.filterSidebar();
+    this.displayRoleBadge();
+    this.initHamburgerMenu();
 
-  async checkStock(id) {
-    return this.get(`/inventory/check-stock?item_id=${id}`);
-  },
-
-  async getLowStockItems() {
-    return this.get("/inventory/low-stock");
-  },
-
-  async getStockMovements(filters = {}) {
-    const params = new URLSearchParams(filters);
-    return this.get(`/inventory/movements?${params}`);
-  },
-
-  async getStockMovementsSummary() {
-    return this.get("/inventory/movements/summary");
-  },
-
-  // ============================================
-  // PURCHASE ORDERS
-  // ============================================
-  async getPurchaseOrders() {
-    return this.get("/purchase-orders");
-  },
-
-  async getPurchaseOrder(id) {
-    return this.get(`/purchase-orders/${id}`);
-  },
-
-  async createPurchaseOrder(data) {
-    return this.post("/purchase-orders", data);
-  },
-
-  async receiveGoods(id, data) {
-    return this.post(`/purchase-orders/receive/${id}`, data);
-  },
-
-  async getPendingPurchaseOrders() {
-    return this.get("/purchase-orders?status=pending");
-  },
-
-  // ============================================
-  // SALES ORDERS
-  // ============================================
-  async getSalesOrders() {
-    return this.get("/sales-orders");
-  },
-
-  async getSalesOrder(id) {
-    return this.get(`/sales-orders/${id}`);
-  },
-
-  async createSalesOrder(data) {
-    return this.post("/sales-orders", data);
-  },
-
-  async processInvoice(id, data) {
-    return this.post(`/sales-orders/invoice/${id}`, data);
-  },
-
-  async getPendingSalesOrders() {
-    return this.get("/sales-orders?status=pending");
-  },
-
-  // ============================================
-  // SUPPLIERS
-  // ============================================
-  async getSuppliers() {
-    return this.get("/suppliers");
-  },
-
-  async getSupplier(id) {
-    return this.get(`/suppliers/${id}`);
-  },
-
-  async createSupplier(data) {
-    return this.post("/suppliers", data);
-  },
-
-  async updateSupplier(id, data) {
-    return this.put(`/suppliers/${id}`, data);
-  },
-
-  // ============================================
-  // CUSTOMERS
-  // ============================================
-  async getCustomers() {
-    return this.get("/customers");
-  },
-
-  async getCustomer(id) {
-    return this.get(`/customers/${id}`);
-  },
-
-  async createCustomer(data) {
-    return this.post("/customers", data);
-  },
-
-  async updateCustomer(id, data) {
-    return this.put(`/customers/${id}`, data);
-  },
-
-  // ============================================
-  // USER MANAGEMENT
-  // ============================================
-  async getUsers() {
-    return this.get("/users");
-  },
-
-  async createUser(data) {
-    return this.post("/users", data);
-  },
-
-  async updateUser(id, data) {
-    return this.put(`/users/${id}`, data);
-  },
-
-  async deactivateUser(id) {
-    return this.delete(`/users/${id}`);
-  },
-
-  // ============================================
-  // REPORTS
-  // ============================================
-  async getDashboardReport() {
-    return this.get("/reports/dashboard");
-  },
-
-  async getInventoryReport(filters = {}) {
-    const params = new URLSearchParams(filters);
-    return this.get(`/reports/inventory?${params}`);
-  },
-
-  async getStockMovementReport(filters = {}) {
-    const params = new URLSearchParams(filters);
-    return this.get(`/reports/stock-movements?${params}`);
-  },
-
-  async getSalesReport(filters = {}) {
-    const params = new URLSearchParams(filters);
-    return this.get(`/reports/sales?${params}`);
-  },
-
-  // ============================================
-  // HEALTH CHECK
-  // ============================================
-  async healthCheck() {
-    return this.get("/health");
+    console.log("✅ RBAC System Initialized Successfully");
   },
 };
 
-// ============================================
-// STARTUP DIAGNOSTICS
-// ============================================
-console.log("✅ API v4.0.0 loaded:", {
-  baseURL: API.baseURL,
-  authenticated: API.isAuthenticated(),
-  token_exists: !!API.getToken(),
-  user_exists: !!API.getUser(),
-});
+// Auto-initialize when DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => RBAC.init());
+} else {
+  RBAC.init();
+}
 
-// Expose globally
-window.API = API;
+window.RBAC = RBAC;
+
+console.log("✅ RBAC Module v7.0 Loaded");
