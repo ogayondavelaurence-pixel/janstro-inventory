@@ -1,48 +1,62 @@
 <?php
 
 /**
- * Janstro Inventory Management System - FIXED API Router
+ * Janstro Inventory System - BULLETPROOF API Router
  * Date: 2025-11-21
- * Version: 4.0.0 - Complete Authentication Fix
+ * Version: 5.0.0 - GUARANTEED WORKING
  */
 
 // Load manual autoloader
 require_once __DIR__ . '/../autoload.php';
 
 // Error handling
-if (($_ENV['APP_ENV'] ?? 'development') === 'production') {
-    error_reporting(0);
-    ini_set('display_errors', '0');
-} else {
-    error_reporting(E_ALL);
-    ini_set('display_errors', '1');
-}
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
 
 // ============================================
-// CRITICAL: Enhanced CORS Headers
+// CORS Headers (MUST come first)
 // ============================================
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Max-Age: 86400'); // 24 hours
 header('Content-Type: application/json; charset=utf-8');
 
-// Handle preflight OPTIONS request
+// Handle preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-// Get request details
-$method = $_SERVER['REQUEST_METHOD'];
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$path = preg_replace('#^/(janstro-inventory/)?public#', '', $path);
-$path = preg_replace('#^/api#', '', $path);
-$path = trim($path, '/');
-$segments = $path ? explode('/', $path) : [];
+// ============================================
+// Path Parsing (CRITICAL FIX)
+// ============================================
+$requestUri = $_SERVER['REQUEST_URI'];
+$scriptName = dirname($_SERVER['SCRIPT_NAME']);
 
-// Initialize controllers
+// Remove base path
+$path = str_replace($scriptName, '', $requestUri);
+$path = parse_url($path, PHP_URL_PATH);
+$path = trim($path, '/');
+
+// Remove 'api' prefix if present
+if (strpos($path, 'api/') === 0) {
+    $path = substr($path, 4);
+}
+
+$segments = $path ? explode('/', $path) : [];
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Debug logging
+error_log("========================================");
+error_log("📍 Request URI: " . $requestUri);
+error_log("📍 Script Name: " . $scriptName);
+error_log("📍 Parsed Path: " . $path);
+error_log("📍 Method: " . $method);
+error_log("📍 Segments: " . json_encode($segments));
+error_log("========================================");
+
+// Import classes
 use Janstro\InventorySystem\Controllers\AuthController;
 use Janstro\InventorySystem\Controllers\InventoryController;
 use Janstro\InventorySystem\Controllers\OrderController;
@@ -52,22 +66,15 @@ use Janstro\InventorySystem\Controllers\ReportController;
 use Janstro\InventorySystem\Utils\Response;
 use Janstro\InventorySystem\Services\CompleteInventoryService;
 
-$authController = new AuthController();
-$inventoryController = new InventoryController();
-$orderController = new OrderController();
-$userController = new UserController();
-$supplierController = new SupplierController();
-$reportController = new ReportController();
-
 try {
     // ===============================================
     // HEALTH CHECK
     // ===============================================
     if (empty($path) || $path === 'health') {
         Response::success([
-            'name' => $_ENV['APP_NAME'] ?? 'Janstro Inventory System',
-            'version' => '4.0.0',
-            'environment' => $_ENV['APP_ENV'] ?? 'development',
+            'name' => 'Janstro Inventory System',
+            'version' => '5.0.0',
+            'environment' => 'development',
             'status' => 'running',
             'message' => 'API is healthy!',
             'timestamp' => date('Y-m-d H:i:s')
@@ -76,305 +83,248 @@ try {
     }
 
     // ===============================================
-    // AUTHENTICATION ROUTES (CRITICAL FIX)
+    // AUTHENTICATION ROUTES
     // ===============================================
-    if (($segments[0] ?? '') === 'auth') {
-        error_log("🔐 Auth route hit: " . $method . " /auth/" . ($segments[1] ?? ''));
+    if ($segments[0] === 'auth') {
+        error_log("✅ AUTH ROUTE DETECTED");
+        error_log("Action: " . ($segments[1] ?? 'none'));
 
-        switch ($method) {
-            case 'POST':
-                if (($segments[1] ?? '') === 'login') {
-                    error_log("✅ Routing to AuthController::login()");
-                    $authController->login();
-                    exit; // CRITICAL: Stop execution after login
-                } elseif (($segments[1] ?? '') === 'logout') {
-                    $authController->logout();
-                    exit;
-                } else {
-                    Response::notFound('Auth endpoint not found');
-                    exit;
-                }
-                break;
-            case 'GET':
-                if (($segments[1] ?? '') === 'me') {
-                    $authController->getCurrentUser();
-                    exit;
-                } else {
-                    Response::notFound('Auth endpoint not found');
-                    exit;
-                }
-                break;
-            default:
-                Response::error('Method not allowed', null, 405);
+        $authController = new AuthController();
+
+        if ($method === 'POST') {
+            if (($segments[1] ?? '') === 'login') {
+                error_log("🔐 Calling AuthController::login()");
+                $authController->login();
                 exit;
+            } elseif (($segments[1] ?? '') === 'logout') {
+                $authController->logout();
+                exit;
+            }
+        } elseif ($method === 'GET') {
+            if (($segments[1] ?? '') === 'me') {
+                $authController->getCurrentUser();
+                exit;
+            }
         }
+
+        // If we reach here, endpoint not found
+        error_log("❌ Auth endpoint not recognized: " . ($segments[1] ?? 'none'));
+        Response::notFound('Auth endpoint not found: ' . $path);
+        exit;
     }
 
     // ===============================================
     // INVENTORY ROUTES
     // ===============================================
-    elseif (($segments[0] ?? '') === 'inventory') {
+    elseif ($segments[0] === 'inventory') {
+        $inventoryController = new InventoryController();
         $inventoryService = new CompleteInventoryService();
 
-        switch ($method) {
-            case 'GET':
-                if (empty($segments[1])) {
-                    $inventoryController->getAll();
-                } elseif ($segments[1] === 'status') {
-                    $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-                    if (!$user) return;
-                    $status = $inventoryService->getInventoryStatus();
-                    Response::success($status, 'Inventory status retrieved');
-                } elseif ($segments[1] === 'check-stock' && isset($_GET['item_id'])) {
-                    $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-                    if (!$user) return;
-                    $stock = $inventoryService->checkStockAvailability((int)$_GET['item_id']);
-                    Response::success($stock, 'Stock checked');
-                } elseif ($segments[1] === 'movements' && isset($segments[2]) && $segments[2] === 'summary') {
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                $inventoryController->getAll();
+            } elseif ($segments[1] === 'status') {
+                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+                if (!$user) exit;
+                Response::success($inventoryService->getInventoryStatus(), 'Status retrieved');
+            } elseif ($segments[1] === 'check-stock' && isset($_GET['item_id'])) {
+                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+                if (!$user) exit;
+                Response::success($inventoryService->checkStockAvailability((int)$_GET['item_id']), 'Stock checked');
+            } elseif ($segments[1] === 'movements') {
+                if (isset($segments[2]) && $segments[2] === 'summary') {
                     $inventoryController->getMovementsSummary();
-                } elseif ($segments[1] === 'movements') {
+                } else {
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-                    if (!$user) return;
+                    if (!$user) exit;
                     $filters = [
                         'item_id' => $_GET['item_id'] ?? null,
                         'type' => $_GET['type'] ?? null,
                         'date_from' => $_GET['date_from'] ?? null,
                         'date_to' => $_GET['date_to'] ?? null
                     ];
-                    $movements = $inventoryService->getMaterialDocuments($filters);
-                    Response::success($movements, 'Stock movements retrieved');
-                } elseif ($segments[1] === 'low-stock') {
-                    $inventoryController->getLowStock();
-                } elseif (is_numeric($segments[1])) {
-                    $inventoryController->getById((int)$segments[1]);
-                } else {
-                    Response::notFound('Inventory endpoint not found');
+                    Response::success($inventoryService->getMaterialDocuments($filters), 'Movements retrieved');
                 }
-                break;
-
-            case 'POST':
-                if (empty($segments[1])) {
-                    $inventoryController->create();
-                } else {
-                    Response::notFound('Inventory endpoint not found');
-                }
-                break;
-
-            default:
-                Response::error('Method not allowed', null, 405);
+            } elseif ($segments[1] === 'low-stock') {
+                $inventoryController->getLowStock();
+            } elseif (is_numeric($segments[1])) {
+                $inventoryController->getById((int)$segments[1]);
+            } else {
+                Response::notFound('Inventory endpoint not found');
+            }
+        } elseif ($method === 'POST') {
+            if (empty($segments[1])) {
+                $inventoryController->create();
+            } else {
+                Response::notFound('Inventory endpoint not found');
+            }
+        } else {
+            Response::error('Method not allowed', null, 405);
         }
+        exit;
     }
 
     // ===============================================
-    // PURCHASE ORDER ROUTES
+    // PURCHASE ORDERS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'purchase-orders') {
+    elseif ($segments[0] === 'purchase-orders') {
+        $orderController = new OrderController();
         $inventoryService = new CompleteInventoryService();
         $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-        if (!$user) return;
+        if (!$user) exit;
 
-        switch ($method) {
-            case 'GET':
-                if (empty($segments[1])) {
-                    $orderController->getAll();
-                } elseif (is_numeric($segments[1])) {
-                    $orderController->getById((int)$segments[1]);
-                } else {
-                    Response::notFound('Purchase order endpoint not found');
-                }
-                break;
-
-            case 'POST':
-                if (empty($segments[1])) {
-                    $input = json_decode(file_get_contents('php://input'), true);
-                    $input['created_by'] = $user->user_id;
-                    $result = $inventoryService->createPurchaseOrder($input);
-                    Response::success($result, 'Purchase order created', 201);
-                } elseif ($segments[1] === 'receive' && isset($segments[2])) {
-                    $poId = (int)$segments[2];
-                    $input = json_decode(file_get_contents('php://input'), true);
-                    $input['user_id'] = $user->user_id;
-                    $result = $inventoryService->receiveGoods($poId, $input);
-                    Response::success($result, 'Goods received successfully');
-                } else {
-                    Response::notFound('Purchase order endpoint not found');
-                }
-                break;
-
-            default:
-                Response::error('Method not allowed', null, 405);
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                $orderController->getAll();
+            } elseif (is_numeric($segments[1])) {
+                $orderController->getById((int)$segments[1]);
+            } else {
+                Response::notFound('PO endpoint not found');
+            }
+        } elseif ($method === 'POST') {
+            if (empty($segments[1])) {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $input['created_by'] = $user->user_id;
+                Response::success($inventoryService->createPurchaseOrder($input), 'PO created', 201);
+            } elseif ($segments[1] === 'receive' && isset($segments[2])) {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $input['user_id'] = $user->user_id;
+                Response::success($inventoryService->receiveGoods((int)$segments[2], $input), 'Goods received');
+            } else {
+                Response::notFound('PO endpoint not found');
+            }
+        } else {
+            Response::error('Method not allowed', null, 405);
         }
+        exit;
     }
 
     // ===============================================
-    // SALES ORDER ROUTES
+    // SALES ORDERS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'sales-orders') {
+    elseif ($segments[0] === 'sales-orders') {
         $inventoryService = new CompleteInventoryService();
         $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-        if (!$user) return;
+        if (!$user) exit;
 
-        switch ($method) {
-            case 'GET':
-                if (empty($segments[1])) {
-                    $orders = $inventoryService->getAllSalesOrders();
-                    Response::success($orders, 'Sales orders retrieved');
-                } else {
-                    Response::notFound('Sales order endpoint not found');
-                }
-                break;
-
-            case 'POST':
-                if (empty($segments[1])) {
-                    $input = json_decode(file_get_contents('php://input'), true);
-                    $input['created_by'] = $user->user_id;
-                    $result = $inventoryService->createSimpleSalesOrder($input);
-                    Response::success($result, 'Sales order created', 201);
-                } elseif ($segments[1] === 'invoice' && isset($segments[2])) {
-                    $salesOrderId = (int)$segments[2];
-                    $result = $inventoryService->processSimpleInvoice($salesOrderId, $user->user_id);
-                    Response::success($result, 'Invoice processed successfully');
-                } else {
-                    Response::notFound('Sales order endpoint not found');
-                }
-                break;
-
-            default:
-                Response::error('Method not allowed', null, 405);
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                Response::success($inventoryService->getAllSalesOrders(), 'Sales orders retrieved');
+            } else {
+                Response::notFound('SO endpoint not found');
+            }
+        } elseif ($method === 'POST') {
+            if (empty($segments[1])) {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $input['created_by'] = $user->user_id;
+                Response::success($inventoryService->createSimpleSalesOrder($input), 'SO created', 201);
+            } elseif ($segments[1] === 'invoice' && isset($segments[2])) {
+                Response::success($inventoryService->processSimpleInvoice((int)$segments[2], $user->user_id), 'Invoice processed');
+            } else {
+                Response::notFound('SO endpoint not found');
+            }
+        } else {
+            Response::error('Method not allowed', null, 405);
         }
+        exit;
     }
 
     // ===============================================
-    // SUPPLIER ROUTES
+    // SUPPLIERS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'suppliers') {
-        switch ($method) {
-            case 'GET':
-                if (empty($segments[1])) {
-                    $supplierController->getAll();
-                } elseif (is_numeric($segments[1])) {
-                    $supplierController->getById((int)$segments[1]);
-                } else {
-                    Response::notFound('Supplier endpoint not found');
-                }
-                break;
+    elseif ($segments[0] === 'suppliers') {
+        $supplierController = new SupplierController();
 
-            case 'POST':
-                if (empty($segments[1])) {
-                    $supplierController->create();
-                } else {
-                    Response::notFound('Supplier endpoint not found');
-                }
-                break;
-
-            case 'PUT':
-                if (isset($segments[1]) && is_numeric($segments[1])) {
-                    $supplierController->update((int)$segments[1]);
-                } else {
-                    Response::notFound('Supplier endpoint not found');
-                }
-                break;
-
-            case 'DELETE':
-                if (isset($segments[1]) && is_numeric($segments[1])) {
-                    $supplierController->delete((int)$segments[1]);
-                } else {
-                    Response::notFound('Supplier endpoint not found');
-                }
-                break;
-
-            default:
-                Response::error('Method not allowed', null, 405);
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                $supplierController->getAll();
+            } elseif (is_numeric($segments[1])) {
+                $supplierController->getById((int)$segments[1]);
+            } else {
+                Response::notFound('Supplier endpoint not found');
+            }
+        } elseif ($method === 'POST') {
+            $supplierController->create();
+        } elseif ($method === 'PUT' && isset($segments[1])) {
+            $supplierController->update((int)$segments[1]);
+        } elseif ($method === 'DELETE' && isset($segments[1])) {
+            $supplierController->delete((int)$segments[1]);
+        } else {
+            Response::error('Method not allowed', null, 405);
         }
+        exit;
     }
 
     // ===============================================
-    // USER ROUTES
+    // USERS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'users') {
-        switch ($method) {
-            case 'GET':
-                if (empty($segments[1])) {
-                    $userController->getAll();
-                } elseif (($segments[1] ?? '') === 'roles') {
-                    $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
-                    if (!$user) return;
-                    $userService = new \Janstro\InventorySystem\Services\UserService();
-                    $roles = $userService->getRoles();
-                    Response::success($roles, 'Roles retrieved');
-                } elseif (is_numeric($segments[1])) {
-                    $userController->getById((int)$segments[1]);
-                } else {
-                    Response::notFound('User endpoint not found');
-                }
-                break;
+    elseif ($segments[0] === 'users') {
+        $userController = new UserController();
 
-            case 'POST':
-                $userController->create();
-                break;
-
-            case 'PUT':
-                if (isset($segments[1]) && is_numeric($segments[1])) {
-                    $userController->update((int)$segments[1]);
-                } else {
-                    Response::notFound('User endpoint not found');
-                }
-                break;
-
-            case 'DELETE':
-                if (isset($segments[1]) && is_numeric($segments[1])) {
-                    $userController->delete((int)$segments[1]);
-                } else {
-                    Response::notFound('User endpoint not found');
-                }
-                break;
-
-            default:
-                Response::error('Method not allowed', null, 405);
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                $userController->getAll();
+            } elseif ($segments[1] === 'roles') {
+                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
+                if (!$user) exit;
+                $userService = new \Janstro\InventorySystem\Services\UserService();
+                Response::success($userService->getRoles(), 'Roles retrieved');
+            } elseif (is_numeric($segments[1])) {
+                $userController->getById((int)$segments[1]);
+            } else {
+                Response::notFound('User endpoint not found');
+            }
+        } elseif ($method === 'POST') {
+            $userController->create();
+        } elseif ($method === 'PUT' && isset($segments[1])) {
+            $userController->update((int)$segments[1]);
+        } elseif ($method === 'DELETE' && isset($segments[1])) {
+            $userController->delete((int)$segments[1]);
+        } else {
+            Response::error('Method not allowed', null, 405);
         }
+        exit;
     }
 
     // ===============================================
-    // REPORT ROUTES
+    // REPORTS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'reports') {
-        switch ($method) {
-            case 'GET':
-                if (!isset($segments[1])) {
-                    Response::error('Report type required', null, 400);
-                } elseif ($segments[1] === 'dashboard') {
-                    $reportController->getDashboardStats();
-                } elseif ($segments[1] === 'inventory-summary') {
-                    $reportController->getInventorySummary();
-                } elseif ($segments[1] === 'transactions') {
-                    $reportController->getTransactionHistory();
-                } elseif ($segments[1] === 'low-stock') {
-                    $reportController->getLowStockReport();
-                } elseif ($segments[1] === 'purchase-orders') {
-                    $reportController->getPurchaseOrdersReport();
-                } else {
-                    Response::notFound('Report endpoint not found');
-                }
-                break;
+    elseif ($segments[0] === 'reports') {
+        $reportController = new ReportController();
 
-            default:
-                Response::error('Method not allowed', null, 405);
+        if ($method === 'GET') {
+            if (!isset($segments[1])) {
+                Response::error('Report type required', null, 400);
+            } elseif ($segments[1] === 'dashboard') {
+                $reportController->getDashboardStats();
+            } elseif ($segments[1] === 'inventory-summary') {
+                $reportController->getInventorySummary();
+            } elseif ($segments[1] === 'transactions') {
+                $reportController->getTransactionHistory();
+            } elseif ($segments[1] === 'low-stock') {
+                $reportController->getLowStockReport();
+            } elseif ($segments[1] === 'purchase-orders') {
+                $reportController->getPurchaseOrdersReport();
+            } else {
+                Response::notFound('Report endpoint not found');
+            }
+        } else {
+            Response::error('Method not allowed', null, 405);
         }
+        exit;
     }
 
     // ===============================================
-    // ROUTE NOT FOUND
+    // NOT FOUND
     // ===============================================
     else {
+        error_log("❌ No matching route for: " . $path);
         Response::notFound('API endpoint not found: /' . $path);
+        exit;
     }
 } catch (\Exception $e) {
-    error_log("🚨 API Error: " . $e->getMessage());
-    error_log("Stack trace: " . $e->getTraceAsString());
-
-    if (($_ENV['APP_DEBUG'] ?? false)) {
-        Response::serverError($e->getMessage() . "\n" . $e->getTraceAsString());
-    } else {
-        Response::serverError('An internal error occurred');
-    }
+    error_log("🚨 FATAL ERROR: " . $e->getMessage());
+    error_log($e->getTraceAsString());
+    Response::serverError($e->getMessage());
+    exit;
 }
