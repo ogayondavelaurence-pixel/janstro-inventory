@@ -518,8 +518,14 @@
     <!-- API & Utils -->
     <script src="assets/js/api.js"></script>
     <script src="assets/js/utils.js"></script>
-
+    <script src="assets/js/rbac.js"></script>
+    
     <script>
+          // Enforce RBAC on page load
+        document.addEventListener('DOMContentLoaded', () => {
+        RBAC.init();
+        });
+        
         // Check authentication
         if (!API.isAuthenticated()) {
             window.location.href = 'index.html';

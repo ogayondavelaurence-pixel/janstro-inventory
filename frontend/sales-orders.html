@@ -497,8 +497,14 @@
     <!-- API & Utils -->
     <script src="assets/js/api.js"></script>
     <script src="assets/js/utils.js"></script>
-
+    <script src="assets/js/rbac.js"></script>
+    
     <script>
+          // Enforce RBAC on page load
+        document.addEventListener('DOMContentLoaded', () => {
+        RBAC.init();
+        });
+        
         // Defensive: ensure Utils and API exist
         if (typeof API === 'undefined') {
             console.error('API object not found. Make sure assets/js/api.js is loaded.');
