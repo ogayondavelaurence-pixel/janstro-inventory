@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Janstro Prime - Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
@@ -12,9 +12,9 @@
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
             min-height: 100vh;
-            overflow-x: hidden;
             background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
             position: relative;
+            overflow-x: hidden;
         }
 
         /* Solar Background */
@@ -26,26 +26,27 @@
             height: 100%;
             z-index: 0;
             overflow: hidden;
+            pointer-events: none;
         }
 
         .sun {
             position: absolute;
             top: 15%;
             right: 15%;
-            width: clamp(80px, 15vw, 180px);
-            height: clamp(80px, 15vw, 180px);
+            width: clamp(60px, 12vw, 180px);
+            height: clamp(60px, 12vw, 180px);
             background: radial-gradient(circle, #ffd700 0%, #ff8c00 70%, transparent 100%);
             border-radius: 50%;
             animation: pulse 4s ease-in-out infinite;
-            box-shadow: 0 0 clamp(40px, 8vw, 80px) rgba(255, 215, 0, 0.8);
+            box-shadow: 0 0 clamp(30px, 6vw, 80px) rgba(255, 215, 0, 0.8);
         }
 
         .sun-rays {
             position: absolute;
             top: 15%;
             right: 15%;
-            width: clamp(80px, 15vw, 180px);
-            height: clamp(80px, 15vw, 180px);
+            width: clamp(60px, 12vw, 180px);
+            height: clamp(60px, 12vw, 180px);
             animation: rotate 20s linear infinite;
         }
 
@@ -53,7 +54,7 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: clamp(120px, 25vw, 250px);
+            width: clamp(100px, 20vw, 250px);
             height: 3px;
             background: linear-gradient(90deg, rgba(255, 215, 0, 0.8) 0%, transparent 100%);
             transform-origin: 0 0;
@@ -70,8 +71,8 @@
 
         .solar-panel {
             position: absolute;
-            width: clamp(60px, 10vw, 100px);
-            height: clamp(40px, 6vw, 60px);
+            width: clamp(50px, 8vw, 100px);
+            height: clamp(35px, 5vw, 60px);
             background: linear-gradient(135deg, #1e3a5f 0%, #2c5f8d 100%);
             border: 2px solid #4a7fa7;
             border-radius: 6px;
@@ -121,14 +122,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: clamp(10px, 3vw, 20px);
+            padding: clamp(5px, 2vw, 20px);
         }
 
         .login-card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: clamp(16px, 4vw, 28px);
+            border-radius: clamp(12px, 3vw, 28px);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             width: 100%;
             max-width: min(480px, 95vw);
@@ -143,14 +143,14 @@
 
         .login-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: clamp(30px, 6vw, 50px) clamp(20px, 4vw, 35px);
+            padding: clamp(25px, 5vw, 50px) clamp(15px, 3vw, 35px);
             text-align: center;
             color: white;
         }
 
         .logo-icon {
-            font-size: clamp(48px, 10vw, 72px);
-            margin-bottom: clamp(10px, 2vw, 15px);
+            font-size: clamp(40px, 8vw, 72px);
+            margin-bottom: clamp(8px, 1.5vw, 15px);
             animation: bounce 2s ease-in-out infinite;
         }
 
@@ -160,31 +160,31 @@
         }
 
         .login-header h1 {
-            font-size: clamp(24px, 5vw, 32px);
+            font-size: clamp(20px, 4.5vw, 32px);
             font-weight: 800;
-            margin: clamp(10px, 2vw, 15px) 0 clamp(5px, 1vw, 8px);
+            margin: clamp(8px, 1.5vw, 15px) 0 clamp(4px, 0.8vw, 8px);
         }
 
         .login-header p {
-            font-size: clamp(13px, 2.5vw, 15px);
+            font-size: clamp(12px, 2.2vw, 15px);
             opacity: 0.95;
             margin: 0;
         }
 
         .login-body {
-            padding: clamp(25px, 5vw, 45px) clamp(20px, 4vw, 40px);
+            padding: clamp(20px, 4vw, 45px) clamp(15px, 3vw, 40px);
         }
 
         .form-group {
-            margin-bottom: clamp(18px, 3vw, 28px);
+            margin-bottom: clamp(15px, 2.5vw, 28px);
         }
 
         .form-label {
             display: block;
             font-weight: 700;
             color: #2c3e50;
-            margin-bottom: clamp(6px, 1.5vw, 10px);
-            font-size: clamp(13px, 2.5vw, 15px);
+            margin-bottom: clamp(5px, 1vw, 10px);
+            font-size: clamp(12px, 2.2vw, 15px);
         }
 
         .input-wrapper {
@@ -193,20 +193,20 @@
 
         .input-icon {
             position: absolute;
-            left: clamp(12px, 2.5vw, 18px);
+            left: clamp(10px, 2vw, 18px);
             top: 50%;
             transform: translateY(-50%);
             color: #667eea;
-            font-size: clamp(16px, 3vw, 20px);
+            font-size: clamp(14px, 2.5vw, 20px);
             z-index: 2;
         }
 
         .form-control {
             width: 100%;
-            padding: clamp(12px, 2.5vw, 16px) clamp(15px, 3vw, 20px) clamp(12px, 2.5vw, 16px) clamp(42px, 7vw, 54px);
+            padding: clamp(10px, 2vw, 16px) clamp(12px, 2.5vw, 20px) clamp(10px, 2vw, 16px) clamp(38px, 6vw, 54px);
             border: 2px solid #e8ecf1;
-            border-radius: clamp(10px, 2vw, 14px);
-            font-size: clamp(14px, 2.5vw, 16px);
+            border-radius: clamp(8px, 1.5vw, 14px);
+            font-size: clamp(13px, 2.2vw, 16px);
             transition: all 0.3s;
             background: #f8f9fb;
         }
@@ -220,7 +220,7 @@
 
         .password-toggle {
             position: absolute;
-            right: clamp(12px, 2.5vw, 18px);
+            right: clamp(10px, 2vw, 18px);
             top: 50%;
             transform: translateY(-50%);
             background: none;
@@ -228,9 +228,11 @@
             color: #6c757d;
             cursor: pointer;
             padding: 8px;
-            font-size: clamp(16px, 3vw, 20px);
+            font-size: clamp(14px, 2.5vw, 20px);
             z-index: 2;
             border-radius: 8px;
+            min-width: 44px;
+            min-height: 44px;
         }
 
         .password-toggle:hover {
@@ -240,26 +242,23 @@
 
         .btn-login {
             width: 100%;
-            padding: clamp(12px, 2.5vw, 16px);
+            padding: clamp(10px, 2vw, 16px);
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: clamp(10px, 2vw, 14px);
-            font-size: clamp(15px, 2.5vw, 17px);
+            border-radius: clamp(8px, 1.5vw, 14px);
+            font-size: clamp(14px, 2.2vw, 17px);
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
-            margin-top: clamp(10px, 2vw, 15px);
+            margin-top: clamp(8px, 1.5vw, 15px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            min-height: 44px;
         }
 
         .btn-login:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
-        }
-
-        .btn-login:active {
-            transform: translateY(0);
         }
 
         .btn-login:disabled {
@@ -269,9 +268,9 @@
 
         .credentials-box {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: clamp(10px, 2vw, 14px);
-            padding: clamp(15px, 3vw, 20px);
-            margin-top: clamp(18px, 3vw, 28px);
+            border-radius: clamp(8px, 1.5vw, 14px);
+            padding: clamp(12px, 2.5vw, 20px);
+            margin-top: clamp(15px, 2.5vw, 28px);
             border: 2px solid #dee2e6;
         }
 
@@ -280,22 +279,27 @@
             text-align: center;
             color: #495057;
             font-weight: 700;
-            margin-bottom: clamp(10px, 2vw, 14px);
-            font-size: clamp(12px, 2vw, 14px);
+            margin-bottom: clamp(8px, 1.5vw, 14px);
+            font-size: clamp(11px, 1.8vw, 14px);
         }
 
         .credential-item {
             display: inline-block;
             background: white;
-            padding: clamp(8px, 1.5vw, 10px) clamp(12px, 2vw, 18px);
-            border-radius: clamp(8px, 1.5vw, 10px);
-            margin: clamp(4px, 1vw, 6px);
-            font-size: clamp(11px, 2vw, 13px);
+            padding: clamp(6px, 1.2vw, 10px) clamp(10px, 1.8vw, 18px);
+            border-radius: clamp(6px, 1.2vw, 10px);
+            margin: clamp(3px, 0.8vw, 6px);
+            font-size: clamp(10px, 1.8vw, 13px);
             font-weight: 700;
             color: #667eea;
             border: 2px solid #e8ecf1;
             transition: all 0.3s;
             cursor: pointer;
+            min-width: 44px;
+            min-height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .credential-item:hover {
@@ -307,10 +311,10 @@
 
         .footer-text {
             text-align: center;
-            margin-top: clamp(20px, 4vw, 40px);
+            margin-top: clamp(15px, 3vw, 40px);
             color: rgba(255, 255, 255, 0.95);
-            font-size: clamp(12px, 2vw, 14px);
-            padding: 0 clamp(10px, 2vw, 20px);
+            font-size: clamp(11px, 1.8vw, 14px);
+            padding: 0 clamp(8px, 1.5vw, 20px);
         }
 
         .footer-text i {
@@ -319,17 +323,17 @@
         }
 
         .footer-subtext {
-            font-size: clamp(11px, 1.8vw, 13px);
+            font-size: clamp(10px, 1.5vw, 13px);
             opacity: 0.85;
-            margin-top: clamp(8px, 1.5vw, 10px);
+            margin-top: clamp(6px, 1.2vw, 10px);
         }
 
         .alert {
-            border-radius: clamp(10px, 2vw, 14px);
+            border-radius: clamp(8px, 1.5vw, 14px);
             border: none;
-            padding: clamp(12px, 2.5vw, 16px) clamp(15px, 3vw, 20px);
-            margin-bottom: clamp(18px, 3vw, 24px);
-            font-size: clamp(13px, 2vw, 15px);
+            padding: clamp(10px, 2vw, 16px) clamp(12px, 2.5vw, 20px);
+            margin-bottom: clamp(15px, 2.5vw, 24px);
+            font-size: clamp(12px, 1.8vw, 15px);
             animation: slideDown 0.5s;
         }
 
@@ -341,107 +345,58 @@
         /* Extreme Mobile (240p - 320px) */
         @media (max-width: 320px) {
             .login-card {
-                border-radius: 12px;
-                margin: 5px;
+                border-radius: 10px;
+                margin: 3px;
             }
             .login-header {
-                padding: 20px 15px;
+                padding: 18px 12px;
             }
             .login-body {
-                padding: 20px 15px;
+                padding: 15px 12px;
             }
             .credential-item {
                 display: block;
-                margin: 5px 0;
+                margin: 4px 0;
                 text-align: center;
             }
             .sun, .sun-rays {
-                width: 60px;
-                height: 60px;
+                width: 50px;
+                height: 50px;
             }
             .solar-panel {
-                width: 50px;
-                height: 35px;
+                width: 40px;
+                height: 30px;
             }
         }
 
-        /* Small Mobile (321px - 480px) */
-        @media (min-width: 321px) and (max-width: 480px) {
-            .login-card {
-                max-width: 90vw;
-            }
-        }
-
-        /* Medium Mobile (481px - 768px) */
-        @media (min-width: 481px) and (max-width: 768px) {
-            .login-card {
-                max-width: 85vw;
-            }
-        }
-
-        /* Tablet (769px - 1024px) */
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .login-card {
-                max-width: 500px;
-            }
-        }
-
-        /* Desktop (1025px - 1920px) */
-        @media (min-width: 1025px) and (max-width: 1920px) {
-            .login-card {
-                max-width: 480px;
-            }
-        }
-
-        /* 4K+ (1921px+) */
-        @media (min-width: 1921px) {
-            .login-card {
-                max-width: 600px;
-            }
-            .login-header {
-                padding: 60px 45px;
-            }
-            .login-body {
-                padding: 55px 50px;
-            }
-            .form-control {
-                font-size: 18px;
-                padding: 18px 22px 18px 60px;
-            }
-            .btn-login {
-                font-size: 19px;
-                padding: 18px;
-            }
-        }
-
-        /* Landscape Mobile */
+        /* Landscape Mode */
         @media (max-height: 500px) and (orientation: landscape) {
             .login-container {
-                padding: 10px;
+                padding: 8px;
             }
             .login-header {
-                padding: 15px 20px;
+                padding: 12px 15px;
             }
             .logo-icon {
-                font-size: 40px;
-                margin-bottom: 5px;
+                font-size: 32px;
+                margin-bottom: 4px;
             }
             .login-header h1 {
-                font-size: 20px;
-                margin: 8px 0 5px;
+                font-size: 18px;
+                margin: 6px 0 4px;
             }
             .login-body {
-                padding: 15px 20px;
+                padding: 12px 15px;
             }
             .form-group {
-                margin-bottom: 12px;
+                margin-bottom: 10px;
             }
             .credentials-box {
-                margin-top: 12px;
-                padding: 10px;
+                margin-top: 10px;
+                padding: 8px;
             }
             .footer-text {
-                margin-top: 15px;
+                margin-top: 12px;
             }
         }
     </style>
@@ -517,7 +472,7 @@
 
                 <form id="loginForm" novalidate>
                     <div class="form-group">
-                        <label class="form-label">Username</label>
+                        <label class="form-label" for="username">Username</label>
                         <div class="input-wrapper">
                             <i class="bi bi-person-fill input-icon"></i>
                             <input 
@@ -527,12 +482,13 @@
                                 placeholder="Enter username"
                                 autocomplete="username"
                                 required
+                                aria-label="Username"
                             >
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Password</label>
+                        <label class="form-label" for="password">Password</label>
                         <div class="input-wrapper">
                             <i class="bi bi-lock-fill input-icon"></i>
                             <input 
@@ -542,8 +498,9 @@
                                 placeholder="Enter password"
                                 autocomplete="current-password"
                                 required
+                                aria-label="Password"
                             >
-                            <button type="button" class="password-toggle" id="togglePassword" aria-label="Toggle password">
+                            <button type="button" class="password-toggle" id="togglePassword" aria-label="Toggle password visibility">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
@@ -558,17 +515,17 @@
                 </form>
 
                 <div class="credentials-box">
-                    <small><i class="bi bi-info-circle"></i> Test Credentials</small>
+                    <small><i class="bi bi-info-circle"></i> Test Credentials (Click to fill)</small>
                     <div style="text-align: center;">
-                        <span class="credential-item" onclick="fillCredentials('admin', 'admin123')">
+                        <button type="button" class="credential-item" onclick="fillCredentials('admin', 'admin123')" aria-label="Fill admin credentials">
                             <i class="bi bi-shield-check"></i> Admin
-                        </span>
-                        <span class="credential-item" onclick="fillCredentials('superadmin', 'admin123')">
-                            <i class="bi bi-star"></i> Super
-                        </span>
-                        <span class="credential-item" onclick="fillCredentials('staff1', 'admin123')">
+                        </button>
+                        <button type="button" class="credential-item" onclick="fillCredentials('superadmin', 'admin123')" aria-label="Fill superadmin credentials">
+                            <i class="bi bi-star"></i> SuperAdmin
+                        </button>
+                        <button type="button" class="credential-item" onclick="fillCredentials('staff1', 'admin123')" aria-label="Fill staff credentials">
                             <i class="bi bi-person"></i> Staff
-                        </span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -583,6 +540,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- CRITICAL: Load API.js BEFORE any script that uses it -->
     <script src="assets/js/api.js"></script>
     
     <script>
@@ -595,10 +553,12 @@
                 passwordInput.type = 'text';
                 icon.classList.remove('bi-eye');
                 icon.classList.add('bi-eye-slash');
+                this.setAttribute('aria-label', 'Hide password');
             } else {
                 passwordInput.type = 'password';
                 icon.classList.remove('bi-eye-slash');
                 icon.classList.add('bi-eye');
+                this.setAttribute('aria-label', 'Show password');
             }
         });
 
@@ -606,6 +566,7 @@
         function fillCredentials(username, password) {
             document.getElementById('username').value = username;
             document.getElementById('password').value = password;
+            document.getElementById('username').focus();
         }
 
         // Handle login
@@ -636,7 +597,10 @@
                 if (response && response.success) {
                     showAlert('✅ Login successful! Redirecting...', 'success');
                     
-                    // Verify token was stored
+                    // CRITICAL: Wait for storage to complete
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Verify storage
                     const storedToken = API.getToken();
                     const storedUser = API.getUser();
                     
@@ -650,20 +614,20 @@
                         return;
                     }
                     
-                    // Wait briefly to show success message
+                    // Redirect after brief delay
                     setTimeout(() => {
                         console.log("🔄 Redirecting to dashboard...");
                         window.location.href = 'dashboard.html';
                     }, 1000);
                 } else {
                     const errorMsg = (response && response.message) || 'Invalid credentials';
-                    showAlert(errorMsg, 'danger');
+                    showAlert('❌ ' + errorMsg, 'danger');
                     loginBtn.disabled = false;
                     loginText.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
                 }
             } catch (error) {
                 console.error('❌ Login error:', error);
-                showAlert('Connection error. Please check if backend is running.', 'danger');
+                showAlert('❌ Connection error. Please ensure backend is running.', 'danger');
                 loginBtn.disabled = false;
                 loginText.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
             }
@@ -687,10 +651,17 @@
         }
 
         // Check if already logged in
-        if (API.isAuthenticated()) {
-            console.log("✅ Already authenticated, redirecting to dashboard");
-            window.location.href = 'dashboard.html';
-        }
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof API === 'undefined') {
+                showAlert('❌ System Error: API Module failed to load', 'danger');
+                return;
+            }
+
+            if (API.isAuthenticated()) {
+                console.log("✅ Already authenticated, redirecting to dashboard");
+                window.location.href = 'dashboard.html';
+            }
+        });
     </script>
 </body>
 </html>
