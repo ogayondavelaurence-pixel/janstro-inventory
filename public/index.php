@@ -1,9 +1,9 @@
 <?php
 
 /**
- * Janstro Inventory Management System - COMPLETE FIXED API Router
- * Date: 2025-11-18
- * Version: 3.0.0 - All endpoints working (fixed routing/blocks)
+ * Janstro Inventory Management System - FIXED API Router
+ * Date: 2025-11-21
+ * Version: 4.0.0 - Complete Authentication Fix
  */
 
 // Load manual autoloader
@@ -18,12 +18,17 @@ if (($_ENV['APP_ENV'] ?? 'development') === 'production') {
     ini_set('display_errors', '1');
 }
 
-// CORS headers
+// ============================================
+// CRITICAL: Enhanced CORS Headers
+// ============================================
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Content-Type: application/json');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Credentials: true');
+header('Access-Control-Max-Age: 86400'); // 24 hours
+header('Content-Type: application/json; charset=utf-8');
 
+// Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
@@ -61,7 +66,7 @@ try {
     if (empty($path) || $path === 'health') {
         Response::success([
             'name' => $_ENV['APP_NAME'] ?? 'Janstro Inventory System',
-            'version' => '3.0.0',
+            'version' => '4.0.0',
             'environment' => $_ENV['APP_ENV'] ?? 'development',
             'status' => 'running',
             'message' => 'API is healthy!',
@@ -71,76 +76,63 @@ try {
     }
 
     // ===============================================
-    // AUTHENTICATION ROUTES
+    // AUTHENTICATION ROUTES (CRITICAL FIX)
     // ===============================================
     if (($segments[0] ?? '') === 'auth') {
+        error_log("🔐 Auth route hit: " . $method . " /auth/" . ($segments[1] ?? ''));
+
         switch ($method) {
             case 'POST':
                 if (($segments[1] ?? '') === 'login') {
+                    error_log("✅ Routing to AuthController::login()");
                     $authController->login();
+                    exit; // CRITICAL: Stop execution after login
                 } elseif (($segments[1] ?? '') === 'logout') {
                     $authController->logout();
+                    exit;
                 } else {
                     Response::notFound('Auth endpoint not found');
+                    exit;
                 }
                 break;
             case 'GET':
                 if (($segments[1] ?? '') === 'me') {
                     $authController->getCurrentUser();
+                    exit;
                 } else {
                     Response::notFound('Auth endpoint not found');
+                    exit;
                 }
                 break;
             default:
                 Response::error('Method not allowed', null, 405);
+                exit;
         }
     }
 
     // ===============================================
-    // INVENTORY ROUTES - FIXED (delegates summary to controller)
+    // INVENTORY ROUTES
     // ===============================================
     elseif (($segments[0] ?? '') === 'inventory') {
         $inventoryService = new CompleteInventoryService();
 
         switch ($method) {
             case 'GET':
-                // GET /inventory
                 if (empty($segments[1])) {
                     $inventoryController->getAll();
-                    break;
-                }
-
-                // GET /inventory/status
-                if ($segments[1] === 'status') {
+                } elseif ($segments[1] === 'status') {
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
                     $status = $inventoryService->getInventoryStatus();
                     Response::success($status, 'Inventory status retrieved');
-                    break;
-                }
-
-                // GET /inventory/check-stock?item_id=X
-                if ($segments[1] === 'check-stock') {
+                } elseif ($segments[1] === 'check-stock' && isset($_GET['item_id'])) {
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
-                    if (!isset($_GET['item_id'])) {
-                        Response::error('item_id parameter required', null, 400);
-                        return;
-                    }
                     $stock = $inventoryService->checkStockAvailability((int)$_GET['item_id']);
                     Response::success($stock, 'Stock checked');
-                    break;
-                }
-
-                // GET /inventory/movements/summary
-                if ($segments[1] === 'movements' && isset($segments[2]) && $segments[2] === 'summary') {
-                    // delegate to controller which will handle auth + response
+                } elseif ($segments[1] === 'movements' && isset($segments[2]) && $segments[2] === 'summary') {
                     $inventoryController->getMovementsSummary();
-                    break;
-                }
-
-                // GET /inventory/movements (list)
-                if ($segments[1] === 'movements') {
+                } elseif ($segments[1] === 'movements') {
                     $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                     if (!$user) return;
                     $filters = [
@@ -151,22 +143,13 @@ try {
                     ];
                     $movements = $inventoryService->getMaterialDocuments($filters);
                     Response::success($movements, 'Stock movements retrieved');
-                    break;
-                }
-
-                // GET /inventory/low-stock
-                if ($segments[1] === 'low-stock') {
+                } elseif ($segments[1] === 'low-stock') {
                     $inventoryController->getLowStock();
-                    break;
-                }
-
-                // GET /inventory/{id}
-                if (is_numeric($segments[1])) {
+                } elseif (is_numeric($segments[1])) {
                     $inventoryController->getById((int)$segments[1]);
-                    break;
+                } else {
+                    Response::notFound('Inventory endpoint not found');
                 }
-
-                Response::notFound('Inventory endpoint not found');
                 break;
 
             case 'POST':
@@ -183,7 +166,7 @@ try {
     }
 
     // ===============================================
-    // PURCHASE ORDER ROUTES - FIXED
+    // PURCHASE ORDER ROUTES
     // ===============================================
     elseif (($segments[0] ?? '') === 'purchase-orders') {
         $inventoryService = new CompleteInventoryService();
@@ -224,7 +207,7 @@ try {
     }
 
     // ===============================================
-    // SALES ORDER ROUTES - FIXED
+    // SALES ORDER ROUTES
     // ===============================================
     elseif (($segments[0] ?? '') === 'sales-orders') {
         $inventoryService = new CompleteInventoryService();
@@ -262,7 +245,7 @@ try {
     }
 
     // ===============================================
-    // SUPPLIER ROUTES - FIXED
+    // SUPPLIER ROUTES
     // ===============================================
     elseif (($segments[0] ?? '') === 'suppliers') {
         switch ($method) {
@@ -306,7 +289,7 @@ try {
     }
 
     // ===============================================
-    // USER ROUTES - FIXED
+    // USER ROUTES
     // ===============================================
     elseif (($segments[0] ?? '') === 'users') {
         switch ($method) {
@@ -352,7 +335,7 @@ try {
     }
 
     // ===============================================
-    // REPORT ROUTES - FIXED
+    // REPORT ROUTES
     // ===============================================
     elseif (($segments[0] ?? '') === 'reports') {
         switch ($method) {
@@ -386,7 +369,7 @@ try {
         Response::notFound('API endpoint not found: /' . $path);
     }
 } catch (\Exception $e) {
-    error_log("API Error: " . $e->getMessage());
+    error_log("🚨 API Error: " . $e->getMessage());
     error_log("Stack trace: " . $e->getTraceAsString());
 
     if (($_ENV['APP_DEBUG'] ?? false)) {
