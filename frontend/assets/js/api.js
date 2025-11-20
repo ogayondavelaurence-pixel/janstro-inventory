@@ -1,35 +1,25 @@
 /**
  * Janstro Inventory System - FIXED API Wrapper
- * Version: 3.2.0 - ALL ERRORS RESOLVED
- * Date: 2025-11-19
+ * Version: 3.3.0 - Token Persistence Fix
+ * Date: 2025-11-20
  */
 
 const API = {
-  // ✅ FIXED: Proper URL construction without double port
   baseURL: (() => {
     const origin = window.location.origin;
     const path = "/janstro-inventory/public";
-
-    // Extract current port from origin
     const urlObj = new URL(origin);
     const currentPort = urlObj.port;
 
-    // If we're on Live Server (port 5500), target backend on 8080
     if (currentPort === "5500") {
       return `${urlObj.protocol}//${urlObj.hostname}:8080${path}`;
     }
-
-    // If already on correct port (8080), use as-is
     if (currentPort === "8080") {
       return origin + path;
     }
-
-    // Default: assume backend is on 8080
     if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
       return `${urlObj.protocol}//${urlObj.hostname}:8080${path}`;
     }
-
-    // Production: use origin as-is
     return origin + path;
   })(),
 
@@ -59,7 +49,9 @@ const API = {
   },
 
   isAuthenticated() {
-    return !!this.getToken();
+    const token = this.getToken();
+    const user = this.getUser();
+    return !!(token && user);
   },
 
   async request(endpoint, options = {}) {
@@ -80,16 +72,23 @@ const API = {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json().catch(() => ({}));
 
+      // Handle 401 - Token expired or invalid
       if (response.status === 401) {
+        console.warn("⚠️ Unauthorized - Clearing session");
         this.removeToken();
-        window.location.href = "/janstro-inventory/frontend/index.html";
-        throw new Error("Session expired. Please login again.");
+
+        // Only redirect if not on login page
+        if (!window.location.pathname.includes("index.html")) {
+          window.location.href = "/janstro-inventory/frontend/index.html";
+        }
+        throw new Error("Session expired");
       }
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error(data.message || "API request failed.");
+        throw new Error(data.message || `Request failed: ${response.status}`);
       }
 
       return data;
@@ -122,19 +121,35 @@ const API = {
   },
 
   // ============================================
-  // AUTH
+  // AUTH - FIXED LOGIN
   // ============================================
-
   async login(username, password) {
-    const response = await this.post("/auth/login", { username, password });
-    if (response.success && response.data) {
-      this.setToken(response.data.token);
-      this.setUser(response.data.user);
+    try {
+      console.log("🔐 Attempting login:", username);
+
+      const response = await this.post("/auth/login", { username, password });
+
+      console.log("📥 Login response:", response);
+
+      if (response.success && response.data) {
+        // Store token and user data
+        this.setToken(response.data.token);
+        this.setUser(response.data.user);
+
+        console.log("✅ Login successful - Token stored");
+        return response;
+      } else {
+        console.error("❌ Login failed:", response.message);
+        return response;
+      }
+    } catch (error) {
+      console.error("❌ Login error:", error);
+      throw error;
     }
-    return response;
   },
 
   logout() {
+    console.log("👋 Logging out");
     this.removeToken();
     window.location.href = "/janstro-inventory/frontend/index.html";
   },
@@ -146,7 +161,6 @@ const API = {
   // ============================================
   // INVENTORY
   // ============================================
-
   async getInventory() {
     return this.get("/inventory");
   },
@@ -172,7 +186,6 @@ const API = {
     return this.get(`/inventory/movements?${params}`);
   },
 
-  // ✅ FIXED: Added missing method
   async getStockMovementsSummary() {
     return this.get("/inventory/movements/summary");
   },
@@ -180,7 +193,6 @@ const API = {
   // ============================================
   // PURCHASE ORDERS
   // ============================================
-
   async getPurchaseOrders() {
     return this.get("/purchase-orders");
   },
@@ -204,7 +216,6 @@ const API = {
   // ============================================
   // SALES ORDERS
   // ============================================
-
   async getSalesOrders() {
     return this.get("/sales-orders");
   },
@@ -228,7 +239,6 @@ const API = {
   // ============================================
   // SUPPLIERS
   // ============================================
-
   async getSuppliers() {
     return this.get("/suppliers");
   },
@@ -248,7 +258,6 @@ const API = {
   // ============================================
   // CUSTOMERS
   // ============================================
-
   async getCustomers() {
     return this.get("/customers");
   },
@@ -268,7 +277,6 @@ const API = {
   // ============================================
   // USER MANAGEMENT
   // ============================================
-
   async getUsers() {
     return this.get("/users");
   },
@@ -288,7 +296,6 @@ const API = {
   // ============================================
   // REPORTS
   // ============================================
-
   async getDashboardReport() {
     return this.get("/reports/dashboard");
   },
@@ -311,18 +318,14 @@ const API = {
   // ============================================
   // HEALTH CHECK
   // ============================================
-
   async healthCheck() {
     return this.get("/health");
   },
 };
 
-// ✅ Enhanced logging
-console.log("✅ API Configuration:", {
+console.log("✅ API v3.3.0 loaded:", {
   baseURL: API.baseURL,
-  currentOrigin: window.location.origin,
-  environment:
-    window.location.hostname === "localhost" ? "development" : "production",
+  authenticated: API.isAuthenticated(),
 });
 
 window.API = API;
