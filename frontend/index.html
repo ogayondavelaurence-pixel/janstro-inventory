@@ -2,22 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Janstro Prime - Login</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-            position: relative;
-            overflow-x: hidden;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        /* Solar Background */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e8ba3 100%);
+            position: relative;
+        }
+
+        /* ========================================
+           ANIMATED SOLAR BACKGROUND
+        ======================================== */
         .solar-background {
             position: fixed;
             top: 0;
@@ -26,377 +31,388 @@
             height: 100%;
             z-index: 0;
             overflow: hidden;
-            pointer-events: none;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
         }
 
         .sun {
             position: absolute;
-            top: 15%;
-            right: 15%;
-            width: clamp(60px, 12vw, 180px);
-            height: clamp(60px, 12vw, 180px);
-            background: radial-gradient(circle, #ffd700 0%, #ff8c00 70%, transparent 100%);
+            top: clamp(50px, 15vh, 150px);
+            right: clamp(50px, 10vw, 200px);
+            width: clamp(80px, 15vw, 200px);
+            height: clamp(80px, 15vw, 200px);
+            background: radial-gradient(circle, #FDB813 0%, #FF8C00 50%, #FF6347 100%);
             border-radius: 50%;
-            animation: pulse 4s ease-in-out infinite;
-            box-shadow: 0 0 clamp(30px, 6vw, 80px) rgba(255, 215, 0, 0.8);
+            box-shadow: 0 0 clamp(30px, 5vw, 60px) rgba(255, 215, 0, 0.8),
+                        0 0 clamp(60px, 10vw, 120px) rgba(255, 140, 0, 0.4);
+            animation: sunPulse 4s ease-in-out infinite;
         }
 
-        .sun-rays {
-            position: absolute;
-            top: 15%;
-            right: 15%;
-            width: clamp(60px, 12vw, 180px);
-            height: clamp(60px, 12vw, 180px);
-            animation: rotate 20s linear infinite;
+        @keyframes sunPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(255, 215, 0, 0.8); }
+            50% { transform: scale(1.1); box-shadow: 0 0 100px rgba(255, 215, 0, 1); }
         }
 
-        .ray {
+        .sun-ray {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: clamp(100px, 20vw, 250px);
-            height: 3px;
-            background: linear-gradient(90deg, rgba(255, 215, 0, 0.8) 0%, transparent 100%);
-            transform-origin: 0 0;
+            width: 4px;
+            height: clamp(40px, 8vw, 80px);
+            background: linear-gradient(to bottom, rgba(255, 215, 0, 0.8), transparent);
+            transform-origin: top center;
+            animation: rayRotate 8s linear infinite;
         }
 
-        .ray:nth-child(1) { transform: rotate(0deg); }
-        .ray:nth-child(2) { transform: rotate(45deg); }
-        .ray:nth-child(3) { transform: rotate(90deg); }
-        .ray:nth-child(4) { transform: rotate(135deg); }
-        .ray:nth-child(5) { transform: rotate(180deg); }
-        .ray:nth-child(6) { transform: rotate(225deg); }
-        .ray:nth-child(7) { transform: rotate(270deg); }
-        .ray:nth-child(8) { transform: rotate(315deg); }
+        .sun-ray:nth-child(1) { transform: translate(-50%, -100%) rotate(0deg); }
+        .sun-ray:nth-child(2) { transform: translate(-50%, -100%) rotate(45deg); }
+        .sun-ray:nth-child(3) { transform: translate(-50%, -100%) rotate(90deg); }
+        .sun-ray:nth-child(4) { transform: translate(-50%, -100%) rotate(135deg); }
+        .sun-ray:nth-child(5) { transform: translate(-50%, -100%) rotate(180deg); }
+        .sun-ray:nth-child(6) { transform: translate(-50%, -100%) rotate(225deg); }
+        .sun-ray:nth-child(7) { transform: translate(-50%, -100%) rotate(270deg); }
+        .sun-ray:nth-child(8) { transform: translate(-50%, -100%) rotate(315deg); }
+
+        @keyframes rayRotate {
+            from { transform: translate(-50%, -100%) rotate(var(--rotation, 0deg)); }
+            to { transform: translate(-50%, -100%) rotate(calc(var(--rotation, 0deg) + 360deg)); }
+        }
 
         .solar-panel {
             position: absolute;
-            width: clamp(50px, 8vw, 100px);
-            height: clamp(35px, 5vw, 60px);
-            background: linear-gradient(135deg, #1e3a5f 0%, #2c5f8d 100%);
-            border: 2px solid #4a7fa7;
-            border-radius: 6px;
-            animation: float 8s ease-in-out infinite;
-            opacity: 0.6;
+            width: clamp(40px, 8vw, 80px);
+            height: clamp(30px, 6vw, 60px);
+            background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            animation: float 6s ease-in-out infinite;
         }
 
-        .panel-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 2px;
-            padding: 4px;
-            height: 100%;
+        .solar-panel::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 90%;
+            height: 90%;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 8px,
+                rgba(255, 255, 255, 0.1) 8px,
+                rgba(255, 255, 255, 0.1) 10px
+            );
+            transform: translate(-50%, -50%);
         }
 
-        .panel-cell {
-            background: rgba(100, 150, 200, 0.3);
-            border: 1px solid rgba(150, 200, 255, 0.4);
-        }
-
-        .panel-1 { bottom: 20%; left: 10%; animation-delay: 0s; }
-        .panel-2 { bottom: 40%; left: 5%; animation-delay: 1.5s; }
-        .panel-3 { bottom: 60%; right: 10%; animation-delay: 3s; }
-        .panel-4 { top: 30%; right: 20%; animation-delay: 4.5s; }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.15); opacity: 0.85; }
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+        .panel-1 { bottom: clamp(50px, 15vh, 200px); left: clamp(20px, 5vw, 80px); animation-delay: 0s; }
+        .panel-2 { bottom: clamp(100px, 25vh, 350px); left: clamp(50px, 10vw, 150px); animation-delay: 1s; }
+        .panel-3 { bottom: clamp(150px, 35vh, 500px); right: clamp(50px, 10vw, 150px); animation-delay: 2s; }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            0%, 100% { transform: translateY(0px) rotate(-5deg); }
             50% { transform: translateY(-20px) rotate(5deg); }
         }
 
-        /* Login Container - FULLY RESPONSIVE */
+        .tagline {
+            position: absolute;
+            bottom: clamp(20px, 5vh, 50px);
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.9);
+            font-size: clamp(0.7rem, 2vw, 0.95rem);
+            font-weight: 300;
+            text-align: center;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: clamp(4px, 1vw, 8px);
+            padding: clamp(4px, 1vw, 8px) clamp(8px, 2vw, 16px);
+        }
+
+        .tagline::before {
+            content: '☀️';
+            font-size: clamp(1rem, 3vw, 1.3rem);
+        }
+
+        .copyright {
+            position: absolute;
+            bottom: clamp(5px, 2vh, 15px);
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: clamp(0.6rem, 1.5vw, 0.75rem);
+            text-align: center;
+        }
+
+        /* ========================================
+           TRANSPARENT LOGIN CARD
+        ======================================== */
         .login-container {
             position: relative;
             z-index: 10;
             min-height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
-            padding: clamp(5px, 2vw, 20px);
+            align-items: center;
+            padding: clamp(16px, 4vw, 40px);
         }
 
         .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: clamp(12px, 3vw, 28px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             width: 100%;
-            max-width: min(480px, 95vw);
+            max-width: clamp(320px, 90vw, 450px);
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: clamp(16px, 3vw, 24px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             overflow: hidden;
-            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: cardFadeIn 0.8s ease-out;
         }
 
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .login-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: clamp(25px, 5vw, 50px) clamp(15px, 3vw, 35px);
+            background: linear-gradient(135deg, rgba(123, 104, 238, 0.9), rgba(72, 61, 139, 0.9));
+            padding: clamp(24px, 5vw, 40px) clamp(16px, 4vw, 32px);
             text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo {
+            width: clamp(50px, 12vw, 70px);
+            height: clamp(50px, 12vw, 70px);
+            margin: 0 auto clamp(12px, 3vw, 20px);
+            background: linear-gradient(135deg, #FDB813, #FF8C00);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(24px, 6vw, 36px);
+            box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
+        }
+
+        .login-title {
+            font-size: clamp(1.5rem, 5vw, 2rem);
+            font-weight: 700;
             color: white;
+            margin: 0 0 clamp(4px, 1vw, 8px);
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
-        .logo-icon {
-            font-size: clamp(40px, 8vw, 72px);
-            margin-bottom: clamp(8px, 1.5vw, 15px);
-            animation: bounce 2s ease-in-out infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .login-header h1 {
-            font-size: clamp(20px, 4.5vw, 32px);
-            font-weight: 800;
-            margin: clamp(8px, 1.5vw, 15px) 0 clamp(4px, 0.8vw, 8px);
-        }
-
-        .login-header p {
-            font-size: clamp(12px, 2.2vw, 15px);
-            opacity: 0.95;
+        .login-subtitle {
+            font-size: clamp(0.75rem, 2vw, 0.95rem);
+            color: rgba(255, 255, 255, 0.9);
             margin: 0;
         }
 
         .login-body {
-            padding: clamp(20px, 4vw, 45px) clamp(15px, 3vw, 40px);
+            padding: clamp(20px, 5vw, 32px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .alert {
+            padding: clamp(10px, 2.5vw, 16px);
+            margin-bottom: clamp(16px, 4vw, 24px);
+            border-radius: clamp(8px, 2vw, 12px);
+            font-size: clamp(0.8rem, 2vw, 0.95rem);
+            backdrop-filter: blur(10px);
+        }
+
+        .alert-danger {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid rgba(220, 53, 69, 0.5);
+            color: #fff;
         }
 
         .form-group {
-            margin-bottom: clamp(15px, 2.5vw, 28px);
+            margin-bottom: clamp(16px, 4vw, 24px);
         }
 
         .form-label {
             display: block;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: clamp(5px, 1vw, 10px);
-            font-size: clamp(12px, 2.2vw, 15px);
+            margin-bottom: clamp(6px, 1.5vw, 10px);
+            color: rgba(255, 255, 255, 0.95);
+            font-size: clamp(0.8rem, 2vw, 0.95rem);
+            font-weight: 500;
         }
 
-        .input-wrapper {
+        .input-group {
             position: relative;
         }
 
         .input-icon {
             position: absolute;
-            left: clamp(10px, 2vw, 18px);
+            left: clamp(12px, 3vw, 16px);
             top: 50%;
             transform: translateY(-50%);
-            color: #667eea;
-            font-size: clamp(14px, 2.5vw, 20px);
-            z-index: 2;
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            color: rgba(123, 104, 238, 0.8);
+            z-index: 1;
         }
 
         .form-control {
             width: 100%;
-            padding: clamp(10px, 2vw, 16px) clamp(12px, 2.5vw, 20px) clamp(10px, 2vw, 16px) clamp(38px, 6vw, 54px);
-            border: 2px solid #e8ecf1;
-            border-radius: clamp(8px, 1.5vw, 14px);
-            font-size: clamp(13px, 2.2vw, 16px);
-            transition: all 0.3s;
-            background: #f8f9fb;
+            padding: clamp(12px, 3vw, 16px) clamp(40px, 10vw, 50px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: clamp(8px, 2vw, 12px);
+            font-size: clamp(0.85rem, 2.5vw, 1rem);
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+            min-height: clamp(44px, 10vw, 52px);
         }
 
         .form-control:focus {
             outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+            border-color: #7B68EE;
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 0 0 3px rgba(123, 104, 238, 0.2);
         }
 
-        .password-toggle {
+        .toggle-password {
             position: absolute;
-            right: clamp(10px, 2vw, 18px);
+            right: clamp(12px, 3vw, 16px);
             top: 50%;
             transform: translateY(-50%);
             background: none;
             border: none;
-            color: #6c757d;
+            color: rgba(123, 104, 238, 0.8);
             cursor: pointer;
-            padding: 8px;
-            font-size: clamp(14px, 2.5vw, 20px);
-            z-index: 2;
-            border-radius: 8px;
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            padding: clamp(6px, 1.5vw, 8px);
             min-width: 44px;
             min-height: 44px;
-        }
-
-        .password-toggle:hover {
-            color: #667eea;
-            background: rgba(102, 126, 234, 0.1);
-        }
-
-        .btn-login {
-            width: 100%;
-            padding: clamp(10px, 2vw, 16px);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: clamp(8px, 1.5vw, 14px);
-            font-size: clamp(14px, 2.2vw, 17px);
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: clamp(8px, 1.5vw, 15px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-            min-height: 44px;
-        }
-
-        .btn-login:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
-        }
-
-        .btn-login:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-
-        .credentials-box {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: clamp(8px, 1.5vw, 14px);
-            padding: clamp(12px, 2.5vw, 20px);
-            margin-top: clamp(15px, 2.5vw, 28px);
-            border: 2px solid #dee2e6;
-        }
-
-        .credentials-box small {
-            display: block;
-            text-align: center;
-            color: #495057;
-            font-weight: 700;
-            margin-bottom: clamp(8px, 1.5vw, 14px);
-            font-size: clamp(11px, 1.8vw, 14px);
-        }
-
-        .credential-item {
-            display: inline-block;
-            background: white;
-            padding: clamp(6px, 1.2vw, 10px) clamp(10px, 1.8vw, 18px);
-            border-radius: clamp(6px, 1.2vw, 10px);
-            margin: clamp(3px, 0.8vw, 6px);
-            font-size: clamp(10px, 1.8vw, 13px);
-            font-weight: 700;
-            color: #667eea;
-            border: 2px solid #e8ecf1;
-            transition: all 0.3s;
-            cursor: pointer;
-            min-width: 44px;
-            min-height: 36px;
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .credential-item:hover {
-            background: #667eea;
+        .btn-signin {
+            width: 100%;
+            padding: clamp(14px, 3.5vw, 18px);
+            background: linear-gradient(135deg, #7B68EE, #483D8B);
+            border: none;
+            border-radius: clamp(8px, 2vw, 12px);
             color: white;
+            font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: clamp(48px, 11vw, 56px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(8px, 2vw, 12px);
+        }
+
+        .btn-signin:hover:not(:disabled) {
+            background: linear-gradient(135deg, #6A5ACD, #372E6B);
             transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(123, 104, 238, 0.4);
+        }
+
+        .btn-signin:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .test-credentials {
+            margin-top: clamp(20px, 5vw, 32px);
+            padding-top: clamp(16px, 4vw, 24px);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .test-credentials-header {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: clamp(0.75rem, 2vw, 0.9rem);
+            margin-bottom: clamp(12px, 3vw, 16px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(6px, 1.5vw, 8px);
+        }
+
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(8px, 2vw, 12px);
+            justify-content: center;
+        }
+
+        .btn-test {
+            flex: 1 1 clamp(80px, 25vw, 120px);
+            min-width: clamp(80px, 25vw, 120px);
+            padding: clamp(10px, 2.5vw, 14px) clamp(12px, 3vw, 20px);
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: clamp(6px, 1.5vw, 10px);
+            color: white;
+            font-size: clamp(0.75rem, 2vw, 0.9rem);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            min-height: 44px;
+        }
+
+        .btn-test:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-test:active {
+            transform: translateY(0);
         }
 
         .footer-text {
             text-align: center;
-            margin-top: clamp(15px, 3vw, 40px);
-            color: rgba(255, 255, 255, 0.95);
-            font-size: clamp(11px, 1.8vw, 14px);
-            padding: 0 clamp(8px, 1.5vw, 20px);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+            margin-top: clamp(16px, 4vw, 24px);
         }
 
-        .footer-text i {
-            color: #ffd700;
-            margin: 0 4px;
+        /* ========================================
+           RESPONSIVE BREAKPOINTS
+        ======================================== */
+        @media (max-width: 360px) {
+            .test-buttons {
+                flex-direction: column;
+            }
+            .btn-test {
+                width: 100%;
+            }
         }
 
-        .footer-subtext {
-            font-size: clamp(10px, 1.5vw, 13px);
-            opacity: 0.85;
-            margin-top: clamp(6px, 1.2vw, 10px);
-        }
-
-        .alert {
-            border-radius: clamp(8px, 1.5vw, 14px);
-            border: none;
-            padding: clamp(10px, 2vw, 16px) clamp(12px, 2.5vw, 20px);
-            margin-bottom: clamp(15px, 2.5vw, 24px);
-            font-size: clamp(12px, 1.8vw, 15px);
-            animation: slideDown 0.5s;
-        }
-
-        @keyframes slideDown {
-            from { transform: translateY(-10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* Extreme Mobile (240p - 320px) */
-        @media (max-width: 320px) {
+        @media (min-width: 768px) {
             .login-card {
-                border-radius: 10px;
-                margin: 3px;
-            }
-            .login-header {
-                padding: 18px 12px;
-            }
-            .login-body {
-                padding: 15px 12px;
-            }
-            .credential-item {
-                display: block;
-                margin: 4px 0;
-                text-align: center;
-            }
-            .sun, .sun-rays {
-                width: 50px;
-                height: 50px;
-            }
-            .solar-panel {
-                width: 40px;
-                height: 30px;
+                max-width: 420px;
             }
         }
 
-        /* Landscape Mode */
+        @media (min-width: 1440px) {
+            body {
+                font-size: 18px;
+            }
+        }
+
+        /* Landscape mode adjustments */
         @media (max-height: 500px) and (orientation: landscape) {
             .login-container {
-                padding: 8px;
+                padding: 20px;
             }
             .login-header {
-                padding: 12px 15px;
-            }
-            .logo-icon {
-                font-size: 32px;
-                margin-bottom: 4px;
-            }
-            .login-header h1 {
-                font-size: 18px;
-                margin: 6px 0 4px;
+                padding: 20px 24px;
             }
             .login-body {
-                padding: 12px 15px;
+                padding: 20px 24px;
             }
-            .form-group {
-                margin-bottom: 10px;
-            }
-            .credentials-box {
-                margin-top: 10px;
-                padding: 8px;
-            }
-            .footer-text {
-                margin-top: 12px;
+            .logo {
+                width: 50px;
+                height: 50px;
             }
         }
     </style>
@@ -404,264 +420,196 @@
 <body>
     <!-- Solar Background -->
     <div class="solar-background">
-        <div class="sun"></div>
-        <div class="sun-rays">
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
+        <div class="sun">
+            <div class="sun-ray"></div>
+            <div class="sun-ray"></div>
+            <div class="sun-ray"></div>
+            <div class="sun-ray"></div>
+            <div class="sun-ray"></div>
+            <div class="sun-ray"></div>
+            <div class="sun-ray"></div>
+            <div class="sun-ray"></div>
         </div>
-        
-        <div class="solar-panel panel-1">
-            <div class="panel-grid">
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-            </div>
-        </div>
-        <div class="solar-panel panel-2">
-            <div class="panel-grid">
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-            </div>
-        </div>
-        <div class="solar-panel panel-3">
-            <div class="panel-grid">
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-            </div>
-        </div>
-        <div class="solar-panel panel-4">
-            <div class="panel-grid">
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-                <div class="panel-cell"></div>
-            </div>
-        </div>
+        <div class="solar-panel panel-1"></div>
+        <div class="solar-panel panel-2"></div>
+        <div class="solar-panel panel-3"></div>
+        <div class="tagline">Powering Tomorrow with Clean Energy Today</div>
+        <div class="copyright">© 2025 Janstro Prime Renewable Energy Solutions</div>
     </div>
 
     <!-- Login Container -->
     <div class="login-container">
         <div class="login-card">
+            <!-- Header -->
             <div class="login-header">
-                <div class="logo-icon">☀️</div>
-                <h1>Janstro Prime</h1>
-                <p>Renewable Energy Solutions</p>
+                <div class="logo">☀️</div>
+                <h1 class="login-title">Janstro Prime</h1>
+                <p class="login-subtitle">Renewable Energy Solutions</p>
             </div>
 
+            <!-- Body -->
             <div class="login-body">
-                <div id="alertContainer"></div>
+                <!-- Error Alert -->
+                <div id="errorAlert" class="alert alert-danger" style="display: none;">
+                    ❌ Invalid credentials
+                </div>
 
-                <form id="loginForm" novalidate>
+                <!-- Login Form -->
+                <form id="loginForm">
+                    <!-- Username -->
                     <div class="form-group">
-                        <label class="form-label" for="username">Username</label>
-                        <div class="input-wrapper">
-                            <i class="bi bi-person-fill input-icon"></i>
-                            <input 
-                                type="text" 
-                                class="form-control" 
-                                id="username" 
-                                placeholder="Enter username"
-                                autocomplete="username"
-                                required
-                                aria-label="Username"
-                            >
+                        <label for="username" class="form-label">Username</label>
+                        <div class="input-group">
+                            <span class="input-icon">👤</span>
+                            <input type="text" id="username" name="username" class="form-control" 
+                                   placeholder="Enter username" required autocomplete="username">
                         </div>
                     </div>
 
+                    <!-- Password -->
                     <div class="form-group">
-                        <label class="form-label" for="password">Password</label>
-                        <div class="input-wrapper">
-                            <i class="bi bi-lock-fill input-icon"></i>
-                            <input 
-                                type="password" 
-                                class="form-control" 
-                                id="password" 
-                                placeholder="Enter password"
-                                autocomplete="current-password"
-                                required
-                                aria-label="Password"
-                            >
-                            <button type="button" class="password-toggle" id="togglePassword" aria-label="Toggle password visibility">
-                                <i class="bi bi-eye"></i>
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="password" name="password" class="form-control" 
+                                   placeholder="Enter password" required autocomplete="current-password">
+                            <button type="button" class="toggle-password" id="togglePassword">
+                                👁️
                             </button>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-login" id="loginBtn">
-                        <span id="loginText">
-                            <i class="bi bi-box-arrow-in-right"></i>
-                            Sign In
-                        </span>
+                    <!-- Sign In Button -->
+                    <button type="submit" class="btn-signin" id="signInBtn">
+                        <span>🔑</span>
+                        <span>Sign In</span>
                     </button>
                 </form>
 
-                <div class="credentials-box">
-                    <small><i class="bi bi-info-circle"></i> Test Credentials (Click to fill)</small>
-                    <div style="text-align: center;">
-                        <button type="button" class="credential-item" onclick="fillCredentials('admin', 'admin123')" aria-label="Fill admin credentials">
-                            <i class="bi bi-shield-check"></i> Admin
+                <!-- Test Credentials -->
+                <div class="test-credentials">
+                    <div class="test-credentials-header">
+                        <span>ℹ️</span>
+                        <span>Test Credentials (Click to fill)</span>
+                    </div>
+                    <div class="test-buttons">
+                        <button class="btn-test" data-username="admin" data-password="admin123">
+                            👔 Admin
                         </button>
-                        <button type="button" class="credential-item" onclick="fillCredentials('superadmin', 'admin123')" aria-label="Fill superadmin credentials">
-                            <i class="bi bi-star"></i> SuperAdmin
+                        <button class="btn-test" data-username="superadmin" data-password="admin123">
+                            ⭐ Super
                         </button>
-                        <button type="button" class="credential-item" onclick="fillCredentials('staff1', 'admin123')" aria-label="Fill staff credentials">
-                            <i class="bi bi-person"></i> Staff
+                        <button class="btn-test" data-username="staff1" data-password="admin123">
+                            👨‍💼 Staff
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="footer-text">
-            <p><i class="bi bi-sun"></i> Powering Tomorrow with Clean Energy Today</p>
-            <p class="footer-subtext">
-                © 2025 Janstro Prime Renewable Energy Solutions
-            </p>
+                <div class="footer-text">
+                    Secure login protected by encryption
+                </div>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- CRITICAL: Load API.js BEFORE any script that uses it -->
+    <!-- API Module -->
     <script src="assets/js/api.js"></script>
-    
+
     <script>
-        // Password toggle
-        document.getElementById('togglePassword').addEventListener('click', function() {
-            const passwordInput = document.getElementById('password');
-            const icon = this.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('bi-eye');
-                icon.classList.add('bi-eye-slash');
-                this.setAttribute('aria-label', 'Hide password');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('bi-eye-slash');
-                icon.classList.add('bi-eye');
-                this.setAttribute('aria-label', 'Show password');
-            }
-        });
-
-        // Fill credentials
-        function fillCredentials(username, password) {
-            document.getElementById('username').value = username;
-            document.getElementById('password').value = password;
-            document.getElementById('username').focus();
-        }
-
-        // Handle login
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const loginBtn = document.getElementById('loginBtn');
-            const loginText = document.getElementById('loginText');
-
-            if (!username || !password) {
-                showAlert('Please enter both username and password', 'danger');
-                return;
-            }
-
-            // Disable button
-            loginBtn.disabled = true;
-            loginText.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Signing in...';
-
-            try {
-                console.log("🔐 Attempting login as:", username);
-                
-                const response = await API.login(username, password);
-                
-                console.log("📥 Login response received:", response);
-                
-                if (response && response.success) {
-                    showAlert('✅ Login successful! Redirecting...', 'success');
-                    
-                    // CRITICAL: Wait for storage to complete
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    
-                    // Verify storage
-                    const storedToken = API.getToken();
-                    const storedUser = API.getUser();
-                    
-                    console.log("✅ Token stored:", !!storedToken);
-                    console.log("✅ User stored:", !!storedUser);
-                    
-                    if (!storedToken || !storedUser) {
-                        showAlert('❌ Session storage failed. Please try again.', 'danger');
-                        loginBtn.disabled = false;
-                        loginText.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
-                        return;
-                    }
-                    
-                    // Redirect after brief delay
-                    setTimeout(() => {
-                        console.log("🔄 Redirecting to dashboard...");
-                        window.location.href = 'dashboard.html';
-                    }, 1000);
-                } else {
-                    const errorMsg = (response && response.message) || 'Invalid credentials';
-                    showAlert('❌ ' + errorMsg, 'danger');
-                    loginBtn.disabled = false;
-                    loginText.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
+        // Wait for API module to load
+        function waitForAPI(callback, timeout = 5000) {
+            const start = Date.now();
+            const checkAPI = setInterval(() => {
+                if (typeof API !== 'undefined') {
+                    clearInterval(checkAPI);
+                    callback();
+                } else if (Date.now() - start > timeout) {
+                    clearInterval(checkAPI);
+                    console.error('❌ API failed to load after 5 seconds');
+                    alert('System Error: API module failed to load. Please refresh the page.');
                 }
-            } catch (error) {
-                console.error('❌ Login error:', error);
-                showAlert('❌ Connection error. Please ensure backend is running.', 'danger');
-                loginBtn.disabled = false;
-                loginText.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
-            }
-        });
-
-        function showAlert(message, type) {
-            const alertContainer = document.getElementById('alertContainer');
-            const iconClass = type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
-            
-            alertContainer.innerHTML = `
-                <div class="alert alert-${type}" role="alert">
-                    <i class="bi ${iconClass}"></i> ${message}
-                </div>
-            `;
-
-            if (type === 'success') {
-                setTimeout(() => {
-                    alertContainer.innerHTML = '';
-                }, 3000);
-            }
+            }, 100);
         }
 
-        // Check if already logged in
-        window.addEventListener('DOMContentLoaded', () => {
-            if (typeof API === 'undefined') {
-                showAlert('❌ System Error: API Module failed to load', 'danger');
+        function initLogin() {
+            console.log('🔐 Initializing login page...');
+
+            // Check if already authenticated
+            if (API && API.isAuthenticated()) {
+                console.log('✅ Already authenticated, redirecting to dashboard...');
+                window.location.href = 'dashboard.html';
                 return;
             }
 
-            if (API.isAuthenticated()) {
-                console.log("✅ Already authenticated, redirecting to dashboard");
-                window.location.href = 'dashboard.html';
-            }
-        });
+            const loginForm = document.getElementById('loginForm');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const errorAlert = document.getElementById('errorAlert');
+            const signInBtn = document.getElementById('signInBtn');
+            const togglePassword = document.getElementById('togglePassword');
+
+            // Toggle password visibility
+            togglePassword.addEventListener('click', () => {
+                const type = passwordInput.type === 'password' ? 'text' : 'password';
+                passwordInput.type = type;
+                togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
+            });
+
+            // Test credentials buttons
+            document.querySelectorAll('.btn-test').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    usernameInput.value = btn.dataset.username;
+                    passwordInput.value = btn.dataset.password;
+                    errorAlert.style.display = 'none';
+                });
+            });
+
+            // Login form submission
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                errorAlert.style.display = 'none';
+
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value.trim();
+
+                if (!username || !password) {
+                    errorAlert.textContent = '⚠️ Please enter both username and password';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+
+                // Disable button
+                signInBtn.disabled = true;
+                signInBtn.innerHTML = '<span>⏳</span><span>Signing in...</span>';
+
+                console.log('🔐 Attempting login as:', username);
+
+                try {
+                    const response = await API.login(username, password);
+                    console.log('📥 Login response received:', response);
+
+                    if (response && response.success) {
+                        console.log('✅ Login successful, redirecting to dashboard...');
+                        signInBtn.innerHTML = '<span>✅</span><span>Success!</span>';
+                        
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 500);
+                    } else {
+                        throw new Error('Invalid credentials');
+                    }
+                } catch (error) {
+                    console.error('❌ Login failed:', error);
+                    errorAlert.textContent = '❌ Invalid username or password';
+                    errorAlert.style.display = 'block';
+                    signInBtn.disabled = false;
+                    signInBtn.innerHTML = '<span>🔑</span><span>Sign In</span>';
+                }
+            });
+        }
+
+        // Initialize when API is ready
+        waitForAPI(initLogin);
     </script>
 </body>
 </html>

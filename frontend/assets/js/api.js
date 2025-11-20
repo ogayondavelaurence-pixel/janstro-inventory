@@ -1,7 +1,8 @@
 /**
- * JANSTRO INVENTORY SYSTEM - API CLIENT v4.0
- * FIXED: Token persistence, CORS, error handling
- * Date: 2025-11-20
+ * JANSTRO INVENTORY SYSTEM - API CLIENT v5.0
+ * FIXED: Token storage as plain strings (not JSON), 401 handling, CORS
+ * Date: 2025-11-21
+ * Author: IMS Technical Team
  */
 
 (function (window) {
@@ -10,90 +11,113 @@
   const API_BASE_URL = "http://localhost:8080/janstro-inventory/public";
   const TOKEN_KEY = "janstro_token";
   const USER_KEY = "janstro_user";
+  const REFRESH_KEY = "janstro_refresh";
 
   // ============================================
-  // STORAGE MANAGER (Session + Local Storage)
+  // STORAGE MANAGER (FIXED: Raw string storage)
   // ============================================
   const Storage = {
-    set(key, value) {
+    set: function (key, value) {
       try {
-        const data = JSON.stringify(value);
-        localStorage.setItem(key, data);
-        sessionStorage.setItem(key, data); // Backup in session
+        // Store tokens as plain strings, not JSON
+        if (key === TOKEN_KEY || key === REFRESH_KEY) {
+          localStorage.setItem(key, value);
+          sessionStorage.setItem(key, value);
+        } else {
+          // Store user data as JSON
+          const jsonValue = JSON.stringify(value);
+          localStorage.setItem(key, jsonValue);
+          sessionStorage.setItem(key, jsonValue);
+        }
+        console.log(`✅ ${key} stored successfully`);
         return true;
       } catch (error) {
-        console.error("Storage.set error:", error);
+        console.error(`❌ Storage.set error:`, error);
         return false;
       }
     },
 
-    get(key) {
+    get: function (key) {
       try {
         // Try localStorage first
-        let data = localStorage.getItem(key);
-        if (!data) {
-          // Fallback to sessionStorage
-          data = sessionStorage.getItem(key);
+        let value = localStorage.getItem(key) || sessionStorage.getItem(key);
+        if (!value) return null;
+
+        // Tokens are stored as plain strings
+        if (key === TOKEN_KEY || key === REFRESH_KEY) {
+          return value;
         }
-        return data ? JSON.parse(data) : null;
+
+        // User data is stored as JSON
+        return JSON.parse(value);
       } catch (error) {
-        console.error("Storage.get error:", error);
+        console.error(`❌ Storage.get error for ${key}:`, error);
+        // Clear corrupted data
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
         return null;
       }
     },
 
-    remove(key) {
+    remove: function (key) {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
     },
 
-    clear() {
-      localStorage.clear();
-      sessionStorage.clear();
+    clear: function () {
+      [TOKEN_KEY, USER_KEY, REFRESH_KEY].forEach((key) => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+      console.log("🗑️ Session cleared");
     },
   };
 
   // ============================================
-  // API CLIENT
+  // API MODULE
   // ============================================
   const API = {
-    // Authentication
-    async login(username, password) {
-      try {
-        console.log("🔐 Login attempt:", username);
+    // Authentication Methods
+    login: async function (username, password) {
+      console.log(`🔐 Login attempt: ${username}`);
 
+      try {
         const response = await this.post("/auth/login", {
-          username,
-          password,
+          username: username,
+          password: password,
         });
 
         console.log("📥 Login response:", response);
 
         if (response && response.success && response.data) {
-          const { token, user } = response.data;
+          const { token, refresh_token, user } = response.data;
 
-          if (!token || !user) {
-            console.error("❌ Missing token or user in response");
-            return null;
+          // Store tokens as plain strings
+          Storage.set(TOKEN_KEY, token);
+          if (refresh_token) {
+            Storage.set(REFRESH_KEY, refresh_token);
           }
 
-          // CRITICAL: Store token and user IMMEDIATELY
-          const tokenStored = Storage.set(TOKEN_KEY, token);
-          const userStored = Storage.set(USER_KEY, user);
+          // Store user data as JSON
+          Storage.set(USER_KEY, {
+            user_id: user.user_id,
+            username: user.username,
+            role_id: user.role_id,
+            role_name: user.role_name,
+            permissions: user.permissions || [],
+          });
 
-          console.log("💾 Token stored:", tokenStored);
-          console.log("💾 User stored:", userStored);
+          // Verify storage
+          const storedToken = Storage.get(TOKEN_KEY);
+          const storedUser = Storage.get(USER_KEY);
 
-          // VERIFY storage worked
-          const verifyToken = Storage.get(TOKEN_KEY);
-          const verifyUser = Storage.get(USER_KEY);
+          console.log("✅ Login successful, data persisted:", {
+            tokenStored: !!storedToken,
+            userStored: !!storedUser,
+            tokenLength: storedToken?.length,
+            username: storedUser?.username,
+          });
 
-          if (!verifyToken || !verifyUser) {
-            console.error("❌ Storage verification failed");
-            return null;
-          }
-
-          console.log("✅ Login successful, data persisted");
           return response;
         }
 
@@ -101,36 +125,45 @@
         return null;
       } catch (error) {
         console.error("❌ Login error:", error);
-        throw error;
+        return null;
       }
     },
 
-    logout() {
-      Storage.clear();
-      window.location.href = "index.html";
+    logout: async function () {
+      try {
+        await this.post("/auth/logout", {});
+      } catch (error) {
+        console.error("Logout error:", error);
+      } finally {
+        Storage.clear();
+        window.location.href = "/janstro-inventory/frontend/index.html";
+      }
     },
 
-    isAuthenticated() {
-      const token = Storage.get(TOKEN_KEY);
+    isAuthenticated: function () {
+      const token = this.getToken();
       const user = Storage.get(USER_KEY);
+
       const isAuth = !!(token && user);
       console.log("🔒 isAuthenticated:", isAuth, {
-        token: !!token,
-        user: !!user,
+        hasToken: !!token,
+        hasUser: !!user,
+        tokenPreview: token ? token.substring(0, 20) + "..." : null,
       });
+
       return isAuth;
     },
 
-    getToken() {
+    getToken: function () {
       return Storage.get(TOKEN_KEY);
     },
 
-    getUser() {
+    getUser: function () {
       return Storage.get(USER_KEY);
     },
 
-    // HTTP Methods
-    async request(endpoint, options = {}) {
+    // HTTP Request Methods
+    request: async function (endpoint, options = {}) {
       const url = `${API_BASE_URL}${endpoint}`;
       const token = this.getToken();
 
@@ -138,147 +171,90 @@
         method: options.method || "GET",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...options.headers,
         },
-        ...options,
+        credentials: "include",
+        mode: "cors",
       };
 
-      if (options.body && typeof options.body === "object") {
+      if (options.body) {
         config.body = JSON.stringify(options.body);
       }
 
       try {
         const response = await fetch(url, config);
-        const data = await response.json();
 
         // Handle 401 Unauthorized
         if (response.status === 401) {
           console.warn("⚠️ 401 Unauthorized - clearing session");
           Storage.clear();
-          if (
-            window.location.pathname !==
-            "/janstro-inventory/frontend/index.html"
-          ) {
-            window.location.href = "index.html";
+          if (!endpoint.includes("/auth/login")) {
+            window.location.href = "/janstro-inventory/frontend/index.html";
           }
           return null;
         }
 
+        // Handle non-OK responses
+        if (!response.ok) {
+          console.error(`❌ HTTP ${response.status}:`, response.statusText);
+          return null;
+        }
+
+        const data = await response.json();
         return data;
       } catch (error) {
-        console.error("API request error:", error);
-        throw error;
+        console.error(`❌ Request failed [${endpoint}]:`, error);
+        return null;
       }
     },
 
-    get(endpoint) {
-      return this.request(endpoint, { method: "GET" });
+    get: function (endpoint, params = {}) {
+      const queryString = new URLSearchParams(params).toString();
+      const fullEndpoint = queryString
+        ? `${endpoint}?${queryString}`
+        : endpoint;
+      return this.request(fullEndpoint, { method: "GET" });
     },
 
-    post(endpoint, body) {
-      return this.request(endpoint, { method: "POST", body });
+    post: function (endpoint, body) {
+      return this.request(endpoint, {
+        method: "POST",
+        body: body,
+      });
     },
 
-    put(endpoint, body) {
-      return this.request(endpoint, { method: "PUT", body });
+    put: function (endpoint, body) {
+      return this.request(endpoint, {
+        method: "PUT",
+        body: body,
+      });
     },
 
-    delete(endpoint) {
-      return this.request(endpoint, { method: "DELETE" });
+    delete: function (endpoint) {
+      return this.request(endpoint, {
+        method: "DELETE",
+      });
     },
 
-    // Inventory Endpoints
-    getInventory() {
-      return this.get("/inventory");
-    },
-
-    getItem(id) {
-      return this.get(`/inventory/${id}`);
-    },
-
-    getInventoryStatus() {
-      return this.get("/inventory/status");
-    },
-
-    checkStock(itemId) {
-      return this.get(`/inventory/check-stock?item_id=${itemId}`);
-    },
-
-    getLowStockItems() {
-      return this.get("/inventory/low-stock");
-    },
-
-    getStockMovements() {
-      return this.get("/inventory/movements");
-    },
-
-    // Purchase Orders
-    getPurchaseOrders() {
-      return this.get("/purchase-orders");
-    },
-
-    getPurchaseOrder(id) {
-      return this.get(`/purchase-orders/${id}`);
-    },
-
-    createPurchaseOrder(data) {
-      return this.post("/purchase-orders", data);
-    },
-
-    receiveGoods(poId, data) {
-      return this.post(`/purchase-orders/receive/${poId}`, data);
-    },
-
-    // Sales Orders
-    getSalesOrders() {
-      return this.get("/sales-orders");
-    },
-
-    createSalesOrder(data) {
-      return this.post("/sales-orders", data);
-    },
-
-    processInvoice(salesOrderId, data) {
-      return this.post(`/sales-orders/invoice/${salesOrderId}`, data);
-    },
-
-    // Suppliers
-    getSuppliers() {
-      return this.get("/suppliers");
-    },
-
-    getSupplier(id) {
-      return this.get(`/suppliers/${id}`);
-    },
-
-    createSupplier(data) {
-      return this.post("/suppliers", data);
-    },
-
-    updateSupplier(id, data) {
-      return this.put(`/suppliers/${id}`, data);
-    },
-
-    // Users
-    getUsers() {
-      return this.get("/users");
-    },
-
-    createUser(data) {
-      return this.post("/users", data);
-    },
-
-    updateUser(id, data) {
-      return this.put(`/users/${id}`, data);
-    },
-
-    deactivateUser(id) {
-      return this.put(`/users/${id}`, { status: "inactive" });
+    // Health check
+    checkHealth: async function () {
+      try {
+        const response = await fetch(`${API_BASE_URL}/health`);
+        const data = await response.json();
+        console.log("🏥 API Health:", data);
+        return data.success;
+      } catch (error) {
+        console.error("❌ API Health check failed:", error);
+        return false;
+      }
     },
   };
 
-  // Make API globally available
+  // ============================================
+  // EXPOSE API GLOBALLY
+  // ============================================
   window.API = API;
-  console.log("✅ API Module v4.0 Loaded");
+  console.log("✅ API Module v5.0 Loaded");
 })(window);
