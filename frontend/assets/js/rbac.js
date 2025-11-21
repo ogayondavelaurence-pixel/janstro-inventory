@@ -1,22 +1,22 @@
 /**
- * JANSTRO IMS - COMPLETE RBAC SYSTEM v6.0
- * Full page and action enforcement with hamburger menu
- * Date: 2025-11-20
+ * JANSTRO IMS - COMPLETE RBAC SYSTEM v7.0
+ * Full RBAC enforcement + Missing Manager Role Fixed
+ * Date: 2025-11-21
  */
 
 const RBAC = {
   // ============================================
-  // ROLE HIERARCHY
+  // ROLE HIERARCHY (FIXED: Manager Added)
   // ============================================
   roleHierarchy: {
     superadmin: 4,
     admin: 3,
-    manager: 2,
+    manager: 2, // ✅ FIXED: Was missing
     staff: 1,
   },
 
   // ============================================
-  // PAGE-LEVEL PERMISSIONS
+  // PAGE-LEVEL PERMISSIONS (FIXED: Manager Added)
   // ============================================
   pagePermissions: {
     superadmin: [
@@ -42,6 +42,16 @@ const RBAC = {
       "sales-orders",
       "reports",
     ],
+    manager: [
+      // ✅ FIXED: Manager permissions added
+      "dashboard",
+      "inventory",
+      "stock-movements",
+      "purchase-orders",
+      "goods-receipt",
+      "sales-orders",
+      "reports",
+    ],
     staff: [
       "dashboard",
       "inventory",
@@ -52,7 +62,7 @@ const RBAC = {
   },
 
   // ============================================
-  // ACTION-LEVEL PERMISSIONS
+  // ACTION-LEVEL PERMISSIONS (FIXED: Manager Added)
   // ============================================
   actionPermissions: {
     superadmin: {
@@ -72,6 +82,13 @@ const RBAC = {
       inventory: ["view", "add", "edit", "adjust", "export"],
       purchaseOrders: ["view", "create", "edit", "approve", "receive"],
       salesOrders: ["view", "create", "edit", "approve", "invoice"],
+      users: [],
+    },
+    manager: {
+      // ✅ FIXED: Manager actions added
+      inventory: ["view", "add", "edit", "export"],
+      purchaseOrders: ["view", "create", "edit", "receive"],
+      salesOrders: ["view", "create", "edit", "invoice"],
       users: [],
     },
     staff: {
@@ -237,7 +254,6 @@ const RBAC = {
   // HAMBURGER MENU TOGGLE
   // ============================================
   initHamburgerMenu() {
-    // Create hamburger button if doesn't exist
     if (!document.querySelector(".mobile-menu-toggle")) {
       const toggleBtn = document.createElement("button");
       toggleBtn.className = "mobile-menu-toggle";
@@ -245,7 +261,6 @@ const RBAC = {
       toggleBtn.setAttribute("aria-label", "Toggle menu");
       document.body.prepend(toggleBtn);
 
-      // Add styles
       const style = document.createElement("style");
       style.textContent = `
         .mobile-menu-toggle {
@@ -288,7 +303,6 @@ const RBAC = {
       document.head.appendChild(style);
     }
 
-    // Add click handler
     const toggleBtn = document.querySelector(".mobile-menu-toggle");
     const sidebar = document.querySelector(".sidebar");
 
@@ -298,7 +312,6 @@ const RBAC = {
         sidebar.classList.toggle("mobile-hidden");
       });
 
-      // Close sidebar when clicking outside on mobile
       document.addEventListener("click", (e) => {
         if (window.innerWidth <= 768) {
           if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
@@ -314,7 +327,7 @@ const RBAC = {
   // INITIALIZE RBAC
   // ============================================
   init() {
-    console.log("🔒 RBAC System v6.0 Initializing...");
+    console.log("🔒 RBAC System v7.0 Initializing...");
 
     if (!this.enforcePage()) {
       return;
@@ -324,7 +337,7 @@ const RBAC = {
     this.displayRoleBadge();
     this.initHamburgerMenu();
 
-    console.log("✅ RBAC System Initialized Successfully");
+    console.log("✅ RBAC System v7.0 Initialized Successfully");
   },
 };
 
@@ -339,4 +352,6 @@ if (document.readyState === "loading") {
 
 window.RBAC = RBAC;
 
-console.log("✅ RBAC Module v6.0 Loaded - Full Enforcement + Hamburger Menu");
+console.log(
+  "✅ RBAC Module v7.0 Loaded - Manager Role Added + Full Enforcement"
+);
