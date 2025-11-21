@@ -34,15 +34,21 @@ class AuthController
         $rawInput = file_get_contents('php://input');
         error_log("📥 Raw input length: " . strlen($rawInput));
 
+        if (empty($rawInput)) {
+            error_log("❌ Empty request body");
+            Response::error('Request body is empty', null, 400);
+            return;
+        }
+
         $input = json_decode($rawInput, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             error_log("❌ JSON decode error: " . json_last_error_msg());
-            Response::error('Invalid JSON input', null, 400);
+            Response::error('Invalid JSON input: ' . json_last_error_msg(), null, 400);
             return;
         }
 
-        error_log("📊 Parsed input: " . json_encode($input));
+        error_log("📊 Parsed input keys: " . implode(', ', array_keys($input)));
 
         // Validate input
         if (!isset($input['username']) || !isset($input['password'])) {
@@ -51,22 +57,25 @@ class AuthController
             return;
         }
 
-        $username = $input['username'];
+        $username = trim($input['username']);
+        $password = $input['password'];
+
         error_log("👤 Login attempt for username: " . $username);
 
         // Attempt login
         try {
-            $result = $this->authService->login($username, $input['password']);
+            $result = $this->authService->login($username, $password);
 
-            if ($result) {
-                error_log("✅ AuthService returned success");
-                error_log("📊 Result structure: " . json_encode(array_keys($result)));
+            if ($result && isset($result['user']) && isset($result['token'])) {
+                error_log("✅ Login successful for: " . $username);
+                error_log("✅ Token generated: " . substr($result['token'], 0, 20) . "...");
+                error_log("✅ User role: " . ($result['user']['role_name'] ?? 'unknown'));
 
-                // CRITICAL: Ensure proper response structure
                 Response::success($result, 'Login successful', 200);
                 error_log("✅ Response sent successfully");
             } else {
-                error_log("❌ AuthService returned null/false");
+                error_log("❌ AuthService returned invalid result structure");
+                error_log("Result: " . json_encode($result));
                 Response::error('Invalid username or password', null, 401);
             }
         } catch (\Exception $e) {
@@ -121,49 +130,5 @@ class AuthController
         }
 
         Response::success($user, 'User profile retrieved', 200);
-    }
-
-    /**
-     * POST /api/auth/change-password
-     */
-    public function changePassword(): void
-    {
-        $token = JWT::getFromHeader();
-
-        if (!$token) {
-            Response::unauthorized('No token provided');
-            return;
-        }
-
-        $user = JWT::validate($token);
-
-        if (!$user) {
-            Response::unauthorized('Invalid token');
-            return;
-        }
-
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        if (!isset($input['current_password']) || !isset($input['new_password'])) {
-            Response::error('Current and new password are required', null, 400);
-            return;
-        }
-
-        if (strlen($input['new_password']) < 8) {
-            Response::error('New password must be at least 8 characters', null, 400);
-            return;
-        }
-
-        $success = $this->authService->changePassword(
-            $user->user_id,
-            $input['current_password'],
-            $input['new_password']
-        );
-
-        if ($success) {
-            Response::success(null, 'Password changed successfully', 200);
-        } else {
-            Response::error('Current password is incorrect', null, 400);
-        }
     }
 }

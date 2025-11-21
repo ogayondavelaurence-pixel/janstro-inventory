@@ -42,19 +42,10 @@ const RBAC = {
       "sales-orders",
       "reports",
     ],
-    manager: [
-      "dashboard",
-      "inventory",
-      "stock-movements",
-      "purchase-orders",
-      "sales-orders",
-      "reports",
-    ],
     staff: [
       "dashboard",
       "inventory",
       "stock-movements",
-      "purchase-orders",
       "goods-receipt",
       "sales-orders",
     ],
@@ -81,12 +72,6 @@ const RBAC = {
       inventory: ["view", "add", "edit", "adjust", "export"],
       purchaseOrders: ["view", "create", "edit", "approve", "receive"],
       salesOrders: ["view", "create", "edit", "approve", "invoice"],
-      users: [],
-    },
-    manager: {
-      inventory: ["view", "export"],
-      purchaseOrders: ["view", "create"],
-      salesOrders: ["view", "create"],
       users: [],
     },
     staff: {
