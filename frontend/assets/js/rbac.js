@@ -1,22 +1,21 @@
 /**
- * JANSTRO IMS - COMPLETE RBAC SYSTEM v7.0
- * Full RBAC enforcement + Missing Manager Role Fixed
+ * JANSTRO IMS - COMPLETE RBAC SYSTEM v8.0
+ * FIXED: Only 3 roles (staff, admin, superadmin)
  * Date: 2025-11-21
  */
 
 const RBAC = {
   // ============================================
-  // ROLE HIERARCHY (FIXED: Manager Added)
+  // ROLE HIERARCHY (3 ROLES ONLY)
   // ============================================
   roleHierarchy: {
-    superadmin: 4,
-    admin: 3,
-    manager: 2, // ✅ FIXED: Was missing
-    staff: 1,
+    superadmin: 3, // Highest - Full access
+    admin: 2, // Middle - Operations management
+    staff: 1, // Lowest - Basic operations
   },
 
   // ============================================
-  // PAGE-LEVEL PERMISSIONS (FIXED: Manager Added)
+  // PAGE-LEVEL PERMISSIONS
   // ============================================
   pagePermissions: {
     superadmin: [
@@ -42,27 +41,18 @@ const RBAC = {
       "sales-orders",
       "reports",
     ],
-    manager: [
-      // ✅ FIXED: Manager permissions added
+    staff: [
       "dashboard",
       "inventory",
       "stock-movements",
       "purchase-orders",
       "goods-receipt",
       "sales-orders",
-      "reports",
-    ],
-    staff: [
-      "dashboard",
-      "inventory",
-      "stock-movements",
-      "goods-receipt",
-      "sales-orders",
     ],
   },
 
   // ============================================
-  // ACTION-LEVEL PERMISSIONS (FIXED: Manager Added)
+  // ACTION-LEVEL PERMISSIONS
   // ============================================
   actionPermissions: {
     superadmin: {
@@ -76,26 +66,25 @@ const RBAC = {
         "receive",
       ],
       salesOrders: ["view", "create", "edit", "approve", "cancel", "invoice"],
+      suppliers: ["view", "create", "edit", "delete"],
       users: ["view", "create", "edit", "delete", "deactivate"],
+      reports: ["view", "export"],
     },
     admin: {
       inventory: ["view", "add", "edit", "adjust", "export"],
       purchaseOrders: ["view", "create", "edit", "approve", "receive"],
       salesOrders: ["view", "create", "edit", "approve", "invoice"],
+      suppliers: ["view", "create", "edit"],
       users: [],
-    },
-    manager: {
-      // ✅ FIXED: Manager actions added
-      inventory: ["view", "add", "edit", "export"],
-      purchaseOrders: ["view", "create", "edit", "receive"],
-      salesOrders: ["view", "create", "edit", "invoice"],
-      users: [],
+      reports: ["view", "export"],
     },
     staff: {
       inventory: ["view"],
       purchaseOrders: ["view", "create"],
       salesOrders: ["view", "create"],
+      suppliers: ["view"],
       users: [],
+      reports: ["view"],
     },
   },
 
@@ -109,6 +98,10 @@ const RBAC = {
     try {
       const user = JSON.parse(userJson);
       if (!user || !user.role) return null;
+
+      // Normalize role name (handle both role and role_name)
+      user.role = (user.role || user.role_name || "").toLowerCase();
+
       return user;
     } catch (err) {
       console.error("RBAC: Invalid user data", err);
@@ -164,6 +157,7 @@ const RBAC = {
     const path = window.location.pathname.split("/").pop();
     const pageName = path.replace(".html", "");
 
+    // Allow access to login page
     if (pageName === "index" || pageName === "") {
       return true;
     }
@@ -246,6 +240,16 @@ const RBAC = {
       badge.style.fontSize = "11px";
       badge.style.padding = "6px 12px";
       badge.style.borderRadius = "20px";
+
+      // Color based on role
+      if (user.role === "superadmin") {
+        badge.style.background = "#dc3545"; // Red
+      } else if (user.role === "admin") {
+        badge.style.background = "#667eea"; // Purple
+      } else {
+        badge.style.background = "#6c757d"; // Gray
+      }
+
       userInfo.insertBefore(badge, userInfo.firstChild);
     }
   },
@@ -327,7 +331,7 @@ const RBAC = {
   // INITIALIZE RBAC
   // ============================================
   init() {
-    console.log("🔒 RBAC System v7.0 Initializing...");
+    console.log("🔒 RBAC System v8.0 Initializing...");
 
     if (!this.enforcePage()) {
       return;
@@ -337,7 +341,7 @@ const RBAC = {
     this.displayRoleBadge();
     this.initHamburgerMenu();
 
-    console.log("✅ RBAC System v7.0 Initialized Successfully");
+    console.log("✅ RBAC System v8.0 Initialized Successfully");
   },
 };
 
@@ -352,6 +356,4 @@ if (document.readyState === "loading") {
 
 window.RBAC = RBAC;
 
-console.log(
-  "✅ RBAC Module v7.0 Loaded - Manager Role Added + Full Enforcement"
-);
+console.log("✅ RBAC Module v8.0 Loaded - 3 Roles: staff, admin, superadmin");

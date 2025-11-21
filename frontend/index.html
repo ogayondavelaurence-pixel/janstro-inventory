@@ -245,12 +245,13 @@
 
                 <div class="test-credentials">
                     <div class="test-credentials-header">
-                        <span>ℹ️</span><span>Test Credentials (All use password: admin123)</span>
+                        <span>ℹ️</span><span>Test Credentials</span>
                     </div>
                     <div class="test-buttons">
+                        <!-- FIXED: Correct username/password combinations -->
+                        <button class="btn-test" data-username="staff" data-password="staff123">👨‍💼 Staff</button>
                         <button class="btn-test" data-username="admin" data-password="admin123">👔 Admin</button>
-                        <button class="btn-test" data-username="superadmin" data-password="admin123">⭐ Super</button>
-                        <button class="btn-test" data-username="staff1" data-password="admin123">👨‍💼 Staff</button>
+                        <button class="btn-test" data-username="superadmin" data-password="superadmin123">⭐ Super</button>
                     </div>
                 </div>
 
@@ -297,11 +298,13 @@
                 togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
             });
 
+            // FIXED: Test credential buttons with correct passwords
             document.querySelectorAll('.btn-test').forEach(btn => {
                 btn.addEventListener('click', () => {
                     usernameInput.value = btn.dataset.username;
                     passwordInput.value = btn.dataset.password;
                     errorAlert.style.display = 'none';
+                    console.log(`🔐 Test credentials set: ${btn.dataset.username} / ${btn.dataset.password}`);
                 });
             });
 
