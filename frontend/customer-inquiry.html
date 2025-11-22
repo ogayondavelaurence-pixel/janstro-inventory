@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Inquiry - Janstro Prime</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        }
+        .inquiry-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .inquiry-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            overflow: hidden;
+            max-width: 600px;
+            width: 100%;
+            animation: slideUp 0.6s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .inquiry-header {
+            background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .sun-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .inquiry-header h1 {
+            color: #333;
+            font-weight: 800;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .inquiry-header p {
+            color: #555;
+            font-size: 16px;
+        }
+        .inquiry-body {
+            padding: 40px 30px;
+        }
+        .form-section {
+            margin-bottom: 30px;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title i {
+            color: #667eea;
+            font-size: 22px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 8px;
+        }
+        .form-control, .form-select {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .btn-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 60px 30px;
+        }
+        .success-message.show {
+            display: block;
+        }
+        .success-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 50px;
+            color: white;
+        }
+        .success-message h2 {
+            color: #28a745;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+        .reference-box {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .reference-box strong {
+            color: #667eea;
+            font-size: 20px;
+        }
+        .spinner-border {
+            width: 1.2rem;
+            height: 1.2rem;
+        }
+        @media (max-width: 576px) {
+            .inquiry-header { padding: 30px 20px; }
+            .inquiry-body { padding: 30px 20px; }
+            .inquiry-header h1 { font-size: 24px; }
+            .sun-icon { font-size: 48px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="inquiry-container">
+        <div class="inquiry-card">
+            <div class="inquiry-header">
+                <div class="sun-icon">☀️</div>
+                <h1>Janstro Prime Solar</h1>
+                <p>Request a Quote - We'll respond within 24 hours</p>
+            </div>
+
+            <div class="inquiry-body" id="formSection">
+                <div id="errorAlert" class="alert alert-danger d-none"></div>
+
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-person-fill"></i>
+                        Your Information
+                    </h3>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label" for="customerName">Full Name *</label>
+                            <input type="text" class="form-control" id="customerName" placeholder="Juan Dela Cruz" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="phone">Phone Number *</label>
+                            <input type="tel" class="form-control" id="phone" placeholder="09XX XXX XXXX" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="email">Email</label>
+                            <input type="email" class="form-control" id="email" placeholder="email@example.com">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="address">Installation Address *</label>
+                            <input type="text" class="form-control" id="address" placeholder="Complete address" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-sun-fill"></i>
+                        Product Inquiry
+                    </h3>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label" for="itemName">Product / System *</label>
+                            <select class="form-select" id="itemName" required>
+                                <option value="">Select a product...</option>
+                                <option value="5kW Solar System">5kW Solar System (Residential)</option>
+                                <option value="10kW Solar System">10kW Solar System (Commercial)</option>
+                                <option value="15kW Solar System">15kW Solar System (Industrial)</option>
+                                <option value="Solar Panel 250W">Solar Panel 250W Mono</option>
+                                <option value="Solar Panel 300W">Solar Panel 300W Poly</option>
+                                <option value="Inverter 5kW">Inverter 5kW Hybrid</option>
+                                <option value="Inverter 10kW">Inverter 10kW Grid-Tied</option>
+                                <option value="Battery 200Ah">Battery 200Ah Deep Cycle</option>
+                                <option value="Custom Inquiry">Custom Inquiry</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="quantity">Quantity *</label>
+                            <input type="number" class="form-control" id="quantity" min="1" value="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="installationDate">Preferred Installation Date</label>
+                            <input type="date" class="form-control" id="installationDate">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="budgetRange">Budget Range</label>
+                            <select class="form-select" id="budgetRange">
+                                <option value="">Select budget...</option>
+                                <option value="Below 100k">Below ₱100,000</option>
+                                <option value="100k-250k">₱100,000 - ₱250,000</option>
+                                <option value="250k-500k">₱250,000 - ₱500,000</option>
+                                <option value="Above 500k">Above ₱500,000</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="notes">Additional Notes</label>
+                            <textarea class="form-control" id="notes" rows="3" placeholder="Tell us more about your requirements..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" class="btn-submit" id="submitBtn" onclick="submitInquiry()">
+                    <i class="bi bi-send-fill"></i>
+                    <span>Submit Inquiry</span>
+                </button>
+
+                <p class="text-center text-muted mt-3 small">
+                    By submitting, you agree to our terms of service
+                </p>
+            </div>
+
+            <div class="success-message" id="successSection">
+                <div class="success-icon">
+                    <i class="bi bi-check-lg"></i>
+                </div>
+                <h2>Inquiry Submitted!</h2>
+                <p class="text-muted">Thank you for your interest. Our team will contact you within 24 hours.</p>
+                <div class="reference-box">
+                    <p class="mb-1">Your Reference Number:</p>
+                    <strong id="referenceNumber">INQ-00000001</strong>
+                </div>
+                <button class="btn-submit" onclick="resetForm()">
+                    <i class="bi bi-plus-circle"></i>
+                    Submit Another Inquiry
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = 'http://localhost:8080/janstro-inventory/public';
+
+        async function submitInquiry() {
+            const btn = document.getElementById('submitBtn');
+            const errorAlert = document.getElementById('errorAlert');
+            errorAlert.classList.add('d-none');
+
+            const data = {
+                customer_name: document.getElementById('customerName').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                email: document.getElementById('email').value.trim() || null,
+                address: document.getElementById('address').value.trim(),
+                item_name: document.getElementById('itemName').value,
+                quantity: parseInt(document.getElementById('quantity').value) || 1,
+                installation_date: document.getElementById('installationDate').value || null,
+                budget_range: document.getElementById('budgetRange').value || null,
+                notes: document.getElementById('notes').value.trim() || null
+            };
+
+            if (!data.customer_name || !data.phone || !data.address || !data.item_name) {
+                errorAlert.textContent = 'Please fill in all required fields (*)';
+                errorAlert.classList.remove('d-none');
+                return;
+            }
+
+            if (!/^(09|\+639)\d{9}$/.test(data.phone)) {
+                errorAlert.textContent = 'Please enter a valid phone number (09XXXXXXXXX)';
+                errorAlert.classList.remove('d-none');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border"></span> Submitting...';
+
+            try {
+                const response = await fetch(`${API_URL}/inquiries`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('formSection').style.display = 'none';
+                    document.getElementById('successSection').classList.add('show');
+                    document.getElementById('referenceNumber').textContent = result.data.reference_number;
+                } else {
+                    errorAlert.textContent = result.message || 'Failed to submit inquiry';
+                    errorAlert.classList.remove('d-none');
+                }
+            } catch (error) {
+                errorAlert.textContent = 'Network error. Please try again.';
+                errorAlert.classList.remove('d-none');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send-fill"></i> Submit Inquiry';
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('formSection').style.display = 'block';
+            document.getElementById('successSection').classList.remove('show');
+            document.getElementById('customerName').value = '';
+            document.getElementById('phone').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('address').value = '';
+            document.getElementById('itemName').value = '';
+            document.getElementById('quantity').value = '1';
+            document.getElementById('installationDate').value = '';
+            document.getElementById('budgetRange').value = '';
+            document.getElementById('notes').value = '';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('installationDate');
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.setAttribute('min', today);
+        });
+    </script>
+</body>
+</html>
