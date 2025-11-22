@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Analytics - Janstro Solar IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu"><i class="bi bi-list"></i></button>
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div class="page-header">
+            <div><h1><i class="bi bi-graph-up"></i> Reports & Analytics</h1><p class="text-muted mb-0">Business intelligence and performance metrics</p></div>
+        </div>
+        <div class="row mb-4 g-3">
+            <div class="col-6 col-md-3"><div class="card text-center p-3 bg-primary text-white"><i class="bi bi-box" style="font-size:2rem;"></i><h3 id="totalItems" class="mb-0">0</h3><small>Total Items</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3 bg-danger text-white"><i class="bi bi-exclamation-triangle" style="font-size:2rem;"></i><h3 id="lowStock" class="mb-0">0</h3><small>Low Stock</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3 bg-success text-white"><i class="bi bi-currency-dollar" style="font-size:2rem;"></i><h3 id="totalValue" class="mb-0">₱0</h3><small>Inventory Value</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3 bg-info text-white"><i class="bi bi-cart" style="font-size:2rem;"></i><h3 id="pendingPOs" class="mb-0">0</h3><small>Pending POs</small></div></div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card h-100"><div class="card-header d-flex justify-content-between"><h5 class="mb-0">📦 Inventory by Category</h5><button class="btn btn-sm btn-outline-primary" onclick="exportCategory()"><i class="bi bi-download"></i></button></div><div class="card-body" id="categoryReport"></div></div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100"><div class="card-header d-flex justify-content-between"><h5 class="mb-0">⚠️ Low Stock Items</h5><button class="btn btn-sm btn-outline-danger" onclick="exportLowStock()"><i class="bi bi-download"></i></button></div><div class="card-body" id="lowStockReport"></div></div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100"><div class="card-header d-flex justify-content-between"><h5 class="mb-0">🚚 Supplier Performance</h5><button class="btn btn-sm btn-outline-info" onclick="exportSuppliers()"><i class="bi bi-download"></i></button></div><div class="card-body" id="supplierReport"></div></div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100"><div class="card-header d-flex justify-content-between"><h5 class="mb-0">📊 Recent Transactions</h5><button class="btn btn-sm btn-outline-success" onclick="exportTransactions()"><i class="bi bi-download"></i></button></div><div class="card-body" id="transactionReport"></div></div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let reportData = {};
+        async function initPage() {
+            const res = await API.getCurrentUser();
+            if (!res?.success) { window.location.href = 'index.html'; return; }
+            await loadAllReports();
+        }
+        async function loadAllReports() {
+            try {
+                const [stats, inventory, lowStock, transactions] = await Promise.all([
+                    API.getDashboardStats(),
+                    API.getInventorySummary(),
+                    API.getLowStockItems(),
+                    API.getTransactionHistory(20)
+                ]);
+                if (stats?.success) {
+                    document.getElementById('totalItems').textContent = stats.data.total_items || 0;
+                    document.getElementById('lowStock').textContent = stats.data.low_stock_items || 0;
+                    document.getElementById('totalValue').textContent = Utils.formatCurrency(stats.data.total_inventory_value || 0);
+                    document.getElementById('pendingPOs').textContent = stats.data.pending_pos || 0;
+                }
+                if (inventory?.success) renderCategoryReport(inventory.data);
+                if (lowStock?.success) { reportData.lowStock = lowStock.data; renderLowStockReport(lowStock.data); }
+                if (transactions?.success) { reportData.transactions = transactions.data; renderTransactionReport(transactions.data); }
+                await loadSupplierReport();
+            } catch (e) { console.error('Report load error:', e); }
+        }
+        function renderCategoryReport(data) {
+            if (!data?.by_category?.length) { document.getElementById('categoryReport').innerHTML = '<p class="text-muted">No data</p>'; return; }
+            let html = '<table class="table table-sm"><thead><tr><th>Category</th><th>Items</th><th>Qty</th><th>Value</th></tr></thead><tbody>';
+            data.by_category.forEach(c => { html += `<tr><td>${Utils.escapeHtml(c.category)}</td><td>${c.total_items}</td><td>${c.total_quantity}</td><td>${Utils.formatCurrency(c.total_value)}</td></tr>`; });
+            html += '</tbody></table>';
+            document.getElementById('categoryReport').innerHTML = html;
+            reportData.category = data.by_category;
+        }
+        function renderLowStockReport(data) {
+            if (!data?.length) { document.getElementById('lowStockReport').innerHTML = '<p class="text-success">✅ All items adequately stocked</p>'; return; }
+            let html = '<table class="table table-sm"><thead><tr><th>Item</th><th>Stock</th><th>Reorder</th></tr></thead><tbody>';
+            data.slice(0, 10).forEach(i => { html += `<tr><td>${Utils.escapeHtml(i.item_name)}</td><td class="text-danger fw-bold">${i.quantity}</td><td>${i.reorder_level}</td></tr>`; });
+            html += '</tbody></table>';
+            if (data.length > 10) html += `<p class="text-muted small">+${data.length - 10} more items</p>`;
+            document.getElementById('lowStockReport').innerHTML = html;
+        }
+        async function loadSupplierReport() {
+            try {
+                const res = await API.getSuppliers();
+                if (res?.success) { reportData.suppliers = res.data; renderSupplierReport(res.data); }
+            } catch (e) { document.getElementById('supplierReport').innerHTML = '<p class="text-muted">Failed to load</p>'; }
+        }
+        function renderSupplierReport(data) {
+            if (!data?.length) { document.getElementById('supplierReport').innerHTML = '<p class="text-muted">No suppliers</p>'; return; }
+            let html = '<table class="table table-sm"><thead><tr><th>Supplier</th><th>Contact</th><th>Status</th></tr></thead><tbody>';
+            data.slice(0, 10).forEach(s => { html += `<tr><td>${Utils.escapeHtml(s.supplier_name)}</td><td>${Utils.escapeHtml(s.phone || '-')}</td><td><span class="badge ${s.status === 'active' ? 'bg-success' : 'bg-secondary'}">${s.status}</span></td></tr>`; });
+            html += '</tbody></table>';
+            document.getElementById('supplierReport').innerHTML = html;
+        }
+        function renderTransactionReport(data) {
+            if (!data?.length) { document.getElementById('transactionReport').innerHTML = '<p class="text-muted">No transactions</p>'; return; }
+            let html = '<table class="table table-sm"><thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Qty</th></tr></thead><tbody>';
+            data.slice(0, 10).forEach(t => { html += `<tr><td>${Utils.formatDate(t.transaction_date).split(',')[0]}</td><td>${Utils.escapeHtml(t.item_name)}</td><td><span class="badge ${t.transaction_type === 'IN' ? 'bg-success' : 'bg-danger'}">${t.transaction_type}</span></td><td>${t.quantity}</td></tr>`; });
+            html += '</tbody></table>';
+            document.getElementById('transactionReport').innerHTML = html;
+        }
+        function exportCategory() { if (reportData.category) Utils.exportToCSV(reportData.category, 'category_report.csv'); }
+        function exportLowStock() { if (reportData.lowStock) Utils.exportToCSV(reportData.lowStock, 'low_stock_report.csv'); }
+        function exportSuppliers() { if (reportData.suppliers) Utils.exportToCSV(reportData.suppliers, 'suppliers_report.csv'); }
+        function exportTransactions() { if (reportData.transactions) Utils.exportToCSV(reportData.transactions, 'transactions_report.csv'); }
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html>

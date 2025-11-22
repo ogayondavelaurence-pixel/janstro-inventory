@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Master Data - Janstro Solar IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu"><i class="bi bi-list"></i></button>
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div><h1><i class="bi bi-person-lines-fill text-primary"></i> Customer Master Data</h1><p class="text-muted mb-0">Manage customer profiles for sales and installations</p></div>
+                <button class="btn btn-primary" onclick="showAddModal()"><i class="bi bi-plus-circle"></i> Add Customer</button>
+            </div>
+        </div>
+        <div class="row mb-4 g-3">
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statTotal" class="text-primary mb-1">0</h3><small>Total Customers</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statIndividual" class="text-info mb-1">0</h3><small>Individual</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statCompany" class="text-warning mb-1">0</h3><small>Company</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statNew" class="text-success mb-1">0</h3><small>New This Month</small></div></div>
+        </div>
+        <div class="card mb-4"><div class="card-body"><div class="row g-3">
+            <div class="col-md-5"><input type="text" id="searchCustomer" class="form-control" placeholder="🔍 Search name, phone, email..." aria-label="Search"></div>
+            <div class="col-md-3"><select id="typeFilter" class="form-control" aria-label="Customer type"><option value="">All Types</option><option value="individual">Individual</option><option value="company">Company</option></select></div>
+            <div class="col-md-2"><input type="month" id="monthFilter" class="form-control" aria-label="Month filter"></div>
+            <div class="col-md-2"><button class="btn btn-primary w-100" onclick="loadCustomers()"><i class="bi bi-arrow-clockwise"></i></button></div>
+        </div></div></div>
+        <div class="card"><div class="card-header d-flex justify-content-between align-items-center"><h3 class="mb-0">📋 Customer List</h3><button class="btn btn-sm btn-outline-primary" onclick="exportCustomers()"><i class="bi bi-download"></i> Export</button></div><div id="customerTable"></div></div>
+    </div>
+    <div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="customerModalTitle">Add Customer</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body">
+                    <input type="hidden" id="customerId">
+                    <div class="row">
+                        <div class="col-md-8 mb-3"><label for="customerName" class="form-label">Customer Name <span class="text-danger">*</span></label><input type="text" id="customerName" class="form-control" required placeholder="e.g., Juan Dela Cruz or ABC Corporation"></div>
+                        <div class="col-md-4 mb-3"><label for="customerType" class="form-label">Type</label><select id="customerType" class="form-control"><option value="individual">Individual</option><option value="company">Company</option></select></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label for="customerPhone" class="form-label">Contact Number</label><input type="tel" id="customerPhone" class="form-control" placeholder="09XX XXX XXXX"></div>
+                        <div class="col-md-6 mb-3"><label for="customerEmail" class="form-label">Email</label><input type="email" id="customerEmail" class="form-control" placeholder="customer@email.com"></div>
+                    </div>
+                    <div class="mb-3"><label for="customerAddress" class="form-label">Address</label><textarea id="customerAddress" class="form-control" rows="2" placeholder="Complete address for installation/delivery"></textarea></div>
+                    <div class="mb-3"><label for="customerNotes" class="form-label">Notes</label><textarea id="customerNotes" class="form-control" rows="2" placeholder="Special requirements, preferences, etc."></textarea></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" onclick="saveCustomer()"><i class="bi bi-save"></i> Save</button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="customerDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Customer Details</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body" id="customerDetailContent"></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="button" class="btn btn-primary" onclick="createOrderForCustomer()"><i class="bi bi-cart-plus"></i> Create Order</button></div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let customerData = [], selectedCustomerId = null;
+        async function initPage() {
+            const res = await API.getCurrentUser();
+            if (!res?.success) { window.location.href = 'index.html'; return; }
+            await loadCustomers();
+            document.getElementById('searchCustomer').addEventListener('input', filterCustomers);
+            document.getElementById('typeFilter').addEventListener('change', filterCustomers);
+            document.getElementById('monthFilter').addEventListener('change', filterCustomers);
+        }
+        async function loadCustomers() {
+            Utils.showLoading('customerTable');
+            try {
+                const res = await API.getCustomers();
+                if (res?.success) { customerData = res.data || []; renderTable(customerData); updateStats(customerData); }
+                else { customerData = []; renderTable([]); updateStats([]); }
+            } catch (e) { Utils.showError('customerTable', 'Failed to load customers'); }
+        }
+        function renderTable(data) {
+            if (!data.length) { document.getElementById('customerTable').innerHTML = '<p class="text-center py-5 text-muted">No customers found. Customers are auto-created from sales orders or add manually.</p>'; return; }
+            let html = `<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Customer</th><th>Contact</th><th>Email</th><th>Type</th><th>Created</th><th>Actions</th></tr></thead><tbody>`;
+            data.forEach(c => {
+                const badge = c.customer_type === 'company' ? 'bg-warning text-dark' : 'bg-info';
+                html += `<tr>
+                    <td><strong>${Utils.escapeHtml(c.customer_name)}</strong><br><small class="text-muted">${Utils.escapeHtml(c.address || '').substring(0, 35)}${c.address?.length > 35 ? '...' : ''}</small></td>
+                    <td>${Utils.escapeHtml(c.contact_number || '-')}</td>
+                    <td>${Utils.escapeHtml(c.email || '-')}</td>
+                    <td><span class="badge ${badge}">${c.customer_type}</span></td>
+                    <td>${Utils.formatDate(c.created_at).split(',')[0]}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewCustomer(${c.customer_id})" title="View"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-sm btn-primary" onclick="editCustomer(${c.customer_id})" title="Edit"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-success" onclick="quickOrder(${c.customer_id})" title="Create Order"><i class="bi bi-cart-plus"></i></button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            document.getElementById('customerTable').innerHTML = html;
+        }
+        function updateStats(data) {
+            const now = new Date();
+            const thisMonth = data.filter(c => { const d = new Date(c.created_at); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+            document.getElementById('statTotal').textContent = data.length;
+            document.getElementById('statIndividual').textContent = data.filter(c => c.customer_type === 'individual').length;
+            document.getElementById('statCompany').textContent = data.filter(c => c.customer_type === 'company').length;
+            document.getElementById('statNew').textContent = thisMonth.length;
+        }
+        function filterCustomers() {
+            const search = document.getElementById('searchCustomer').value.toLowerCase();
+            const type = document.getElementById('typeFilter').value;
+            const month = document.getElementById('monthFilter').value;
+            renderTable(customerData.filter(c => {
+                const matchSearch = c.customer_name?.toLowerCase().includes(search) || c.contact_number?.includes(search) || c.email?.toLowerCase().includes(search);
+                const matchType = !type || c.customer_type === type;
+                const matchMonth = !month || c.created_at?.startsWith(month);
+                return matchSearch && matchType && matchMonth;
+            }));
+        }
+        function showAddModal() {
+            document.getElementById('customerModalTitle').textContent = 'Add Customer';
+            document.getElementById('customerId').value = '';
+            ['customerName','customerPhone','customerEmail','customerAddress','customerNotes'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('customerType').value = 'individual';
+            new bootstrap.Modal(document.getElementById('customerModal')).show();
+        }
+        function editCustomer(id) {
+            const c = customerData.find(cust => cust.customer_id === id);
+            if (!c) return;
+            document.getElementById('customerModalTitle').textContent = 'Edit Customer';
+            document.getElementById('customerId').value = c.customer_id;
+            document.getElementById('customerName').value = c.customer_name || '';
+            document.getElementById('customerPhone').value = c.contact_number || '';
+            document.getElementById('customerEmail').value = c.email || '';
+            document.getElementById('customerAddress').value = c.address || '';
+            document.getElementById('customerType').value = c.customer_type || 'individual';
+            document.getElementById('customerNotes').value = c.notes || '';
+            new bootstrap.Modal(document.getElementById('customerModal')).show();
+        }
+        function viewCustomer(id) {
+            const c = customerData.find(cust => cust.customer_id === id);
+            if (!c) return;
+            selectedCustomerId = id;
+            document.getElementById('customerDetailContent').innerHTML = `
+                <div class="row"><div class="col-md-6"><p><strong>Name:</strong> ${Utils.escapeHtml(c.customer_name)}</p><p><strong>Type:</strong> <span class="badge ${c.customer_type === 'company' ? 'bg-warning' : 'bg-info'}">${c.customer_type}</span></p><p><strong>Phone:</strong> ${Utils.escapeHtml(c.contact_number || '-')}</p></div>
+                <div class="col-md-6"><p><strong>Email:</strong> ${Utils.escapeHtml(c.email || '-')}</p><p><strong>Created:</strong> ${Utils.formatDate(c.created_at)}</p></div></div>
+                <p><strong>Address:</strong> ${Utils.escapeHtml(c.address || '-')}</p>
+                <p><strong>Notes:</strong> ${Utils.escapeHtml(c.notes || '-')}</p>
+                <hr><h6>Order History</h6><p class="text-muted">Feature coming soon - will show all orders for this customer</p>`;
+            new bootstrap.Modal(document.getElementById('customerDetailModal')).show();
+        }
+        async function saveCustomer() {
+            const id = document.getElementById('customerId').value;
+            const data = {
+                customer_name: document.getElementById('customerName').value.trim(),
+                contact_number: document.getElementById('customerPhone').value.trim(),
+                email: document.getElementById('customerEmail').value.trim(),
+                address: document.getElementById('customerAddress').value.trim(),
+                customer_type: document.getElementById('customerType').value,
+                notes: document.getElementById('customerNotes').value.trim()
+            };
+            if (!data.customer_name) { Utils.showToast('Customer name is required', 'error'); return; }
+            if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) { Utils.showToast('Invalid email format', 'error'); return; }
+            try {
+                const res = id ? await API.put(`/customers/${id}`, data) : await API.createCustomer(data);
+                if (res?.success) {
+                    Utils.showToast(id ? 'Customer updated successfully' : 'Customer created successfully', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
+                    loadCustomers();
+                } else Utils.showToast(res?.message || 'Operation failed', 'error');
+            } catch (e) { Utils.showToast(e.message, 'error'); }
+        }
+        function quickOrder(id) {
+            const c = customerData.find(cust => cust.customer_id === id);
+            if (c) { sessionStorage.setItem('prefillCustomer', JSON.stringify(c)); window.location.href = 'sales-orders.html'; }
+        }
+        function createOrderForCustomer() {
+            if (selectedCustomerId) quickOrder(selectedCustomerId);
+        }
+        function exportCustomers() {
+            if (customerData.length) {
+                const exportData = customerData.map(c => ({ Name: c.customer_name, Phone: c.contact_number, Email: c.email, Type: c.customer_type, Address: c.address, Created: c.created_at }));
+                Utils.exportToCSV(exportData, 'customers_' + new Date().toISOString().split('T')[0] + '.csv');
+            } else Utils.showToast('No data to export', 'error');
+        }
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html>

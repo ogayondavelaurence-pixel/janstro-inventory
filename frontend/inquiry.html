@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Installation Inquiry - Janstro Prime</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/css/login.css" rel="stylesheet">
+    <style>
+        .inquiry-card { max-width: 600px; }
+        .solar-icon { font-size: 4rem; color: #FDB813; text-shadow: 0 0 20px rgba(253,184,19,0.5); }
+        .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.2); }
+        .btn-submit { background: linear-gradient(135deg, #28a745, #20c997); border: none; padding: 15px; font-size: 1.1rem; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(40,167,69,0.4); }
+        .success-message { display: none; }
+        .success-message.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="solar-background"><div class="sun"></div><div class="solar-panel panel-1"></div><div class="solar-panel panel-2"></div></div>
+    <main class="login-container">
+        <div class="login-card inquiry-card">
+            <div class="login-header">
+                <div class="solar-icon">☀️</div>
+                <h1 class="login-title">Install Solar Now</h1>
+                <p class="login-subtitle">Get a Free Quote from Janstro Prime</p>
+            </div>
+            <div class="login-body">
+                <div id="inquiryForm">
+                    <div id="errorAlert" class="alert alert-danger d-none"></div>
+                    <div class="mb-3">
+                        <label for="customerName" class="form-label">Your Name <span class="text-danger">*</span></label>
+                        <input type="text" id="customerName" class="form-control" placeholder="Juan Dela Cruz" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" id="email" class="form-control" placeholder="you@email.com" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                            <input type="tel" id="phone" class="form-control" placeholder="09XX XXX XXXX" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inquiryType" class="form-label">What do you need? <span class="text-danger">*</span></label>
+                        <select id="inquiryType" class="form-control" required>
+                            <option value="">Select...</option>
+                            <option value="installation">New Solar Installation</option>
+                            <option value="maintenance">Maintenance/Repair</option>
+                            <option value="pricing">Request Quotation</option>
+                            <option value="technical">Technical Support</option>
+                            <option value="other">Other Inquiry</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="message" class="form-label">Tell us more <span class="text-danger">*</span></label>
+                        <textarea id="message" class="form-control" rows="4" placeholder="Describe your needs, location, estimated system size, etc." required></textarea>
+                    </div>
+                    <button type="button" class="btn btn-submit text-white w-100" onclick="submitInquiry()" id="submitBtn">
+                        <span>📩 Submit Inquiry</span>
+                    </button>
+                    <p class="footer-text mt-3">We'll respond within 24 hours</p>
+                </div>
+                <div id="successMessage" class="success-message text-center py-4">
+                    <div style="font-size:4rem;">✅</div>
+                    <h3 class="text-white mt-3">Thank You!</h3>
+                    <p class="text-white-50">Your inquiry has been submitted successfully.</p>
+                    <p class="text-white-50">Reference: <strong id="refNumber"></strong></p>
+                    <p class="text-white-50">Our team will contact you within 24 hours.</p>
+                    <a href="index.html" class="btn btn-outline-light mt-3">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="assets/js/api.js"></script>
+    <script>
+        async function submitInquiry() {
+            const data = {
+                customer_name: document.getElementById('customerName').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                inquiry_type: document.getElementById('inquiryType').value,
+                message: document.getElementById('message').value.trim()
+            };
+            const errorAlert = document.getElementById('errorAlert');
+            errorAlert.classList.add('d-none');
+            if (!data.customer_name || !data.email || !data.phone || !data.inquiry_type || !data.message) {
+                errorAlert.textContent = 'Please fill in all required fields';
+                errorAlert.classList.remove('d-none');
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+                errorAlert.textContent = 'Please enter a valid email address';
+                errorAlert.classList.remove('d-none');
+                return;
+            }
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Submitting...</span>';
+            try {
+                const res = await fetch('http://localhost:8080/janstro-inventory/public/inquiries', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('inquiryForm').style.display = 'none';
+                    document.getElementById('successMessage').classList.add('show');
+                    document.getElementById('refNumber').textContent = 'INQ-' + String(result.data.inquiry_id).padStart(6, '0');
+                } else {
+                    errorAlert.textContent = result.message || 'Failed to submit. Please try again.';
+                    errorAlert.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>📩 Submit Inquiry</span>';
+                }
+            } catch (e) {
+                errorAlert.textContent = 'Connection error. Please try again.';
+                errorAlert.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = '<span>📩 Submit Inquiry</span>';
+            }
+        }
+    </script>
+</body>
+</html>

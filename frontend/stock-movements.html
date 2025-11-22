@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Movements (MB51) - Janstro Solar IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu"><i class="bi bi-list"></i></button>
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div><h1><i class="bi bi-arrow-left-right"></i> Material Documents (MB51)</h1><p class="text-muted mb-0">Track all stock IN/OUT transactions</p></div>
+                <button class="btn btn-outline-primary" onclick="exportData()"><i class="bi bi-download"></i> Export</button>
+            </div>
+        </div>
+        <div class="row mb-4 g-3">
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statTotal" class="text-primary mb-1">0</h3><small>Total</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statIn" class="text-success mb-1">0</h3><small>Stock IN</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statOut" class="text-danger mb-1">0</h3><small>Stock OUT</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statToday" class="text-warning mb-1">0</h3><small>Today</small></div></div>
+        </div>
+        <div class="card mb-4"><div class="card-body"><div class="row g-3">
+            <div class="col-md-3"><input type="text" id="search" class="form-control" placeholder="🔍 Search item..." aria-label="Search"></div>
+            <div class="col-md-2"><select id="typeFilter" class="form-control"><option value="">All Types</option><option value="IN">Stock IN</option><option value="OUT">Stock OUT</option></select></div>
+            <div class="col-md-2"><input type="date" id="dateFrom" class="form-control" aria-label="From date"></div>
+            <div class="col-md-2"><input type="date" id="dateTo" class="form-control" aria-label="To date"></div>
+            <div class="col-md-3"><button class="btn btn-primary w-100" onclick="loadMovements()"><i class="bi bi-arrow-clockwise"></i> Refresh</button></div>
+        </div></div></div>
+        <div class="card"><div class="card-header"><h3 class="mb-0">📋 Transaction History</h3></div><div id="movementsTable"></div></div>
+    </div>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let movementData = [];
+        async function initPage() {
+            const res = await API.getCurrentUser();
+            if (!res?.success) { window.location.href = 'index.html'; return; }
+            await loadMovements();
+            ['search','typeFilter','dateFrom','dateTo'].forEach(id => document.getElementById(id).addEventListener('change', filterData));
+            document.getElementById('search').addEventListener('input', filterData);
+        }
+        async function loadMovements() {
+            Utils.showLoading('movementsTable');
+            try {
+                const res = await API.getStockMovements();
+                if (res?.success) { movementData = res.data || []; renderTable(movementData); updateStats(movementData); }
+                else { movementData = []; renderTable([]); updateStats([]); }
+            } catch (e) { movementData = []; renderTable([]); updateStats([]); }
+        }
+        function renderTable(data) {
+            if (!data.length) { document.getElementById('movementsTable').innerHTML = '<p class="text-center py-5 text-muted">No stock movements found</p>'; return; }
+            let html = `<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Reference</th><th>User</th><th>Notes</th></tr></thead><tbody>`;
+            data.forEach(m => {
+                const badge = m.transaction_type === 'IN' ? 'bg-success' : 'bg-danger';
+                const sign = m.transaction_type === 'IN' ? '+' : '-';
+                html += `<tr><td>${Utils.formatDate(m.transaction_date)}</td><td><strong>${Utils.escapeHtml(m.item_name)}</strong><br><small class="text-muted">${m.sku || ''}</small></td><td><span class="badge ${badge}">${m.transaction_type}</span></td><td><strong>${sign}${m.quantity}</strong> ${m.unit || ''}</td><td>${Utils.escapeHtml(m.reference_type || '')} ${Utils.escapeHtml(m.reference_number || '')}</td><td>${Utils.escapeHtml(m.created_by_name || '-')}</td><td>${Utils.escapeHtml(m.notes || '-')}</td></tr>`;
+            });
+            html += '</tbody></table></div>';
+            document.getElementById('movementsTable').innerHTML = html;
+        }
+        function updateStats(data) {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('statTotal').textContent = data.length;
+            document.getElementById('statIn').textContent = data.filter(m => m.transaction_type === 'IN').length;
+            document.getElementById('statOut').textContent = data.filter(m => m.transaction_type === 'OUT').length;
+            document.getElementById('statToday').textContent = data.filter(m => m.transaction_date?.startsWith(today)).length;
+        }
+        function filterData() {
+            const search = document.getElementById('search').value.toLowerCase();
+            const type = document.getElementById('typeFilter').value;
+            const from = document.getElementById('dateFrom').value;
+            const to = document.getElementById('dateTo').value;
+            renderTable(movementData.filter(m => {
+                const matchSearch = m.item_name?.toLowerCase().includes(search) || m.sku?.toLowerCase().includes(search);
+                const matchType = !type || m.transaction_type === type;
+                const matchFrom = !from || m.transaction_date >= from;
+                const matchTo = !to || m.transaction_date <= to + 'T23:59:59';
+                return matchSearch && matchType && matchFrom && matchTo;
+            }));
+        }
+        function exportData() { if (movementData.length) Utils.exportToCSV(movementData, 'stock_movements_' + new Date().toISOString().split('T')[0] + '.csv'); else Utils.showToast('No data', 'error'); }
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html>

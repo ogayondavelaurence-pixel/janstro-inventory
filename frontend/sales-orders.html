@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Orders (VA01) - Janstro Solar IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu"><i class="bi bi-list"></i></button>
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h1><i class="bi bi-cart-check text-primary"></i> Sales Orders (VA01)</h1>
+                    <p class="text-muted mb-0">Create and manage customer solar installation orders</p>
+                </div>
+                <button class="btn btn-primary" onclick="showCreateSOModal()" id="btnCreateSO">
+                    <i class="bi bi-plus-circle"></i> Create Order
+                </button>
+            </div>
+        </div>
+        <div class="row mb-4 g-3">
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statTotal" class="text-primary mb-1">0</h3><small>Total</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statPending" class="text-warning mb-1">0</h3><small>Pending</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statCompleted" class="text-success mb-1">0</h3><small>Completed</small></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center p-3"><h3 id="statValue" class="text-info mb-1">₱0</h3><small>Total Value</small></div></div>
+        </div>
+        <div class="card mb-4"><div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4"><input type="text" id="searchSO" class="form-control" placeholder="🔍 Search customer, SO#..." aria-label="Search"></div>
+                <div class="col-md-3"><select id="statusFilter" class="form-control" aria-label="Status filter"><option value="">All Status</option><option value="pending">Pending</option><option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
+                <div class="col-md-3"><input type="date" id="dateFilter" class="form-control" aria-label="Date filter"></div>
+                <div class="col-md-2"><button class="btn btn-primary w-100" onclick="loadSalesOrders()"><i class="bi bi-arrow-clockwise"></i></button></div>
+            </div>
+        </div></div>
+        <div class="card"><div class="card-header"><h3 class="mb-0">📋 Sales Order List</h3></div><div id="soTable" role="region" aria-live="polite"></div></div>
+    </div>
+    <div class="modal fade" id="createSOModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Create Sales Order (VA01)</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label for="soCustomer" class="form-label">Customer Name <span class="text-danger">*</span></label><input type="text" id="soCustomer" class="form-control" required placeholder="Juan Dela Cruz"></div>
+                        <div class="col-md-6 mb-3"><label for="soContact" class="form-label">Contact Number</label><input type="tel" id="soContact" class="form-control" placeholder="09XX XXX XXXX"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label for="soItem" class="form-label">Item/System <span class="text-danger">*</span></label><select id="soItem" class="form-control" required></select></div>
+                        <div class="col-md-3 mb-3"><label for="soQty" class="form-label">Quantity <span class="text-danger">*</span></label><input type="number" id="soQty" class="form-control" min="1" value="1" required></div>
+                        <div class="col-md-3 mb-3"><label for="soTotal" class="form-label">Total</label><input type="text" id="soTotal" class="form-control" readonly></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label for="soAddress" class="form-label">Delivery/Installation Address</label><textarea id="soAddress" class="form-control" rows="2"></textarea></div>
+                        <div class="col-md-6 mb-3"><label for="soInstallDate" class="form-label">Installation Date</label><input type="date" id="soInstallDate" class="form-control"></div>
+                    </div>
+                    <div class="mb-3"><label for="soNotes" class="form-label">Notes</label><textarea id="soNotes" class="form-control" rows="2"></textarea></div>
+                    <div id="stockWarning" class="alert alert-warning d-none"><i class="bi bi-exclamation-triangle"></i> <span></span></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" onclick="createSalesOrder()"><i class="bi bi-save"></i> Create Order</button></div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let soData = [], items = [];
+        async function initPage() {
+            const res = await API.getCurrentUser();
+            if (!res?.success) { window.location.href = 'index.html'; return; }
+            await loadItems();
+            await loadSalesOrders();
+            setupListeners();
+        }
+        async function loadItems() {
+            const res = await API.getInventory();
+            if (res?.success) {
+                items = res.data;
+                let opts = '<option value="">Select Item</option>';
+                items.forEach(i => opts += `<option value="${i.item_id}" data-price="${i.unit_price}" data-stock="${i.quantity}">${Utils.escapeHtml(i.item_name)} (Stock: ${i.quantity})</option>`);
+                document.getElementById('soItem').innerHTML = opts;
+            }
+        }
+        async function loadSalesOrders() {
+            Utils.showLoading('soTable');
+            const res = await API.get('/sales-orders');
+            if (res?.success) { soData = res.data; renderTable(soData); updateStats(soData); }
+            else Utils.showError('soTable', 'Failed to load');
+        }
+        function renderTable(data) {
+            if (!data.length) { document.getElementById('soTable').innerHTML = '<p class="text-center py-5 text-muted">No sales orders found</p>'; return; }
+            let html = `<div class="table-responsive"><table class="table table-hover"><thead><tr><th>SO#</th><th>Customer</th><th>Items</th><th>Total</th><th>Install Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+            data.forEach(so => {
+                const badge = so.status === 'completed' ? 'bg-success' : so.status === 'pending' ? 'bg-warning text-dark' : so.status === 'cancelled' ? 'bg-danger' : 'bg-info';
+                html += `<tr>
+                    <td><strong>SO-${String(so.sales_order_id).padStart(4,'0')}</strong></td>
+                    <td>${Utils.escapeHtml(so.customer_name)}<br><small class="text-muted">${Utils.escapeHtml(so.contact_number || '')}</small></td>
+                    <td>${Utils.escapeHtml(so.items_summary || '-')}</td>
+                    <td>${Utils.formatCurrency(so.total_amount)}</td>
+                    <td>${so.installation_date || '-'}</td>
+                    <td><span class="badge ${badge}">${so.status}</span></td>
+                    <td>
+                        ${so.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="processInvoice(${so.sales_order_id})" title="Generate Invoice"><i class="bi bi-receipt"></i></button>` : ''}
+                        <button class="btn btn-sm btn-info" onclick="viewSO(${so.sales_order_id})" title="View"><i class="bi bi-eye"></i></button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            document.getElementById('soTable').innerHTML = html;
+        }
+        function updateStats(data) {
+            document.getElementById('statTotal').textContent = data.length;
+            document.getElementById('statPending').textContent = data.filter(s => s.status === 'pending').length;
+            document.getElementById('statCompleted').textContent = data.filter(s => s.status === 'completed').length;
+            document.getElementById('statValue').textContent = Utils.formatCurrency(data.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0));
+        }
+        function setupListeners() {
+            document.getElementById('searchSO').addEventListener('input', filterSO);
+            document.getElementById('statusFilter').addEventListener('change', filterSO);
+            document.getElementById('soItem').addEventListener('change', updateTotal);
+            document.getElementById('soQty').addEventListener('input', updateTotal);
+        }
+        function filterSO() {
+            const search = document.getElementById('searchSO').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            const filtered = soData.filter(so => {
+                const matchSearch = so.customer_name?.toLowerCase().includes(search) || `SO-${so.sales_order_id}`.toLowerCase().includes(search);
+                return (!status || so.status === status) && matchSearch;
+            });
+            renderTable(filtered);
+        }
+        function updateTotal() {
+            const sel = document.getElementById('soItem');
+            const qty = parseInt(document.getElementById('soQty').value) || 0;
+            const opt = sel.options[sel.selectedIndex];
+            const price = parseFloat(opt?.dataset?.price) || 0;
+            const stock = parseInt(opt?.dataset?.stock) || 0;
+            document.getElementById('soTotal').value = Utils.formatCurrency(price * qty);
+            const warn = document.getElementById('stockWarning');
+            if (qty > stock && stock > 0) { warn.classList.remove('d-none'); warn.querySelector('span').textContent = `Only ${stock} in stock!`; }
+            else { warn.classList.add('d-none'); }
+        }
+        function showCreateSOModal() {
+            ['soCustomer','soContact','soAddress','soNotes'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('soItem').value = '';
+            document.getElementById('soQty').value = '1';
+            document.getElementById('soTotal').value = '';
+            document.getElementById('soInstallDate').value = new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
+            document.getElementById('stockWarning').classList.add('d-none');
+            new bootstrap.Modal(document.getElementById('createSOModal')).show();
+        }
+        async function createSalesOrder() {
+            const data = {
+                customer_name: document.getElementById('soCustomer').value.trim(),
+                contact_number: document.getElementById('soContact').value.trim(),
+                item_id: parseInt(document.getElementById('soItem').value),
+                quantity: parseInt(document.getElementById('soQty').value),
+                delivery_address: document.getElementById('soAddress').value.trim(),
+                installation_date: document.getElementById('soInstallDate').value,
+                notes: document.getElementById('soNotes').value.trim()
+            };
+            if (!data.customer_name || !data.item_id || !data.quantity) { Utils.showToast('Fill required fields', 'error'); return; }
+            try {
+                const res = await API.post('/sales-orders', data);
+                if (res?.success) { Utils.showToast('Sales Order created!', 'success'); bootstrap.Modal.getInstance(document.getElementById('createSOModal')).hide(); loadSalesOrders(); }
+                else Utils.showToast(res?.message || 'Failed', 'error');
+            } catch (e) { Utils.showToast(e.message, 'error'); }
+        }
+        async function processInvoice(soId) {
+            if (!confirm(`Generate invoice for SO-${String(soId).padStart(4,'0')}? This will deduct stock.`)) return;
+            try {
+                const user = API.getUserFromStorage();
+                const res = await API.processInvoice(soId, user.user_id);
+                if (res?.success) { Utils.showToast(`Invoice ${res.data.invoice_number} generated!`, 'success'); loadSalesOrders(); }
+                else Utils.showToast(res?.message || 'Failed', 'error');
+            } catch (e) { Utils.showToast(e.message, 'error'); }
+        }
+        function viewSO(id) { Utils.showToast('View details coming soon', 'info'); }
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html>
