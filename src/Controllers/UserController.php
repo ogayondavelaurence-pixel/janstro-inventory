@@ -1,276 +1,358 @@
 <?php
 
-namespace Janstro\InventorySystem\Controllers;
-
-use Janstro\InventorySystem\Services\UserService;
-use Janstro\InventorySystem\Middleware\AuthMiddleware;
-use Janstro\InventorySystem\Utils\Response;
-
 /**
- * User Controller
- * Handles user management HTTP requests
- * ISO/IEC 25010: Security, Usability
+ * JANSTRO IMS - User Management Controller
+ * Location: src/Controllers/UserController.php
+ * 
+ * FIXES:
+ * - GET /users/:id endpoint (was missing, causing 404)
+ * - GET /users/current endpoint (for session user)
+ * - GET /users endpoint (list all users - admin only)
+ * - POST /users endpoint (create user - admin only)
+ * - PUT /users/:id endpoint (update user - admin only)
+ * - DELETE /users/:id endpoint (delete user - admin only)
  */
+
+require_once __DIR__ . '/../Config/Database.php';
+require_once __DIR__ . '/../Middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../Utils/Response.php';
+
 class UserController
 {
-    private UserService $userService;
+    private $db;
 
     public function __construct()
     {
-        $this->userService = new UserService();
+        $this->db = Database::getInstance()->getConnection();
     }
 
     /**
-     * GET /users
-     * Get all users (superadmin only)
+     * GET /users/current - Get current logged-in user
+     * FIXES: "Cannot read properties of undefined" error
      */
-    public function getAll(): void
+    public function getCurrentUser()
     {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        // Only admin and superadmin can view all users
-        if (!in_array($user->role, ['admin', 'superadmin'])) {
-            Response::forbidden('Only superadmin can view all users');
+        // Check authentication
+        if (!isset($_SESSION['user_id'])) {
+            Response::error('Not authenticated', 401);
             return;
         }
 
-        try {
-            $users = $this->userService->getAllUsers();
-            Response::success($users, 'Users retrieved successfully');
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
-        }
-    }
-
-    /**
-     * GET /users/{id}
-     * Get single user
-     */
-    public function getById(int $id): void
-    {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        // Users can only view their own profile unless they're superadmin
-        if ($user->role !== 'superadmin' && $user->user_id !== $id) {
-            Response::forbidden('Insufficient permissions');
-            return;
-        }
+        $userId = $_SESSION['user_id'];
 
         try {
-            $userData = $this->userService->getUserById($id);
+            $stmt = $this->db->prepare("
+                SELECT 
+                    user_id,
+                    username,
+                    full_name,
+                    email,
+                    role,
+                    status,
+                    last_login,
+                    created_at
+                FROM users 
+                WHERE user_id = ? AND status = 'active'
+            ");
 
-            if (!$userData) {
-                Response::notFound('User not found');
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                Response::error('User not found or inactive', 404);
                 return;
             }
 
-            Response::success($userData, 'User found');
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
+            // Remove sensitive data
+            unset($user['password']);
+
+            Response::success($user, 'Current user retrieved');
+        } catch (PDOException $e) {
+            error_log("Get current user error: " . $e->getMessage());
+            Response::error('Failed to retrieve user data', 500);
         }
     }
 
     /**
-     * GET /users/roles - NEW METHOD
-     * Get all available roles
+     * GET /users/:id - Get specific user by ID
+     * FIXES: 404 error on /users/undefined
      */
-    public function getRoles(): void
+    public function getUser($userId)
     {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
+        // Validate user ID
+        if (empty($userId) || $userId === 'undefined' || $userId === 'null') {
+            Response::error('Invalid user ID', 400);
+            return;
+        }
 
-        // Only admin and superadmin can view roles
-        if (!in_array($user->role, ['admin', 'superadmin'])) {
-            Response::forbidden('Insufficient permissions');
+        // Check authentication
+        if (!isset($_SESSION['user_id'])) {
+            Response::error('Not authenticated', 401);
+            return;
+        }
+
+        // Allow users to view their own profile, or require admin for others
+        $requesterId = $_SESSION['user_id'];
+        $requesterRole = $_SESSION['role'] ?? 'staff';
+
+        if ($userId != $requesterId && !in_array($requesterRole, ['admin', 'superadmin'])) {
+            Response::error('Insufficient permissions', 403);
             return;
         }
 
         try {
-            $roles = $this->userService->getRoles();
-            Response::success($roles, 'Roles retrieved successfully');
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
-        }
-    }
+            $stmt = $this->db->prepare("
+                SELECT 
+                    user_id,
+                    username,
+                    full_name,
+                    email,
+                    role,
+                    status,
+                    last_login,
+                    created_at
+                FROM users 
+                WHERE user_id = ?
+            ");
 
-    /**
-     * POST /users
-     * Create new user (superadmin only)
-     */
-    public function create(): void
-    {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user->role !== 'superadmin') {
-            Response::forbidden('Only superadmin can create users');
-            return;
-        }
-
-        try {
-            $data = json_decode(file_get_contents('php://input'), true);
-            $result = $this->userService->createUser($data);
-
-            Response::success($result, 'User created successfully', 201);
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
-        }
-    }
-
-    /**
-     * PUT /users/{id}
-     * Update user
-     */
-    public function update(int $id): void
-    {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        // Users can update their own profile or superadmin can update anyone
-        if ($user->role !== 'superadmin' && $user->user_id !== $id) {
-            Response::forbidden('Insufficient permissions');
-            return;
-        }
-
-        try {
-            $data = json_decode(file_get_contents('php://input'), true);
-
-            // Non-superadmins cannot change their role
-            if ($user->role !== 'superadmin' && isset($data['role_id'])) {
-                unset($data['role_id']);
-            }
-
-            $success = $this->userService->updateUser($id, $data);
-
-            if ($success) {
-                Response::success(null, 'User updated successfully');
-            } else {
-                Response::error('Failed to update user');
-            }
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
-        }
-    }
-
-    /**
-     * PUT /users/{id}/deactivate - NEW METHOD
-     * Deactivate user account
-     */
-    public function deactivate(int $id): void
-    {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        if ($user->role !== 'superadmin') {
-            Response::forbidden('Only superadmin can deactivate users');
-            return;
-        }
-
-        // Prevent self-deactivation
-        if ($id === $user->user_id) {
-            Response::error('Cannot deactivate your own account');
-            return;
-        }
-
-        try {
-            $success = $this->userService->deactivateUser($id);
-
-            if ($success) {
-                Response::success(null, 'User deactivated successfully');
-            } else {
-                Response::error('Failed to deactivate user');
-            }
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
-        }
-    }
-
-    /**
-     * PUT /users/{id}/activate - NEW METHOD
-     * Activate user account
-     */
-    public function activate(int $id): void
-    {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        if ($user->role !== 'superadmin') {
-            Response::forbidden('Only superadmin can activate users');
-            return;
-        }
-
-        try {
-            $success = $this->userService->activateUser($id);
-
-            if ($success) {
-                Response::success(null, 'User activated successfully');
-            } else {
-                Response::error('Failed to activate user');
-            }
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
-        }
-    }
-
-    /**
-     * DELETE /users/{id}
-     * Delete user (superadmin only)
-     */
-    public function delete(int $id): void
-    {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        if ($user->role !== 'superadmin') {
-            Response::forbidden('Only superadmin can delete users');
-            return;
-        }
-
-        try {
-            $success = $this->userService->deleteUser($id, $user->user_id);
-
-            if ($success) {
-                Response::success(null, 'User deleted successfully');
-            } else {
-                Response::error('Failed to delete user');
-            }
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
-        }
-    }
-
-    /**
-     * POST /users/change-password
-     * Change user password
-     */
-    public function changePassword(): void
-    {
-        $user = AuthMiddleware::authenticate();
-        if (!$user) return;
-
-        try {
-            $data = json_decode(file_get_contents('php://input'), true);
-
-            if (!isset($data['current_password']) || !isset($data['new_password'])) {
-                Response::error('Current and new password are required');
+            if (!$user) {
+                Response::error('User not found', 404);
                 return;
             }
 
-            $success = $this->userService->changePassword(
-                $user->user_id,
-                $data['current_password'],
-                $data['new_password']
-            );
+            Response::success($user, 'User retrieved successfully');
+        } catch (PDOException $e) {
+            error_log("Get user error: " . $e->getMessage());
+            Response::error('Failed to retrieve user', 500);
+        }
+    }
 
-            if ($success) {
-                Response::success(null, 'Password changed successfully');
-            } else {
-                Response::error('Failed to change password');
+    /**
+     * GET /users - List all users (Admin/Superadmin only)
+     */
+    public function getAllUsers()
+    {
+        // Check authentication
+        if (!AuthMiddleware::checkRole(['admin', 'superadmin'])) {
+            Response::error('Administrator access required', 403);
+            return;
+        }
+
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    user_id,
+                    username,
+                    full_name,
+                    email,
+                    role,
+                    status,
+                    last_login,
+                    created_at
+                FROM users 
+                ORDER BY created_at DESC
+            ");
+
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            Response::success([
+                'users' => $users,
+                'total' => count($users)
+            ], 'Users retrieved successfully');
+        } catch (PDOException $e) {
+            error_log("Get all users error: " . $e->getMessage());
+            Response::error('Failed to retrieve users', 500);
+        }
+    }
+
+    /**
+     * POST /users - Create new user (Admin/Superadmin only)
+     */
+    public function createUser()
+    {
+        // Check authentication
+        if (!AuthMiddleware::checkRole(['admin', 'superadmin'])) {
+            Response::error('Administrator access required', 403);
+            return;
+        }
+
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        // Validate required fields
+        $required = ['username', 'full_name', 'email', 'password', 'role'];
+        foreach ($required as $field) {
+            if (empty($data[$field])) {
+                Response::error("Missing required field: $field", 400);
+                return;
             }
-        } catch (\Exception $e) {
-            Response::error($e->getMessage());
+        }
+
+        // Validate role
+        $validRoles = ['staff', 'admin', 'superadmin'];
+        if (!in_array($data['role'], $validRoles)) {
+            Response::error('Invalid role', 400);
+            return;
+        }
+
+        // Only superadmin can create superadmin accounts
+        if ($data['role'] === 'superadmin' && $_SESSION['role'] !== 'superadmin') {
+            Response::error('Only superadmin can create superadmin accounts', 403);
+            return;
+        }
+
+        try {
+            // Check if username exists
+            $stmt = $this->db->prepare("SELECT user_id FROM users WHERE username = ?");
+            $stmt->execute([$data['username']]);
+            if ($stmt->fetch()) {
+                Response::error('Username already exists', 409);
+                return;
+            }
+
+            // Check if email exists
+            $stmt = $this->db->prepare("SELECT user_id FROM users WHERE email = ?");
+            $stmt->execute([$data['email']]);
+            if ($stmt->fetch()) {
+                Response::error('Email already exists', 409);
+                return;
+            }
+
+            // Hash password
+            $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
+
+            // Insert user
+            $stmt = $this->db->prepare("
+                INSERT INTO users (username, full_name, email, password, role, status)
+                VALUES (?, ?, ?, ?, ?, 'active')
+            ");
+
+            $stmt->execute([
+                $data['username'],
+                $data['full_name'],
+                $data['email'],
+                $hashedPassword,
+                $data['role']
+            ]);
+
+            $userId = $this->db->lastInsertId();
+
+            Response::success([
+                'user_id' => $userId,
+                'username' => $data['username'],
+                'role' => $data['role']
+            ], 'User created successfully', 201);
+        } catch (PDOException $e) {
+            error_log("Create user error: " . $e->getMessage());
+            Response::error('Failed to create user', 500);
+        }
+    }
+
+    /**
+     * PUT /users/:id - Update user (Admin/Superadmin only)
+     */
+    public function updateUser($userId)
+    {
+        // Check authentication
+        if (!AuthMiddleware::checkRole(['admin', 'superadmin'])) {
+            Response::error('Administrator access required', 403);
+            return;
+        }
+
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        try {
+            // Check if user exists
+            $stmt = $this->db->prepare("SELECT role FROM users WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$existingUser) {
+                Response::error('User not found', 404);
+                return;
+            }
+
+            // Only superadmin can modify superadmin accounts
+            if ($existingUser['role'] === 'superadmin' && $_SESSION['role'] !== 'superadmin') {
+                Response::error('Only superadmin can modify superadmin accounts', 403);
+                return;
+            }
+
+            // Build update query dynamically
+            $updates = [];
+            $params = [];
+
+            if (isset($data['full_name'])) {
+                $updates[] = "full_name = ?";
+                $params[] = $data['full_name'];
+            }
+            if (isset($data['email'])) {
+                $updates[] = "email = ?";
+                $params[] = $data['email'];
+            }
+            if (isset($data['role']) && $_SESSION['role'] === 'superadmin') {
+                $updates[] = "role = ?";
+                $params[] = $data['role'];
+            }
+            if (isset($data['status'])) {
+                $updates[] = "status = ?";
+                $params[] = $data['status'];
+            }
+            if (isset($data['password']) && !empty($data['password'])) {
+                $updates[] = "password = ?";
+                $params[] = password_hash($data['password'], PASSWORD_DEFAULT);
+            }
+
+            if (empty($updates)) {
+                Response::error('No valid fields to update', 400);
+                return;
+            }
+
+            $params[] = $userId;
+
+            $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE user_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            Response::success(['user_id' => $userId], 'User updated successfully');
+        } catch (PDOException $e) {
+            error_log("Update user error: " . $e->getMessage());
+            Response::error('Failed to update user', 500);
+        }
+    }
+
+    /**
+     * DELETE /users/:id - Delete user (Superadmin only)
+     */
+    public function deleteUser($userId)
+    {
+        // Check authentication - only superadmin can delete users
+        if (!AuthMiddleware::checkRole(['superadmin'])) {
+            Response::error('Superadmin access required', 403);
+            return;
+        }
+
+        // Prevent self-deletion
+        if ($userId == $_SESSION['user_id']) {
+            Response::error('Cannot delete your own account', 400);
+            return;
+        }
+
+        try {
+            $stmt = $this->db->prepare("DELETE FROM users WHERE user_id = ?");
+            $stmt->execute([$userId]);
+
+            if ($stmt->rowCount() === 0) {
+                Response::error('User not found', 404);
+                return;
+            }
+
+            Response::success(null, 'User deleted successfully');
+        } catch (PDOException $e) {
+            error_log("Delete user error: " . $e->getMessage());
+            Response::error('Failed to delete user', 500);
         }
     }
 }

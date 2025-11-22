@@ -1,476 +1,395 @@
 <?php
 
 /**
- * JANSTRO INVENTORY SYSTEM - Customer Inquiry Controller
+ * JANSTRO IMS - Customer Inquiry Controller
  * Location: src/Controllers/InquiryController.php
- * 
- * FEATURES:
- * - Public inquiry submission (no auth required)
- * - Staff inquiry management (auth required)
- * - Auto stock availability check
- * - Convert inquiry to sales order
- * - Notes and workflow tracking
  */
 
-namespace Janstro\InventorySystem\Controllers;
-
-use Janstro\InventorySystem\Config\Database;
-use Janstro\InventorySystem\Middleware\AuthMiddleware;
-use Janstro\InventorySystem\Utils\Response;
+require_once __DIR__ . '/../Config/Database.php';
+require_once __DIR__ . '/../Middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../Utils/Response.php';
 
 class InquiryController
 {
     private $db;
-    private $conn;
 
     public function __construct()
     {
-        $this->db = new Database();
-        $this->conn = $this->db->getConnection();
+        $this->db = Database::getInstance()->getConnection();
     }
 
     /**
-     * PUBLIC ENDPOINT: Submit Customer Inquiry
-     * POST /inquiries
-     * No authentication required
+     * POST /inquiries - Submit public inquiry (NO AUTH REQUIRED)
      */
-    public function create()
+    public function submitInquiry()
     {
-        try {
-            // Get JSON input
-            $input = json_decode(file_get_contents('php://input'), true);
+        $data = json_decode(file_get_contents('php://input'), true);
 
-            // Validate required fields
-            $required = ['customer_name', 'phone', 'address', 'item_name'];
-            foreach ($required as $field) {
-                if (empty($input[$field])) {
-                    Response::error("Field '$field' is required", 400);
-                    return;
-                }
+        // Validate required fields
+        $required = ['customer_name', 'email', 'phone', 'inquiry_type', 'message'];
+        foreach ($required as $field) {
+            if (empty($data[$field])) {
+                Response::error("Missing required field: $field", 400);
+                return;
             }
+        }
 
-            // Check stock availability automatically
-            $stockStatus = $this->checkStockAvailability($input['item_name']);
+        // Validate email
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            Response::error('Invalid email address', 400);
+            return;
+        }
+
+        // Validate inquiry type
+        $validTypes = ['installation', 'maintenance', 'pricing', 'technical', 'other'];
+        if (!in_array($data['inquiry_type'], $validTypes)) {
+            Response::error('Invalid inquiry type', 400);
+            return;
+        }
+
+        try {
+            $this->db->beginTransaction();
 
             // Insert inquiry
-            $sql = "INSERT INTO customer_inquiries 
-                    (customer_name, phone, email, address, item_name, quantity, 
-                     installation_date, budget_range, notes, stock_availability) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $this->db->prepare("
+                INSERT INTO customer_inquiries (
+                    customer_name, email, phone, inquiry_type, 
+                    message, status, priority, source
+                ) VALUES (?, ?, ?, ?, ?, 'new', 'medium', 'website')
+            ");
 
-            $stmt = $this->conn->prepare($sql);
             $stmt->execute([
-                $input['customer_name'],
-                $input['phone'],
-                $input['email'] ?? null,
-                $input['address'],
-                $input['item_name'],
-                $input['quantity'] ?? 1,
-                $input['installation_date'] ?? null,
-                $input['budget_range'] ?? null,
-                $input['notes'] ?? null,
-                $stockStatus
+                $data['customer_name'],
+                $data['email'],
+                $data['phone'],
+                $data['inquiry_type'],
+                $data['message']
             ]);
 
-            $inquiryId = $this->conn->lastInsertId();
+            $inquiryId = $this->db->lastInsertId();
 
-            // Log workflow
-            $this->logWorkflow($inquiryId, null, 'new', 0, 'Inquiry submitted by customer');
+            // Add activity log
+            $stmt = $this->db->prepare("
+                INSERT INTO inquiry_activity (
+                    inquiry_id, activity_type, description, created_by
+                ) VALUES (?, 'created', 'Inquiry submitted via website', NULL)
+            ");
+            $stmt->execute([$inquiryId]);
+
+            $this->db->commit();
 
             Response::success([
                 'inquiry_id' => $inquiryId,
-                'status' => 'new',
-                'stock_availability' => $stockStatus,
-                'message' => 'Inquiry submitted successfully! Our team will contact you soon.'
-            ], 201);
-        } catch (\PDOException $e) {
-            error_log("Inquiry Create Error: " . $e->getMessage());
-            Response::error("Failed to submit inquiry: " . $e->getMessage(), 500);
+                'message' => 'Your inquiry has been submitted successfully!'
+            ], 'Inquiry submitted successfully', 201);
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            error_log("Submit inquiry error: " . $e->getMessage());
+            Response::error('Failed to submit inquiry', 500);
         }
     }
 
     /**
-     * STAFF ENDPOINT: Get All Inquiries
-     * GET /inquiries
+     * GET /inquiries - List all inquiries (STAFF ACCESS)
      */
-    public function getAll()
+    public function getAllInquiries()
     {
+        if (!AuthMiddleware::checkAuth()) {
+            Response::error('Authentication required', 401);
+            return;
+        }
+
         try {
-            // Authenticate user
-            $user = AuthMiddleware::authenticate();
-
-            // Get filters
+            // Get filter parameters
             $status = $_GET['status'] ?? null;
-            $limit = (int)($_GET['limit'] ?? 50);
-            $offset = (int)($_GET['offset'] ?? 0);
+            $priority = $_GET['priority'] ?? null;
+            $type = $_GET['type'] ?? null;
 
-            // Build query
-            $sql = "SELECT 
-                        ci.*,
-                        u.username as assigned_to_name,
-                        COUNT(DISTINCT in2.note_id) as note_count
-                    FROM customer_inquiries ci
-                    LEFT JOIN users u ON ci.assigned_to = u.user_id
-                    LEFT JOIN inquiry_notes in2 ON ci.inquiry_id = in2.inquiry_id
-                    WHERE 1=1";
+            $sql = "
+                SELECT 
+                    i.*,
+                    u.full_name as assigned_to_name,
+                    (SELECT COUNT(*) FROM inquiry_activity WHERE inquiry_id = i.inquiry_id) as activity_count
+                FROM customer_inquiries i
+                LEFT JOIN users u ON i.assigned_to = u.user_id
+                WHERE 1=1
+            ";
 
             $params = [];
 
             if ($status) {
-                $sql .= " AND ci.status = ?";
+                $sql .= " AND i.status = ?";
                 $params[] = $status;
             }
-
-            $sql .= " GROUP BY ci.inquiry_id
-                      ORDER BY 
-                        CASE ci.status 
-                            WHEN 'new' THEN 1
-                            WHEN 'processing' THEN 2
-                            WHEN 'quoted' THEN 3
-                            ELSE 4
-                        END,
-                        ci.created_at DESC
-                      LIMIT ? OFFSET ?";
-
-            $params[] = $limit;
-            $params[] = $offset;
-
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute($params);
-            $inquiries = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-            // Get total count
-            $countSql = "SELECT COUNT(*) as total FROM customer_inquiries WHERE 1=1";
-            if ($status) {
-                $countSql .= " AND status = ?";
-                $countParams = [$status];
-            } else {
-                $countParams = [];
+            if ($priority) {
+                $sql .= " AND i.priority = ?";
+                $params[] = $priority;
             }
-            $countStmt = $this->conn->prepare($countSql);
-            $countStmt->execute($countParams);
-            $total = $countStmt->fetch(\PDO::FETCH_ASSOC)['total'];
+            if ($type) {
+                $sql .= " AND i.inquiry_type = ?";
+                $params[] = $type;
+            }
+
+            $sql .= " ORDER BY i.created_at DESC";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $inquiries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             Response::success([
                 'inquiries' => $inquiries,
-                'pagination' => [
-                    'total' => $total,
-                    'limit' => $limit,
-                    'offset' => $offset
-                ]
-            ]);
-        } catch (\Exception $e) {
-            error_log("Get Inquiries Error: " . $e->getMessage());
-            Response::error("Failed to fetch inquiries: " . $e->getMessage(), 500);
+                'total' => count($inquiries)
+            ], 'Inquiries retrieved successfully');
+        } catch (PDOException $e) {
+            error_log("Get inquiries error: " . $e->getMessage());
+            Response::error('Failed to retrieve inquiries', 500);
         }
     }
 
     /**
-     * STAFF ENDPOINT: Get Inquiry by ID
-     * GET /inquiries/{id}
+     * GET /inquiries/:id - Get inquiry details (STAFF ACCESS)
      */
-    public function getById($id)
+    public function getInquiry($inquiryId)
     {
+        if (!AuthMiddleware::checkAuth()) {
+            Response::error('Authentication required', 401);
+            return;
+        }
+
         try {
-            $user = AuthMiddleware::authenticate();
+            $stmt = $this->db->prepare("
+                SELECT 
+                    i.*,
+                    u.full_name as assigned_to_name,
+                    u.email as assigned_to_email
+                FROM customer_inquiries i
+                LEFT JOIN users u ON i.assigned_to = u.user_id
+                WHERE i.inquiry_id = ?
+            ");
 
-            // Get inquiry details
-            $sql = "SELECT 
-                        ci.*,
-                        u.username as assigned_to_name,
-                        so.sales_order_id as sales_order_number
-                    FROM customer_inquiries ci
-                    LEFT JOIN users u ON ci.assigned_to = u.user_id
-                    LEFT JOIN sales_orders so ON ci.converted_to_so = so.sales_order_id
-                    WHERE ci.inquiry_id = ?";
-
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute([$id]);
-            $inquiry = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $stmt->execute([$inquiryId]);
+            $inquiry = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$inquiry) {
-                Response::error("Inquiry not found", 404);
+                Response::error('Inquiry not found', 404);
                 return;
             }
 
-            // Get notes
-            $notesSql = "SELECT in2.*, u.username 
-                         FROM inquiry_notes in2
-                         JOIN users u ON in2.user_id = u.user_id
-                         WHERE in2.inquiry_id = ?
-                         ORDER BY in2.created_at DESC";
-            $notesStmt = $this->conn->prepare($notesSql);
-            $notesStmt->execute([$id]);
-            $notes = $notesStmt->fetchAll(\PDO::FETCH_ASSOC);
+            // Get activity history
+            $stmt = $this->db->prepare("
+                SELECT 
+                    a.*,
+                    u.full_name as created_by_name
+                FROM inquiry_activity a
+                LEFT JOIN users u ON a.created_by = u.user_id
+                WHERE a.inquiry_id = ?
+                ORDER BY a.created_at DESC
+            ");
+            $stmt->execute([$inquiryId]);
+            $inquiry['activity'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Get workflow history
-            $workflowSql = "SELECT iw.*, u.username 
-                            FROM inquiry_workflow iw
-                            JOIN users u ON iw.changed_by = u.user_id
-                            WHERE iw.inquiry_id = ?
-                            ORDER BY iw.created_at DESC";
-            $workflowStmt = $this->conn->prepare($workflowSql);
-            $workflowStmt->execute([$id]);
-            $workflow = $workflowStmt->fetchAll(\PDO::FETCH_ASSOC);
-
-            $inquiry['notes'] = $notes;
-            $inquiry['workflow'] = $workflow;
-
-            Response::success($inquiry);
-        } catch (\Exception $e) {
-            error_log("Get Inquiry Error: " . $e->getMessage());
-            Response::error("Failed to fetch inquiry: " . $e->getMessage(), 500);
+            Response::success($inquiry, 'Inquiry retrieved successfully');
+        } catch (PDOException $e) {
+            error_log("Get inquiry error: " . $e->getMessage());
+            Response::error('Failed to retrieve inquiry', 500);
         }
     }
 
     /**
-     * STAFF ENDPOINT: Update Inquiry Status
-     * PUT /inquiries/{id}/status
+     * PUT /inquiries/:id - Update inquiry (STAFF ACCESS)
      */
-    public function updateStatus($id)
+    public function updateInquiry($inquiryId)
     {
+        if (!AuthMiddleware::checkAuth()) {
+            Response::error('Authentication required', 401);
+            return;
+        }
+
+        $data = json_decode(file_get_contents('php://input'), true);
+
         try {
-            $user = AuthMiddleware::authenticate();
-            $input = json_decode(file_get_contents('php://input'), true);
+            $this->db->beginTransaction();
 
-            if (empty($input['status'])) {
-                Response::error("Status is required", 400);
+            // Build update query
+            $updates = [];
+            $params = [];
+            $activityLog = [];
+
+            if (isset($data['status'])) {
+                $updates[] = "status = ?";
+                $params[] = $data['status'];
+                $activityLog[] = "Status changed to {$data['status']}";
+            }
+            if (isset($data['priority'])) {
+                $updates[] = "priority = ?";
+                $params[] = $data['priority'];
+                $activityLog[] = "Priority changed to {$data['priority']}";
+            }
+            if (isset($data['assigned_to'])) {
+                $updates[] = "assigned_to = ?";
+                $params[] = $data['assigned_to'] ?: null;
+                $activityLog[] = $data['assigned_to']
+                    ? "Assigned to staff member"
+                    : "Assignment removed";
+            }
+            if (isset($data['notes'])) {
+                $updates[] = "notes = ?";
+                $params[] = $data['notes'];
+                $activityLog[] = "Notes updated";
+            }
+
+            if (empty($updates)) {
+                Response::error('No valid fields to update', 400);
                 return;
             }
 
-            // Get current status
-            $currentSql = "SELECT status FROM customer_inquiries WHERE inquiry_id = ?";
-            $currentStmt = $this->conn->prepare($currentSql);
-            $currentStmt->execute([$id]);
-            $current = $currentStmt->fetch(\PDO::FETCH_ASSOC);
+            $updates[] = "updated_at = NOW()";
+            $params[] = $inquiryId;
 
-            if (!$current) {
-                Response::error("Inquiry not found", 404);
-                return;
+            $sql = "UPDATE customer_inquiries SET " . implode(', ', $updates) . " WHERE inquiry_id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            // Log activity
+            if (!empty($activityLog)) {
+                $stmt = $this->db->prepare("
+                    INSERT INTO inquiry_activity (
+                        inquiry_id, activity_type, description, created_by
+                    ) VALUES (?, 'updated', ?, ?)
+                ");
+                $stmt->execute([
+                    $inquiryId,
+                    implode(', ', $activityLog),
+                    $_SESSION['user_id']
+                ]);
             }
 
-            // Update status
-            $sql = "UPDATE customer_inquiries 
-                    SET status = ?, 
-                        assigned_to = ?,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE inquiry_id = ?";
-
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute([
-                $input['status'],
-                $input['assigned_to'] ?? $user['user_id'],
-                $id
-            ]);
-
-            // Log workflow
-            $this->logWorkflow(
-                $id,
-                $current['status'],
-                $input['status'],
-                $user['user_id'],
-                $input['notes'] ?? null
-            );
+            $this->db->commit();
 
             Response::success([
-                'message' => 'Status updated successfully',
-                'new_status' => $input['status']
-            ]);
-        } catch (\Exception $e) {
-            error_log("Update Status Error: " . $e->getMessage());
-            Response::error("Failed to update status: " . $e->getMessage(), 500);
+                'inquiry_id' => $inquiryId
+            ], 'Inquiry updated successfully');
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            error_log("Update inquiry error: " . $e->getMessage());
+            Response::error('Failed to update inquiry', 500);
         }
     }
 
     /**
-     * STAFF ENDPOINT: Convert Inquiry to Sales Order
-     * POST /inquiries/{id}/convert
+     * POST /inquiries/:id/convert - Convert inquiry to sales order
      */
-    public function convertToSalesOrder($id)
+    public function convertToSalesOrder($inquiryId)
     {
-        try {
-            $user = AuthMiddleware::authenticate();
+        if (!AuthMiddleware::checkAuth()) {
+            Response::error('Authentication required', 401);
+            return;
+        }
 
-            // Check if user is admin
-            if ($user['role'] !== 'admin') {
-                Response::error("Only admins can convert inquiries to sales orders", 403);
-                return;
-            }
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        // Validate required fields
+        if (empty($data['item_id']) || empty($data['quantity'])) {
+            Response::error('Item and quantity are required', 400);
+            return;
+        }
+
+        try {
+            $this->db->beginTransaction();
 
             // Get inquiry details
-            $sql = "SELECT * FROM customer_inquiries WHERE inquiry_id = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute([$id]);
-            $inquiry = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $stmt = $this->db->prepare("
+                SELECT * FROM customer_inquiries WHERE inquiry_id = ?
+            ");
+            $stmt->execute([$inquiryId]);
+            $inquiry = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$inquiry) {
-                Response::error("Inquiry not found", 404);
-                return;
-            }
-
-            if ($inquiry['status'] === 'converted') {
-                Response::error("Inquiry already converted", 400);
-                return;
-            }
-
-            // Check if item exists in inventory
-            $itemSql = "SELECT item_id FROM inventory WHERE item_name LIKE ?";
-            $itemStmt = $this->conn->prepare($itemSql);
-            $itemStmt->execute(['%' . $inquiry['item_name'] . '%']);
-            $item = $itemStmt->fetch(\PDO::FETCH_ASSOC);
-
-            if (!$item) {
-                Response::error("Item not found in inventory", 404);
+                Response::error('Inquiry not found', 404);
                 return;
             }
 
             // Create sales order
-            $soSql = "INSERT INTO sales_orders 
-                      (customer_name, contact_number, delivery_address, item_id, quantity, notes, created_by, status)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')";
-            $soStmt = $this->conn->prepare($soSql);
-            $soStmt->execute([
+            $stmt = $this->db->prepare("
+                INSERT INTO sales_orders (
+                    customer_name, contact_number, delivery_address,
+                    item_id, quantity, order_date, status, notes, created_by
+                ) VALUES (?, ?, ?, ?, ?, NOW(), 'pending', ?, ?)
+            ");
+
+            $stmt->execute([
                 $inquiry['customer_name'],
                 $inquiry['phone'],
-                $inquiry['address'],
-                $item['item_id'],
-                $inquiry['quantity'],
-                'Converted from Inquiry #' . $id . '. ' . ($inquiry['notes'] ?? ''),
-                $user['user_id']
+                $data['delivery_address'] ?? 'To be confirmed',
+                $data['item_id'],
+                $data['quantity'],
+                "Converted from inquiry #{$inquiryId}",
+                $_SESSION['user_id']
             ]);
 
-            $salesOrderId = $this->conn->lastInsertId();
+            $salesOrderId = $this->db->lastInsertId();
 
-            // Update inquiry
-            $updateSql = "UPDATE customer_inquiries 
-                          SET status = 'converted', 
-                              converted_to_so = ?,
-                              updated_at = CURRENT_TIMESTAMP
-                          WHERE inquiry_id = ?";
-            $updateStmt = $this->conn->prepare($updateSql);
-            $updateStmt->execute([$salesOrderId, $id]);
+            // Update inquiry status
+            $stmt = $this->db->prepare("
+                UPDATE customer_inquiries 
+                SET status = 'converted', updated_at = NOW()
+                WHERE inquiry_id = ?
+            ");
+            $stmt->execute([$inquiryId]);
 
-            // Log workflow
-            $this->logWorkflow(
-                $id,
-                $inquiry['status'],
-                'converted',
-                $user['user_id'],
-                "Converted to Sales Order #$salesOrderId"
-            );
+            // Log activity
+            $stmt = $this->db->prepare("
+                INSERT INTO inquiry_activity (
+                    inquiry_id, activity_type, description, created_by
+                ) VALUES (?, 'converted', ?, ?)
+            ");
+            $stmt->execute([
+                $inquiryId,
+                "Converted to sales order #{$salesOrderId}",
+                $_SESSION['user_id']
+            ]);
+
+            $this->db->commit();
 
             Response::success([
-                'message' => 'Inquiry converted to sales order successfully',
+                'inquiry_id' => $inquiryId,
                 'sales_order_id' => $salesOrderId
-            ]);
-        } catch (\Exception $e) {
-            error_log("Convert Inquiry Error: " . $e->getMessage());
-            Response::error("Failed to convert inquiry: " . $e->getMessage(), 500);
+            ], 'Inquiry converted to sales order successfully', 201);
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            error_log("Convert inquiry error: " . $e->getMessage());
+            Response::error('Failed to convert inquiry', 500);
         }
     }
 
     /**
-     * STAFF ENDPOINT: Add Note to Inquiry
-     * POST /inquiries/{id}/notes
+     * GET /inquiries/stats - Get inquiry statistics
      */
-    public function addNote($id)
+    public function getInquiryStats()
     {
-        try {
-            $user = AuthMiddleware::authenticate();
-            $input = json_decode(file_get_contents('php://input'), true);
-
-            if (empty($input['note_text'])) {
-                Response::error("Note text is required", 400);
-                return;
-            }
-
-            $sql = "INSERT INTO inquiry_notes (inquiry_id, user_id, note_text) 
-                    VALUES (?, ?, ?)";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute([$id, $user['user_id'], $input['note_text']]);
-
-            Response::success([
-                'message' => 'Note added successfully',
-                'note_id' => $this->conn->lastInsertId()
-            ], 201);
-        } catch (\Exception $e) {
-            error_log("Add Note Error: " . $e->getMessage());
-            Response::error("Failed to add note: " . $e->getMessage(), 500);
+        if (!AuthMiddleware::checkAuth()) {
+            Response::error('Authentication required', 401);
+            return;
         }
-    }
 
-    /**
-     * STAFF ENDPOINT: Get Inquiry Statistics
-     * GET /inquiries/stats
-     */
-    public function getStatistics()
-    {
         try {
-            $user = AuthMiddleware::authenticate();
+            $stmt = $this->db->query("
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as new,
+                    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress,
+                    SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) as converted,
+                    SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_priority
+                FROM customer_inquiries
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            ");
 
-            $sql = "SELECT 
-                        COUNT(*) as total,
-                        SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as new_count,
-                        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing_count,
-                        SUM(CASE WHEN status = 'quoted' THEN 1 ELSE 0 END) as quoted_count,
-                        SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) as converted_count,
-                        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
-                        SUM(CASE WHEN stock_availability = 'available' THEN 1 ELSE 0 END) as stock_available,
-                        SUM(CASE WHEN stock_availability = 'insufficient' THEN 1 ELSE 0 END) as stock_insufficient
-                    FROM customer_inquiries";
+            $stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute();
-            $stats = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-            Response::success($stats);
-        } catch (\Exception $e) {
-            error_log("Get Stats Error: " . $e->getMessage());
-            Response::error("Failed to fetch statistics: " . $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Helper: Check Stock Availability
-     */
-    private function checkStockAvailability($itemName)
-    {
-        try {
-            $sql = "SELECT quantity_on_hand, reorder_level 
-                    FROM inventory 
-                    WHERE item_name LIKE ? 
-                    LIMIT 1";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute(['%' . $itemName . '%']);
-            $item = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-            if (!$item) {
-                return 'checking'; // Item not in inventory yet
-            }
-
-            if ($item['quantity_on_hand'] > $item['reorder_level']) {
-                return 'available';
-            } else {
-                return 'insufficient';
-            }
-        } catch (\Exception $e) {
-            return 'checking';
-        }
-    }
-
-    /**
-     * Helper: Log Workflow Changes
-     */
-    private function logWorkflow($inquiryId, $fromStatus, $toStatus, $userId, $notes = null)
-    {
-        try {
-            $sql = "INSERT INTO inquiry_workflow 
-                    (inquiry_id, from_status, to_status, changed_by, notes) 
-                    VALUES (?, ?, ?, ?, ?)";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute([$inquiryId, $fromStatus, $toStatus, $userId, $notes]);
-        } catch (\Exception $e) {
-            error_log("Workflow Log Error: " . $e->getMessage());
+            Response::success($stats, 'Inquiry statistics retrieved successfully');
+        } catch (PDOException $e) {
+            error_log("Get inquiry stats error: " . $e->getMessage());
+            Response::error('Failed to retrieve inquiry statistics', 500);
         }
     }
 }

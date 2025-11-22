@@ -487,27 +487,60 @@
         let allUsers = [];
         let editingUser = null;
 
-        // Initialize page
         async function initPage() {
-            try {
-                // Update user info
-                const user = API.getUser();
-                if (user) {
-                    document.getElementById('userAvatar').textContent = 
-                        (user.name || user.username).charAt(0).toUpperCase();
-                }
-
-                // Load users
-                await loadUsers();
-
-                // Setup event listeners
-                setupEventListeners();
-
-            } catch (error) {
-                console.error('Page initialization error:', error);
-                Utils.showToast('Failed to load page data', 'error');
-            }
+    try {
+        // Get current user from session (always safe)
+        const user = await API.getCurrentUser();
+        
+        // Safely update UI
+        const userNameEl = document.getElementById('userName');
+        const userRoleEl = document.getElementById('userRole');
+        
+        if (userNameEl) {
+            userNameEl.textContent = user.full_name || 'User';
         }
+        
+        if (userRoleEl) {
+            const role = user.role || 'staff';
+            userRoleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        }
+        
+        // Load page-specific data
+        await loadPageData();
+        
+    } catch (error) {
+        console.error('❌ Page initialization error:', error);
+        
+        // Show user-friendly error
+        if (typeof showError === 'function') {
+            showError('Failed to load page data');
+        }
+        
+        // Redirect to login if authentication failed
+        if (error.message?.includes('authenticate') || error.status === 401) {
+            setTimeout(() => {
+                window.location.href = '/janstro-inventory/frontend/login.html';
+            }, 2000);
+        }
+    }
+}
+
+// Example loadPageData function (customize per page)
+async function loadPageData() {
+    try {
+        // Dashboard example:
+        const stats = await API.get('dashboard/stats');
+        updateDashboard(stats);
+        
+        // Inventory example:
+        // const items = await API.get('inventory');
+        // renderInventoryTable(items);
+        
+    } catch (error) {
+        console.error('❌ Failed to load page data:', error);
+        throw error;
+    }
+}
 
         // Load all users
         async function loadUsers() {

@@ -2,14 +2,13 @@
 
 /**
  * Janstro Inventory Management System - FIXED API Router
- * Date: 2025-11-21
- * Version: 4.0.0 - Complete Authentication Fix (cleaned)
+ * Date: 2025-11-22
+ * Version: 4.0.0 - Complete Authentication Fix (cleaned & merged)
  *
  * Notes:
- * - Duplicate/fragmented inquiry-route blocks removed.
- * - Single, unified inquiry route block inserted BEFORE the final 404 handler (inside the main try).
- * - No orphan `elseif` after a closed `try/catch`.
- * - Added InquiryController import.
+ * - User management and inquiry routes merged into segment-based routing.
+ * - Maintains existing code structure and middleware usage.
+ * - No obsolete $endpoint references remain.
  */
 
 // Load manual autoloader
@@ -52,6 +51,10 @@ $path = str_replace($scriptName, '', $requestUri);
 $path = parse_url($path, PHP_URL_PATH);
 $path = trim($path, '/');
 
+// Normalise multiple slashes, remove trailing index.php if present
+$path = preg_replace('#/+#', '/', $path);
+$path = preg_replace('#^index\.php/?#', '', $path);
+
 $segments = $path ? explode('/', $path) : [];
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -92,7 +95,7 @@ try {
     // ===============================================
     // AUTHENTICATION ROUTES
     // ===============================================
-    if ($segments[0] === 'auth') {
+    if (($segments[0] ?? '') === 'auth') {
         error_log("✅ AUTH ROUTE DETECTED");
 
         $authController = new AuthController();
@@ -122,7 +125,7 @@ try {
     // ===============================================
     // INVENTORY ROUTES
     // ===============================================
-    elseif ($segments[0] === 'inventory') {
+    elseif (($segments[0] ?? '') === 'inventory') {
         $inventoryController = new InventoryController();
         $inventoryService = new CompleteInventoryService();
 
@@ -132,21 +135,21 @@ try {
                 exit;
             }
 
-            if ($segments[1] === 'status') {
+            if (($segments[1] ?? '') === 'status') {
                 $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                 if (!$user) exit;
                 Response::success($inventoryService->getInventoryStatus(), 'Status retrieved');
                 exit;
             }
 
-            if ($segments[1] === 'check-stock' && isset($_GET['item_id'])) {
+            if (($segments[1] ?? '') === 'check-stock' && isset($_GET['item_id'])) {
                 $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                 if (!$user) exit;
                 Response::success($inventoryService->checkStockAvailability((int)$_GET['item_id']), 'Stock checked');
                 exit;
             }
 
-            if ($segments[1] === 'movements') {
+            if (($segments[1] ?? '') === 'movements') {
                 $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
                 if (!$user) exit;
                 $filters = [
@@ -159,12 +162,12 @@ try {
                 exit;
             }
 
-            if ($segments[1] === 'low-stock') {
+            if (($segments[1] ?? '') === 'low-stock') {
                 $inventoryController->getLowStock();
                 exit;
             }
 
-            if (is_numeric($segments[1])) {
+            if (is_numeric($segments[1] ?? '')) {
                 $inventoryController->getById((int)$segments[1]);
                 exit;
             }
@@ -177,7 +180,7 @@ try {
     // ===============================================
     // PURCHASE ORDERS
     // ===============================================
-    elseif ($segments[0] === 'purchase-orders') {
+    elseif (($segments[0] ?? '') === 'purchase-orders') {
         $orderController = new OrderController();
         $inventoryService = new CompleteInventoryService();
         $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
@@ -188,7 +191,7 @@ try {
                 $orderController->getAll();
                 exit;
             }
-            if (is_numeric($segments[1])) {
+            if (is_numeric($segments[1] ?? '')) {
                 $orderController->getById((int)$segments[1]);
                 exit;
             }
@@ -202,7 +205,7 @@ try {
                 exit;
             }
 
-            if ($segments[1] === 'receive' && isset($segments[2])) {
+            if (($segments[1] ?? '') === 'receive' && isset($segments[2])) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $input['user_id'] = $user->user_id;
                 Response::success($inventoryService->receiveGoods((int)$segments[2], $input), 'Goods received');
@@ -217,7 +220,7 @@ try {
     // ===============================================
     // SALES ORDERS
     // ===============================================
-    elseif ($segments[0] === 'sales-orders') {
+    elseif (($segments[0] ?? '') === 'sales-orders') {
         $inventoryService = new CompleteInventoryService();
         $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
         if (!$user) exit;
@@ -235,7 +238,7 @@ try {
                 exit;
             }
 
-            if ($segments[1] === 'invoice' && isset($segments[2])) {
+            if (($segments[1] ?? '') === 'invoice' && isset($segments[2])) {
                 Response::success($inventoryService->processSimpleInvoice((int)$segments[2], $user->user_id), 'Invoice processed');
                 exit;
             }
@@ -248,7 +251,7 @@ try {
     // ===============================================
     // SUPPLIERS
     // ===============================================
-    elseif ($segments[0] === 'suppliers') {
+    elseif (($segments[0] ?? '') === 'suppliers') {
         $supplierController = new SupplierController();
 
         if ($method === 'GET') {
@@ -256,7 +259,7 @@ try {
                 $supplierController->getAll();
                 exit;
             }
-            if (is_numeric($segments[1])) {
+            if (is_numeric($segments[1] ?? '')) {
                 $supplierController->getById((int)$segments[1]);
                 exit;
             }
@@ -277,36 +280,57 @@ try {
     }
 
     // ===============================================
-    // USERS
+    // USERS (COMPLETE MERGED BLOCK)
     // ===============================================
-    elseif ($segments[0] === 'users') {
+    elseif (($segments[0] ?? '') === 'users') {
         $userController = new UserController();
 
-        if ($method === 'GET') {
-            if (empty($segments[1])) {
-                $userController->getAll();
-                exit;
-            }
-            if ($segments[1] === 'roles') {
-                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
-                if (!$user) exit;
-                $userService = new \Janstro\InventorySystem\Services\UserService();
-                Response::success($userService->getRoles(), 'Roles retrieved');
-                exit;
-            }
-            if (is_numeric($segments[1])) {
-                $userController->getById((int)$segments[1]);
-                exit;
-            }
+        // GET /users/current
+        if ($method === 'GET' && ($segments[1] ?? '') === 'current') {
+            $userController->getCurrentUser();
+            exit;
         }
 
-        if ($method === 'POST') {
+        // GET /users/roles
+        if ($method === 'GET' && ($segments[1] ?? '') === 'roles') {
+            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
+            if (!$user) exit;
+            $svc = new \Janstro\InventorySystem\Services\UserService();
+            Response::success($svc->getRoles(), 'Roles retrieved');
+            exit;
+        }
+
+        // GET /users (admin only)
+        if ($method === 'GET' && empty($segments[1])) {
+            \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['admin', 'superadmin']);
+            $userController->getAll();
+            exit;
+        }
+
+        // GET /users/:id
+        if ($method === 'GET' && is_numeric($segments[1] ?? '')) {
+            $userController->getById((int)$segments[1]);
+            exit;
+        }
+
+        // POST /users (admin only)
+        if ($method === 'POST' && empty($segments[1])) {
+            \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['admin', 'superadmin']);
             $userController->create();
             exit;
         }
 
-        if ($method === 'PUT' && isset($segments[1])) {
+        // PUT /users/:id (admin only)
+        if ($method === 'PUT' && is_numeric($segments[1] ?? '')) {
+            \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['admin', 'superadmin']);
             $userController->update((int)$segments[1]);
+            exit;
+        }
+
+        // DELETE /users/:id (superadmin only)
+        if ($method === 'DELETE' && is_numeric($segments[1] ?? '')) {
+            \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin']);
+            $userController->delete((int)$segments[1]);
             exit;
         }
 
@@ -317,7 +341,7 @@ try {
     // ===============================================
     // REPORTS
     // ===============================================
-    elseif ($segments[0] === 'reports') {
+    elseif (($segments[0] ?? '') === 'reports') {
         $reportController = new ReportController();
 
         if ($method === 'GET') {
@@ -351,18 +375,17 @@ try {
 
     // ===============================================
     // INQUIRIES (UNIFIED ROUTES)
-    // Inserted: AFTER existing routes and BEFORE the final 404 handler
     // ===============================================
-    elseif ($segments[0] === 'inquiries') {
+    elseif (($segments[0] ?? '') === 'inquiries') {
         $inquiryController = new InquiryController();
 
-        // PUBLIC: Create inquiry (no auth required)
+        // PUBLIC: Create inquiry
         if ($method === 'POST' && empty($segments[1])) {
             $inquiryController->create();
             exit;
         }
 
-        // STAFF/ADMIN: Get all inquiries (auth required)
+        // STAFF/ADMIN: Get all inquiries
         if ($method === 'GET' && empty($segments[1])) {
             $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
             if (!$user) exit;
@@ -378,13 +401,13 @@ try {
             exit;
         }
 
-        // Get single inquiry (public or auth depending on app rules)
+        // Get inquiry by ID
         if ($method === 'GET' && is_numeric($segments[1] ?? '')) {
             $inquiryController->getById((int)$segments[1]);
             exit;
         }
 
-        // Update inquiry status (auth required)
+        // Update inquiry status
         if ($method === 'PUT' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'status') {
             $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
             if (!$user) exit;
@@ -392,7 +415,7 @@ try {
             exit;
         }
 
-        // Convert to sales order (auth required)
+        // Convert inquiry to sales order
         if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'convert') {
             $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
             if (!$user) exit;
@@ -400,7 +423,7 @@ try {
             exit;
         }
 
-        // Add note to inquiry (auth required)
+        // Add inquiry note
         if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'notes') {
             $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
             if (!$user) exit;
@@ -408,7 +431,7 @@ try {
             exit;
         }
 
-        // Delete inquiry (admin only) - placeholder / not implemented
+        // Delete inquiry (admin only)
         if ($method === 'DELETE' && is_numeric($segments[1] ?? '')) {
             $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
             if (!$user) exit;
