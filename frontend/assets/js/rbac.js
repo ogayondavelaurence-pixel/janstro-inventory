@@ -1,21 +1,21 @@
 /**
- * JANSTRO IMS - COMPLETE RBAC SYSTEM v8.0
- * FIXED: Only 3 roles (staff, admin, superadmin)
- * Date: 2025-11-21
+ * JANSTRO IMS - Complete RBAC System v8.0
+ * Role-Based Access Control aligned with system design
+ * Roles: staff, admin, superadmin
  */
 
 const RBAC = {
   // ============================================
-  // ROLE HIERARCHY (3 ROLES ONLY)
+  // ROLE HIERARCHY
   // ============================================
   roleHierarchy: {
-    superadmin: 3, // Highest - Full access
-    admin: 2, // Middle - Operations management
-    staff: 1, // Lowest - Basic operations
+    superadmin: 3, // Full system access
+    admin: 2, // Operations + procurement management
+    staff: 1, // Daily operations (SO, inquiry, goods receipt)
   },
 
   // ============================================
-  // PAGE-LEVEL PERMISSIONS
+  // PAGE-LEVEL PERMISSIONS (Based on DFD & Flowcharts)
   // ============================================
   pagePermissions: {
     superadmin: [
@@ -25,11 +25,12 @@ const RBAC = {
       "purchase-orders",
       "goods-receipt",
       "suppliers",
+      "customers",
       "sales-orders",
+      "invoices",
       "reports",
       "users",
       "settings",
-      "audit-logs",
     ],
     admin: [
       "dashboard",
@@ -38,16 +39,18 @@ const RBAC = {
       "purchase-orders",
       "goods-receipt",
       "suppliers",
+      "customers",
       "sales-orders",
+      "invoices",
       "reports",
     ],
     staff: [
       "dashboard",
       "inventory",
       "stock-movements",
-      "purchase-orders",
       "goods-receipt",
       "sales-orders",
+      "customers",
     ],
   },
 
@@ -56,33 +59,29 @@ const RBAC = {
   // ============================================
   actionPermissions: {
     superadmin: {
-      inventory: ["view", "add", "edit", "adjust", "delete", "export"],
-      purchaseOrders: [
-        "view",
-        "create",
-        "edit",
-        "approve",
-        "cancel",
-        "receive",
-      ],
-      salesOrders: ["view", "create", "edit", "approve", "cancel", "invoice"],
+      inventory: ["view", "add", "edit", "adjust", "delete"],
+      purchaseOrders: ["view", "create", "approve", "receive"],
+      salesOrders: ["view", "create", "invoice"],
       suppliers: ["view", "create", "edit", "delete"],
-      users: ["view", "create", "edit", "delete", "deactivate"],
+      customers: ["view", "create", "edit"],
+      users: ["view", "create", "edit", "delete"],
       reports: ["view", "export"],
     },
     admin: {
-      inventory: ["view", "add", "edit", "adjust", "export"],
-      purchaseOrders: ["view", "create", "edit", "approve", "receive"],
-      salesOrders: ["view", "create", "edit", "approve", "invoice"],
+      inventory: ["view", "add", "edit", "adjust"],
+      purchaseOrders: ["view", "create", "approve", "receive"],
+      salesOrders: ["view", "create", "invoice"],
       suppliers: ["view", "create", "edit"],
+      customers: ["view", "create", "edit"],
       users: [],
       reports: ["view", "export"],
     },
     staff: {
       inventory: ["view"],
-      purchaseOrders: ["view", "create"],
+      purchaseOrders: [],
       salesOrders: ["view", "create"],
       suppliers: ["view"],
+      customers: ["view", "create"],
       users: [],
       reports: ["view"],
     },
@@ -99,9 +98,7 @@ const RBAC = {
       const user = JSON.parse(userJson);
       if (!user || !user.role) return null;
 
-      // Normalize role name (handle both role and role_name)
       user.role = (user.role || user.role_name || "").toLowerCase();
-
       return user;
     } catch (err) {
       console.error("RBAC: Invalid user data", err);
@@ -157,7 +154,6 @@ const RBAC = {
     const path = window.location.pathname.split("/").pop();
     const pageName = path.replace(".html", "");
 
-    // Allow access to login page
     if (pageName === "index" || pageName === "") {
       return true;
     }
@@ -180,7 +176,7 @@ const RBAC = {
   },
 
   // ============================================
-  // FILTER SIDEBAR MENU BY ROLE
+  // FILTER SIDEBAR MENU
   // ============================================
   filterSidebar() {
     const user = this.getCurrentUser();
@@ -241,13 +237,12 @@ const RBAC = {
       badge.style.padding = "6px 12px";
       badge.style.borderRadius = "20px";
 
-      // Color based on role
       if (user.role === "superadmin") {
-        badge.style.background = "#dc3545"; // Red
+        badge.style.background = "#dc3545";
       } else if (user.role === "admin") {
-        badge.style.background = "#667eea"; // Purple
+        badge.style.background = "#667eea";
       } else {
-        badge.style.background = "#6c757d"; // Gray
+        badge.style.background = "#6c757d";
       }
 
       userInfo.insertBefore(badge, userInfo.firstChild);
@@ -255,7 +250,7 @@ const RBAC = {
   },
 
   // ============================================
-  // HAMBURGER MENU TOGGLE
+  // MOBILE MENU TOGGLE
   // ============================================
   initHamburgerMenu() {
     if (!document.querySelector(".mobile-menu-toggle")) {

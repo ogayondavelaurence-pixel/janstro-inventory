@@ -1,6 +1,6 @@
 /**
- * JANSTRO INVENTORY SYSTEM - API CLIENT v6.1
- * FIXED: Added missing user endpoints, validation & stable error handling
+ * JANSTRO IMS - Complete API Client v7.0
+ * Connects frontend to src/ backend with all endpoints
  * Date: 2025-11-22
  */
 
@@ -10,22 +10,16 @@
   const API_BASE_URL = "http://localhost:8080/janstro-inventory/public";
   const TOKEN_KEY = "janstro_token";
   const USER_KEY = "janstro_user";
-  const REFRESH_KEY = "janstro_refresh";
 
   // ============================================
   // STORAGE MANAGER
   // ============================================
   const Storage = {
-    set: function (key, value) {
+    set(key, value) {
       try {
-        if (key === TOKEN_KEY || key === REFRESH_KEY) {
-          localStorage.setItem(key, value);
-          sessionStorage.setItem(key, value);
-        } else {
-          const json = JSON.stringify(value);
-          localStorage.setItem(key, json);
-          sessionStorage.setItem(key, json);
-        }
+        const json = typeof value === "string" ? value : JSON.stringify(value);
+        localStorage.setItem(key, json);
+        sessionStorage.setItem(key, json);
         return true;
       } catch (e) {
         console.error("Storage.set error:", e);
@@ -33,27 +27,31 @@
       }
     },
 
-    get: function (key) {
+    get(key) {
       try {
         let value = localStorage.getItem(key) || sessionStorage.getItem(key);
         if (!value) return null;
 
-        if (key === TOKEN_KEY || key === REFRESH_KEY) return value;
-        return JSON.parse(value);
+        if (key === TOKEN_KEY) return value;
+
+        try {
+          return JSON.parse(value);
+        } catch {
+          return value;
+        }
       } catch (e) {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
+        console.error("Storage.get error:", e);
         return null;
       }
     },
 
-    remove: function (key) {
+    remove(key) {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
     },
 
-    clear: function () {
-      [TOKEN_KEY, USER_KEY, REFRESH_KEY].forEach((k) => {
+    clear() {
+      [TOKEN_KEY, USER_KEY].forEach((k) => {
         localStorage.removeItem(k);
         sessionStorage.removeItem(k);
       });
@@ -67,16 +65,14 @@
     // ============================
     // AUTH
     // ============================
-    login: async function (username, password) {
+    async login(username, password) {
       try {
         const res = await this.post("/auth/login", { username, password });
 
-        if (res && res.success && res.data) {
-          const { token, refresh_token, user } = res.data;
+        if (res?.success && res?.data) {
+          const { token, user } = res.data;
 
           Storage.set(TOKEN_KEY, token);
-          if (refresh_token) Storage.set(REFRESH_KEY, refresh_token);
-
           Storage.set(USER_KEY, {
             user_id: user.user_id,
             username: user.username,
@@ -84,12 +80,10 @@
             role_id: user.role_id,
             role: user.role_name,
             role_name: user.role_name,
-            permissions: user.permissions || [],
           });
 
           return res;
         }
-
         return null;
       } catch (e) {
         console.error("Login error:", e);
@@ -97,31 +91,36 @@
       }
     },
 
-    logout: async function () {
+    async logout() {
       try {
         await this.post("/auth/logout", {});
       } catch (e) {}
 
       Storage.clear();
-      window.location.href = "/janstro-inventory/frontend/login.html";
+      window.location.href = "/janstro-inventory/frontend/index.html";
     },
 
-    isAuthenticated: function () {
+    isAuthenticated() {
       return !!(this.getToken() && Storage.get(USER_KEY));
     },
 
-    getToken: function () {
+    getToken() {
       return Storage.get(TOKEN_KEY);
     },
 
-    getUserFromStorage: function () {
+    getUserFromStorage() {
       return Storage.get(USER_KEY);
+    },
+
+    // ✅ GET CURRENT USER FROM BACKEND SESSION
+    async getCurrentUser() {
+      return this.get("/users/current");
     },
 
     // ============================
     // BASE REQUEST HANDLER
     // ============================
-    request: async function (endpoint, options = {}) {
+    async request(endpoint, options = {}) {
       const url = `${API_BASE_URL}${endpoint}`;
       const token = this.getToken();
 
@@ -142,16 +141,14 @@
         const response = await fetch(url, config);
 
         if (response.status === 401 || response.status === 419) {
-          console.warn("⚠ Session expired or unauthorized");
+          console.warn("⚠ Session expired");
           Storage.clear();
-          window.location.href = "/janstro-inventory/frontend/login.html";
+          window.location.href = "/janstro-inventory/frontend/index.html";
           return null;
         }
 
         if (!response.ok) {
-          const error = new Error("Request failed");
-          error.status = response.status;
-          throw error;
+          throw new Error(`Request failed: ${response.status}`);
         }
 
         return await response.json();
@@ -181,54 +178,81 @@
     },
 
     // ============================================
-    // INVENTORY
+    // INVENTORY (MMBE / Material Master)
     // ============================================
     getInventory() {
       return this.get("/inventory");
     },
+
     getItem(id) {
       return this.get(`/inventory/${id}`);
     },
+
     getInventoryStatus() {
       return this.get("/inventory/status");
     },
+
     getLowStockItems() {
       return this.get("/inventory/low-stock");
     },
-    getStockMovements() {
-      return this.get("/inventory/movements");
-    },
+
     checkStock(itemId) {
       return this.get("/inventory/check-stock", { item_id: itemId });
     },
 
+    createItem(data) {
+      return this.post("/inventory", data);
+    },
+
+    updateItem(id, data) {
+      return this.put(`/inventory/${id}`, data);
+    },
+
+    deleteItem(id) {
+      return this.delete(`/inventory/${id}`);
+    },
+
     // ============================================
-    // PURCHASE ORDERS
+    // STOCK MOVEMENTS (MB51 / Material Documents)
+    // ============================================
+    getStockMovements(filters = {}) {
+      return this.get("/inventory/movements", filters);
+    },
+
+    // ============================================
+    // PURCHASE ORDERS (ME21N)
     // ============================================
     getPurchaseOrders() {
       return this.get("/purchase-orders");
     },
+
     getPurchaseOrder(id) {
       return this.get(`/purchase-orders/${id}`);
     },
+
     createPurchaseOrder(data) {
       return this.post("/purchase-orders", data);
     },
+
+    // GOODS RECEIPT (MIGO)
     receiveGoods(poId, data) {
       return this.post(`/purchase-orders/receive/${poId}`, data);
     },
 
     // ============================================
-    // SALES ORDERS
+    // SALES ORDERS (VA01)
     // ============================================
     getSalesOrders() {
       return this.get("/sales-orders");
     },
+
     createSalesOrder(data) {
       return this.post("/sales-orders", data);
     },
-    processInvoice(soId, data) {
-      return this.post(`/sales-orders/invoice/${soId}`, data);
+
+    // INVOICE GENERATION (VF01)
+    processInvoice(soId, userId) {
+      return this.post(`/sales-orders/invoice/${soId}`, { user_id: userId });
     },
 
     // ============================================
@@ -237,46 +261,47 @@
     getSuppliers() {
       return this.get("/suppliers");
     },
+
     getSupplier(id) {
       return this.get(`/suppliers/${id}`);
     },
+
     createSupplier(data) {
       return this.post("/suppliers", data);
     },
+
     updateSupplier(id, data) {
       return this.put(`/suppliers/${id}`, data);
     },
 
-    // ============================================
-    // USERS (FULLY FIXED)
-    // ============================================
-
-    // NEW: Fetch the current logged-in user (via session)
-    async getCurrentUser() {
-      try {
-        const res = await this.get("/users/current");
-        if (!res) throw new Error("Failed to fetch current user");
-        return res;
-      } catch (error) {
-        console.error("❌ getCurrentUser failed:", error);
-
-        if (error.status === 401 || error.status === 419) {
-          Storage.clear();
-          window.location.href = "/janstro-inventory/frontend/login.html";
-        }
-        throw error;
-      }
+    deleteSupplier(id) {
+      return this.delete(`/suppliers/${id}`);
     },
 
-    async getUser(id) {
-      if (!id || isNaN(Number(id))) {
-        throw new Error(`Invalid user ID: ${id}`);
-      }
-      return this.get(`/users/${id}`);
+    // ============================================
+    // CUSTOMERS (NEW)
+    // ============================================
+    getCustomers() {
+      return this.get("/customers");
     },
 
+    getCustomer(id) {
+      return this.get(`/customers/${id}`);
+    },
+
+    createCustomer(data) {
+      return this.post("/customers", data);
+    },
+
+    // ============================================
+    // USERS
+    // ============================================
     getUsers() {
       return this.get("/users");
+    },
+
+    getUser(id) {
+      return this.get(`/users/${id}`);
     },
 
     createUser(data) {
@@ -284,13 +309,30 @@
     },
 
     updateUser(id, data) {
-      if (!id || isNaN(Number(id))) throw new Error("Invalid user ID");
       return this.put(`/users/${id}`, data);
     },
 
     deleteUser(id) {
-      if (!id || isNaN(Number(id))) throw new Error("Invalid user ID");
       return this.delete(`/users/${id}`);
+    },
+
+    getRoles() {
+      return this.get("/users/roles");
+    },
+
+    // ============================================
+    // REPORTS & ANALYTICS
+    // ============================================
+    getDashboardStats() {
+      return this.get("/reports/dashboard");
+    },
+
+    getInventorySummary() {
+      return this.get("/reports/inventory-summary");
+    },
+
+    getTransactionHistory(limit = 50) {
+      return this.get("/reports/transactions", { limit });
     },
 
     // ============================================
@@ -307,5 +349,5 @@
   };
 
   window.API = API;
-  console.log("✅ API Module v6.1 Loaded");
+  console.log("✅ API Module v7.0 Loaded - Connected to src/ backend");
 })(window);

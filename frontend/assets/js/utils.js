@@ -1,12 +1,12 @@
 /**
- * Janstro Inventory System - FIXED Utility Functions
- * Version: 3.2.0 - All Missing Functions Added
+ * JANSTRO IMS - Complete Utility Functions v3.2
+ * All helper functions for the system
  */
 
 const Utils = {
-  /**
-   * ✅ FIXED: Escape HTML to prevent XSS
-   */
+  // ============================
+  // STRING UTILITIES
+  // ============================
   escapeHtml(text) {
     if (!text) return "";
     const map = {
@@ -20,9 +20,13 @@ const Utils = {
     return String(text).replace(/[&<>"'/]/g, (m) => map[m]);
   },
 
-  /**
-   * Format date to readable string
-   */
+  sanitizeInput(input) {
+    return this.escapeHtml(input);
+  },
+
+  // ============================
+  // DATE FORMATTING
+  // ============================
   formatDate(dateString) {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -36,18 +40,15 @@ const Utils = {
     return date.toLocaleDateString("en-US", options);
   },
 
-  /**
-   * Format date to YYYY-MM-DD
-   */
   formatDateInput(dateString) {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toISOString().split("T")[0];
   },
 
-  /**
-   * Format number as currency (Philippine Peso)
-   */
+  // ============================
+  // NUMBER FORMATTING
+  // ============================
   formatCurrency(amount) {
     if (amount === null || amount === undefined) return "₱0.00";
     return new Intl.NumberFormat("en-PH", {
@@ -56,17 +57,14 @@ const Utils = {
     }).format(amount);
   },
 
-  /**
-   * Format number with thousands separator
-   */
   formatNumber(number) {
     if (number === null || number === undefined) return "0";
     return new Intl.NumberFormat("en-US").format(number);
   },
 
-  /**
-   * Show loading spinner
-   */
+  // ============================
+  // UI FEEDBACK
+  // ============================
   showLoading(elementId) {
     const element = document.getElementById(elementId);
     if (element) {
@@ -81,9 +79,6 @@ const Utils = {
     }
   },
 
-  /**
-   * ✅ FIXED: Show error message (was missing in stock-movements.html)
-   */
   showError(elementId, message) {
     const element = document.getElementById(elementId);
     if (element) {
@@ -96,9 +91,6 @@ const Utils = {
     }
   },
 
-  /**
-   * Show success message
-   */
   showSuccess(elementId, message) {
     const element = document.getElementById(elementId);
     if (element) {
@@ -111,9 +103,6 @@ const Utils = {
     }
   },
 
-  /**
-   * Show toast notification
-   */
   showToast(message, type = "success") {
     let toastContainer = document.getElementById("toastContainer");
 
@@ -164,9 +153,6 @@ const Utils = {
     });
   },
 
-  /**
-   * Confirm action with modal
-   */
   async confirmAction(title, message) {
     return new Promise((resolve) => {
       const modalHTML = `
@@ -212,32 +198,22 @@ const Utils = {
     });
   },
 
-  /**
-   * Validate email format
-   */
+  // ============================
+  // VALIDATION
+  // ============================
   validateEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   },
 
-  /**
-   * Validate phone number (Philippine format)
-   */
   validatePhone(phone) {
     const re = /^(09|\+639)\d{9}$/;
     return re.test(phone);
   },
 
-  /**
-   * Sanitize input (prevent XSS)
-   */
-  sanitizeInput(input) {
-    return this.escapeHtml(input);
-  },
-
-  /**
-   * Get badge class for status
-   */
+  // ============================
+  // BADGES & STATUS
+  // ============================
   getStatusBadge(status) {
     const badges = {
       pending: "bg-warning text-dark",
@@ -248,13 +224,12 @@ const Utils = {
       inactive: "bg-secondary",
       low_stock: "bg-danger",
       in_stock: "bg-success",
+      delivered: "bg-success",
+      approved: "bg-info",
     };
     return badges[status] || "bg-secondary";
   },
 
-  /**
-   * Get transaction type badge
-   */
   getTransactionBadge(type) {
     const badges = {
       IN: "bg-success",
@@ -264,11 +239,11 @@ const Utils = {
     return badges[type] || "bg-secondary";
   },
 
-  /**
-   * Check if user has required role
-   */
+  // ============================
+  // ROLE CHECKING
+  // ============================
   hasRole(requiredRole) {
-    const user = API.getUser();
+    const user = API.getUserFromStorage();
     if (!user) return false;
 
     const roleHierarchy = {
@@ -283,9 +258,6 @@ const Utils = {
     return userLevel >= requiredLevel;
   },
 
-  /**
-   * Protect page by role
-   */
   requireRole(requiredRole) {
     if (!API.isAuthenticated()) {
       window.location.href = "/janstro-inventory/frontend/index.html";
@@ -300,11 +272,11 @@ const Utils = {
     return true;
   },
 
-  /**
-   * Update page title with user info
-   */
+  // ============================
+  // UI UPDATES
+  // ============================
   updatePageHeader() {
-    const user = API.getUser();
+    const user = API.getUserFromStorage();
     if (user) {
       const userNameElement = document.getElementById("userName");
       const userRoleElement = document.getElementById("userRole");
@@ -319,9 +291,9 @@ const Utils = {
     }
   },
 
-  /**
-   * Export table to CSV
-   */
+  // ============================
+  // DATA EXPORT
+  // ============================
   exportToCSV(data, filename) {
     if (!data || data.length === 0) {
       this.showToast("No data to export", "error");
@@ -360,9 +332,9 @@ const Utils = {
     document.body.removeChild(link);
   },
 
-  /**
-   * Debounce function (for search inputs)
-   */
+  // ============================
+  // DEBOUNCE
+  // ============================
   debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -375,9 +347,9 @@ const Utils = {
     };
   },
 
-  /**
-   * Initialize tooltips (Bootstrap)
-   */
+  // ============================
+  // TOOLTIPS
+  // ============================
   initTooltips() {
     const tooltipTriggerList = [].slice.call(
       document.querySelectorAll('[data-bs-toggle="tooltip"]')
@@ -386,11 +358,24 @@ const Utils = {
       (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl)
     );
   },
+
+  // ============================
+  // SAP-STYLE TRANSACTION CODES (For Labels)
+  // ============================
+  getSAPLabel(code) {
+    const labels = {
+      VA01: "Create Sales Order",
+      VF01: "Create Invoice",
+      ME21N: "Create Purchase Order",
+      MIGO: "Goods Receipt",
+      MB51: "Material Document List",
+      MMBE: "Stock Overview",
+      MD04: "Stock/Requirements List",
+    };
+    return labels[code] || code;
+  },
 };
 
-// Make Utils available globally
 window.Utils = Utils;
 
-console.log(
-  "✅ Utils loaded - All functions available including showError and escapeHtml"
-);
+console.log("✅ Utils v3.2 Loaded - All functions available");

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Janstro Solar IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <div id="sidebarContainer"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1>📊 Dashboard</h1>
+            <p class="text-muted">Welcome to Janstro Prime Solar Inventory Management System</p>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-primary">
+                    <i class="bi bi-box" style="font-size: 48px;"></i>
+                    <h4 id="totalItems">-</h4>
+                    <p>Total Items</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #dc3545, #c82333);">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 48px;"></i>
+                    <h4 id="lowStockItems">-</h4>
+                    <p>Low Stock Items</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #28a745, #218838);">
+                    <i class="bi bi-cart-plus" style="font-size: 48px;"></i>
+                    <h4 id="pendingPOs">-</h4>
+                    <p>Pending Purchase Orders</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #ffc107, #e0a800);">
+                    <i class="bi bi-currency-dollar" style="font-size: 48px;"></i>
+                    <h4 id="totalValue">-</h4>
+                    <p>Total Inventory Value</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📋 Recent Transactions (MB51)</h3>
+            </div>
+            <div id="transactionsTable"></div>
+        </div>
+
+        <!-- Low Stock Alert -->
+        <div class="card">
+            <div class="card-header">
+                <h3>⚠️ Low Stock Alerts</h3>
+            </div>
+            <div id="lowStockTable"></div>
+        </div>
+    </div>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        async function initDashboard() {
+            try {
+                // ✅ Get current user from backend session
+                const userResponse = await API.getCurrentUser();
+                
+                if (!userResponse || !userResponse.success) {
+                    console.error('Failed to get current user');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                const user = userResponse.data;
+                console.log('✅ User loaded:', user.username);
+
+                // Load dashboard stats
+                const statsResponse = await API.getDashboardStats();
+                
+                if (statsResponse && statsResponse.success) {
+                    const stats = statsResponse.data;
+                    
+                    document.getElementById('totalItems').textContent = stats.total_items || 0;
+                    document.getElementById('lowStockItems').textContent = stats.low_stock_items || 0;
+                    document.getElementById('pendingPOs').textContent = stats.pending_pos || 0;
+                    document.getElementById('totalValue').textContent = 
+                        Utils.formatCurrency(stats.total_inventory_value || 0);
+                }
+
+                // Load recent transactions
+                await loadTransactions();
+                
+                // Load low stock items
+                await loadLowStock();
+
+            } catch (error) {
+                console.error('Dashboard init error:', error);
+                Utils.showToast('Failed to load dashboard data', 'error');
+            }
+        }
+
+        async function loadTransactions() {
+            try {
+                const response = await API.getTransactionHistory(10);
+                
+                if (response && response.success) {
+                    const transactions = response.data;
+                    
+                    if (transactions.length === 0) {
+                        document.getElementById('transactionsTable').innerHTML = 
+                            '<p class="text-muted text-center py-4">No recent transactions</p>';
+                        return;
+                    }
+
+                    let html = `
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Item</th>
+                                        <th>Type</th>
+                                        <th>Quantity</th>
+                                        <th>User</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    transactions.forEach(t => {
+                        html += `
+                            <tr>
+                                <td>${Utils.formatDate(t.transaction_date)}</td>
+                                <td>${Utils.escapeHtml(t.item_name)}</td>
+                                <td><span class="badge ${Utils.getTransactionBadge(t.transaction_type)}">${t.transaction_type}</span></td>
+                                <td>${t.quantity} ${t.unit || 'pcs'}</td>
+                                <td>${Utils.escapeHtml(t.user_name || 'System')}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+
+                    document.getElementById('transactionsTable').innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Load transactions error:', error);
+            }
+        }
+
+        async function loadLowStock() {
+            try {
+                const response = await API.getLowStockItems();
+                
+                if (response && response.success) {
+                    const items = response.data;
+                    
+                    if (items.length === 0) {
+                        document.getElementById('lowStockTable').innerHTML = 
+                            '<p class="text-success text-center py-4">✅ All items are sufficiently stocked</p>';
+                        return;
+                    }
+
+                    let html = `
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Item Name</th>
+                                        <th>Current Stock</th>
+                                        <th>Reorder Level</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    items.forEach(item => {
+                        html += `
+                            <tr>
+                                <td>${Utils.escapeHtml(item.item_name)}</td>
+                                <td><strong>${item.quantity}</strong> ${item.unit}</td>
+                                <td>${item.reorder_level} ${item.unit}</td>
+                                <td><span class="badge bg-danger">Low Stock</span></td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+
+                    document.getElementById('lowStockTable').innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Load low stock error:', error);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+</body>
+</html>
