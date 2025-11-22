@@ -1,713 +1,461 @@
-<!DOCTYPE html>
-<html lang="en">
+<?php
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Inquiries - Janstro Prime Solar IMS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --sidebar-width: 260px;
+/**
+ * Janstro Inventory Management System - FIXED API Router
+ * Date: 2025-11-21
+ * Version: 4.0.0 - Complete Authentication Fix
+ */
+
+// Load manual autoloader
+require_once __DIR__ . '/../autoload.php';
+
+// Error handling
+if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+} else {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '0');
+    ini_set('log_errors', '1');
+}
+
+// ============================================
+// CORS Headers (MUST come first)
+// ============================================
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Credentials: true');
+header('Access-Control-Max-Age: 86400');
+header('Content-Type: application/json; charset=utf-8');
+
+// Handle preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+// ============================================
+// Path Parsing (CRITICAL FIX)
+// ============================================
+$requestUri = $_SERVER['REQUEST_URI'];
+$scriptName = dirname($_SERVER['SCRIPT_NAME']);
+
+// Remove base path
+$path = str_replace($scriptName, '', $requestUri);
+$path = parse_url($path, PHP_URL_PATH);
+$path = trim($path, '/');
+
+$segments = $path ? explode('/', $path) : [];
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Debug logging
+error_log("========================================");
+error_log("📍 Request URI: " . $requestUri);
+error_log("📍 Parsed Path: " . $path);
+error_log("📍 Method: " . $method);
+error_log("📍 Segments: " . json_encode($segments));
+
+// Import classes
+use Janstro\InventorySystem\Controllers\AuthController;
+use Janstro\InventorySystem\Controllers\InventoryController;
+use Janstro\InventorySystem\Controllers\OrderController;
+use Janstro\InventorySystem\Controllers\UserController;
+use Janstro\InventorySystem\Controllers\SupplierController;
+use Janstro\InventorySystem\Controllers\ReportController;
+use Janstro\InventorySystem\Utils\Response;
+use Janstro\InventorySystem\Services\CompleteInventoryService;
+
+try {
+    // ===============================================
+    // HEALTH CHECK
+    // ===============================================
+    if (empty($path) || $path === 'health') {
+        Response::success([
+            'name' => 'Janstro Inventory System',
+            'version' => '4.0.0',
+            'environment' => $_ENV['APP_ENV'] ?? 'development',
+            'status' => 'running',
+            'message' => 'API is healthy!',
+            'timestamp' => date('Y-m-d H:i:s')
+        ], 'API is running');
+        exit;
+    }
+
+    // ===============================================
+    // AUTHENTICATION ROUTES
+    // ===============================================
+    if ($segments[0] === 'auth') {
+        error_log("✅ AUTH ROUTE DETECTED");
+
+        $authController = new AuthController();
+
+        if ($method === 'POST' && ($segments[1] ?? '') === 'login') {
+            error_log("🔐 Processing login request");
+            $authController->login();
+            exit;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        if ($method === 'POST' && ($segments[1] ?? '') === 'logout') {
+            $authController->logout();
+            exit;
         }
 
-        body {
-            font-family: 'Inter', 'Segoe UI', sans-serif;
-            background: #f5f7fa;
-            min-height: 100vh;
+        if ($method === 'GET' && ($segments[1] ?? '') === 'me') {
+            $authController->getCurrentUser();
+            exit;
         }
 
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            width: var(--sidebar-width);
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            overflow-y: auto;
-            z-index: 1000;
-        }
+        // If we reach here, endpoint not found
+        error_log("❌ Auth endpoint not recognized: " . ($segments[1] ?? 'none'));
+        Response::notFound('Auth endpoint not found');
+        exit;
+    }
 
-        .sidebar-header {
-            padding: 30px 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
+    // ===============================================
+    // INVENTORY ROUTES
+    // ===============================================
+    elseif ($segments[0] === 'inventory') {
+        $inventoryController = new InventoryController();
+        $inventoryService = new CompleteInventoryService();
 
-        .sidebar-header i {
-            font-size: 48px;
-        }
-
-        .sidebar-header h4 {
-            font-weight: 700;
-            margin: 10px 0 0;
-        }
-
-        .sidebar-menu {
-            padding: 20px 0;
-        }
-
-        .menu-section {
-            padding: 10px 25px;
-            font-size: 11px;
-            text-transform: uppercase;
-            opacity: 0.7;
-            letter-spacing: 1px;
-        }
-
-        .menu-item {
-            padding: 12px 25px;
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            border-left: 3px solid transparent;
-            transition: all 0.3s;
-        }
-
-        .menu-item:hover,
-        .menu-item.active {
-            background: rgba(255, 255, 255, 0.15);
-            border-left-color: white;
-            color: white;
-        }
-
-        .menu-item i {
-            font-size: 18px;
-            margin-right: 12px;
-            width: 20px;
-        }
-
-        .main-content {
-            margin-left: var(--sidebar-width);
-            min-height: 100vh;
-        }
-
-        .top-nav {
-            background: white;
-            padding: 20px 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 999;
-        }
-
-        .top-nav h5 {
-            margin: 0;
-            font-weight: 700;
-            font-size: 24px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .user-avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-        }
-
-        .btn-logout {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-
-        .content-area {
-            padding: 30px;
-        }
-
-        /* Stats Cards */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            transition: transform 0.3s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: 800;
-            color: #2c3e50;
-        }
-
-        .stat-label {
-            color: #6c757d;
-            font-size: 14px;
-        }
-
-        /* Inquiry Cards */
-        .inquiry-card {
-            background: white;
-            border-radius: 16px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            border-left: 5px solid #667eea;
-            transition: all 0.3s;
-        }
-
-        .inquiry-card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-        }
-
-        .inquiry-card.urgent {
-            border-left-color: #dc3545;
-        }
-
-        .inquiry-card.processing {
-            border-left-color: #ffc107;
-        }
-
-        .inquiry-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-        }
-
-        .inquiry-customer {
-            font-size: 18px;
-            font-weight: 700;
-            color: #2c3e50;
-        }
-
-        .inquiry-ref {
-            font-size: 12px;
-            color: #6c757d;
-        }
-
-        .inquiry-status {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .inquiry-status.new {
-            background: #e3f2fd;
-            color: #1565c0;
-        }
-
-        .inquiry-status.processing {
-            background: #fff3e0;
-            color: #ef6c00;
-        }
-
-        .inquiry-status.quoted {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .inquiry-status.converted {
-            background: #f3e5f5;
-            color: #7b1fa2;
-        }
-
-        .inquiry-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .detail-item label {
-            font-size: 11px;
-            color: #6c757d;
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 3px;
-        }
-
-        .detail-item span {
-            font-weight: 600;
-            color: #2c3e50;
-        }
-
-        .inquiry-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            padding-top: 15px;
-            border-top: 1px solid #f0f0f0;
-        }
-
-        .btn-action {
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-action:hover {
-            transform: translateY(-2px);
-        }
-
-        .stock-badge {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .stock-badge.available {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .stock-badge.insufficient {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .stock-badge.checking {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .filter-bar {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px;
-            color: #6c757d;
-        }
-
-        .empty-state i {
-            font-size: 64px;
-            opacity: 0.3;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                $inventoryController->getAll();
+                exit;
             }
 
-            .main-content {
-                margin-left: 0;
+            if ($segments[1] === 'status') {
+                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+                if (!$user) exit;
+                Response::success($inventoryService->getInventoryStatus(), 'Status retrieved');
+                exit;
             }
-        }
-    </style>
-</head>
 
-<body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <i class="bi bi-sun"></i>
-            <h4>Janstro Prime</h4>
-            <small>Solar IMS v3.0</small>
-        </div>
-        <div class="sidebar-menu">
-            <div class="menu-section">Main</div>
-            <a href="dashboard.html" class="menu-item"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
-
-            <div class="menu-section">Customer Service</div>
-            <a href="inquiries.html" class="menu-item active"><i class="bi bi-chat-dots"></i><span>Inquiries</span></a>
-            <a href="customer-inquiry.html" class="menu-item"><i class="bi bi-person-plus"></i><span>New Inquiry Form</span></a>
-
-            <div class="menu-section">Inventory</div>
-            <a href="inventory.html" class="menu-item"><i class="bi bi-box"></i><span>All Items</span></a>
-            <a href="stock-movements.html" class="menu-item"><i class="bi bi-arrow-left-right"></i><span>Stock Movements</span></a>
-
-            <div class="menu-section">Orders</div>
-            <a href="purchase-orders.html" class="menu-item"><i class="bi bi-cart-plus"></i><span>Purchase Orders</span></a>
-            <a href="sales-orders.html" class="menu-item"><i class="bi bi-cart-check"></i><span>Sales Orders</span></a>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="top-nav">
-            <h5><i class="bi bi-chat-dots me-2"></i>Customer Inquiries</h5>
-            <div class="d-flex align-items-center gap-3">
-                <div class="user-avatar" id="userAvatar">S</div>
-                <button class="btn-logout" onclick="handleLogout()"><i class="bi bi-box-arrow-right me-1"></i>Logout</button>
-            </div>
-        </div>
-
-        <div class="content-area">
-            <!-- Stats Row -->
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #e3f2fd; color: #1565c0;"><i class="bi bi-envelope"></i></div>
-                    <div class="stat-value" id="statNew">0</div>
-                    <div class="stat-label">New Inquiries</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #fff3e0; color: #ef6c00;"><i class="bi bi-hourglass-split"></i></div>
-                    <div class="stat-value" id="statProcessing">0</div>
-                    <div class="stat-label">Processing</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #e8f5e9; color: #2e7d32;"><i class="bi bi-check-circle"></i></div>
-                    <div class="stat-value" id="statConverted">0</div>
-                    <div class="stat-label">Converted to SO</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #fce4ec; color: #c2185b;"><i class="bi bi-percent"></i></div>
-                    <div class="stat-value" id="statRate">0%</div>
-                    <div class="stat-label">Conversion Rate</div>
-                </div>
-            </div>
-
-            <!-- Filter Bar -->
-            <div class="filter-bar">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Filter by Status</label>
-                        <select class="form-select" id="filterStatus" onchange="loadInquiries()">
-                            <option value="">All Inquiries</option>
-                            <option value="new">🔵 New</option>
-                            <option value="processing">🟡 Processing</option>
-                            <option value="quoted">🟢 Quoted</option>
-                            <option value="converted">🟣 Converted</option>
-                            <option value="cancelled">⚫ Cancelled</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Search</label>
-                        <input type="text" class="form-control" id="searchInput" placeholder="Customer name or phone..." onkeyup="filterInquiries()">
-                    </div>
-                    <div class="col-md-4">
-                        <button class="btn btn-primary w-100" onclick="loadInquiries()">
-                            <i class="bi bi-arrow-clockwise me-2"></i>Refresh
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Inquiries List -->
-            <div id="inquiriesContainer">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary"></div>
-                    <p class="mt-3 text-muted">Loading inquiries...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- View Inquiry Modal -->
-    <div class="modal fade" id="viewModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
-                    <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Inquiry Details</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="modalContent"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/api.js"></script>
-    <script src="assets/js/utils.js"></script>
-    <script src="assets/js/rbac.js"></script>
-
-    <script>
-        const API_URL = 'http://localhost:8080/janstro-inventory/public';
-        let allInquiries = [];
-
-        // Check auth
-        if (!API.isAuthenticated()) {
-            window.location.href = 'index.html';
-        }
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            RBAC.init();
-            const user = API.getUser();
-            if (user) {
-                document.getElementById('userAvatar').textContent = (user.name || user.username).charAt(0).toUpperCase();
+            if ($segments[1] === 'check-stock' && isset($_GET['item_id'])) {
+                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+                if (!$user) exit;
+                Response::success($inventoryService->checkStockAvailability((int)$_GET['item_id']), 'Stock checked');
+                exit;
             }
-            await loadStatistics();
-            await loadInquiries();
-        });
 
-        async function loadStatistics() {
-            try {
-                const token = API.getToken();
-                const res = await fetch(`${API_URL}/inquiries/stats`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    document.getElementById('statNew').textContent = data.data.new || 0;
-                    document.getElementById('statProcessing').textContent = data.data.processing || 0;
-                    document.getElementById('statConverted').textContent = data.data.converted || 0;
-                    document.getElementById('statRate').textContent = (data.data.conversion_rate || 0) + '%';
-                }
-            } catch (e) {
-                console.error('Stats error:', e);
+            if ($segments[1] === 'movements') {
+                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+                if (!$user) exit;
+                $filters = [
+                    'item_id' => $_GET['item_id'] ?? null,
+                    'type' => $_GET['type'] ?? null,
+                    'date_from' => $_GET['date_from'] ?? null,
+                    'date_to' => $_GET['date_to'] ?? null
+                ];
+                Response::success($inventoryService->getMaterialDocuments($filters), 'Movements retrieved');
+                exit;
+            }
+
+            if ($segments[1] === 'low-stock') {
+                $inventoryController->getLowStock();
+                exit;
+            }
+
+            if (is_numeric($segments[1])) {
+                $inventoryController->getById((int)$segments[1]);
+                exit;
             }
         }
 
-        async function loadInquiries() {
-            try {
-                const token = API.getToken();
-                const status = document.getElementById('filterStatus').value;
-                const url = status ? `${API_URL}/inquiries?status=${status}` : `${API_URL}/inquiries`;
+        Response::notFound('Inventory endpoint not found');
+        exit;
+    }
 
-                const res = await fetch(url, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
+    // ===============================================
+    // PURCHASE ORDERS
+    // ===============================================
+    elseif ($segments[0] === 'purchase-orders') {
+        $orderController = new OrderController();
+        $inventoryService = new CompleteInventoryService();
+        $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+        if (!$user) exit;
 
-                if (data.success && data.data.inquiries) {
-                    allInquiries = data.data.inquiries;
-                    renderInquiries(allInquiries);
-                } else {
-                    showEmpty();
-                }
-            } catch (e) {
-                console.error('Load error:', e);
-                document.getElementById('inquiriesContainer').innerHTML = `
-                    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Failed to load inquiries. Make sure the database tables exist.</div>
-                `;
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                $orderController->getAll();
+                exit;
+            }
+            if (is_numeric($segments[1])) {
+                $orderController->getById((int)$segments[1]);
+                exit;
             }
         }
 
-        function filterInquiries() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = allInquiries.filter(i =>
-                i.customer_name.toLowerCase().includes(search) ||
-                i.phone.includes(search)
-            );
-            renderInquiries(filtered);
-        }
-
-        function renderInquiries(inquiries) {
-            if (!inquiries || inquiries.length === 0) {
-                showEmpty();
-                return;
+        if ($method === 'POST') {
+            if (empty($segments[1])) {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $input['created_by'] = $user->user_id;
+                Response::success($inventoryService->createPurchaseOrder($input), 'PO created', 201);
+                exit;
             }
 
-            const html = inquiries.map(i => {
-                const urgentClass = i.status === 'new' && i.days_old > 2 ? 'urgent' : (i.status === 'processing' ? 'processing' : '');
-                return `
-                <div class="inquiry-card ${urgentClass}">
-                    <div class="inquiry-header">
-                        <div>
-                            <div class="inquiry-customer">${Utils.escapeHtml(i.customer_name)}</div>
-                            <div class="inquiry-ref">INQ-${String(i.inquiry_id).padStart(8, '0')} • ${i.days_old || 0} days ago</div>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="stock-badge ${i.stock_availability}">${i.stock_availability}</span>
-                            <span class="inquiry-status ${i.status}">${i.status.toUpperCase()}</span>
-                        </div>
-                    </div>
-                    <div class="inquiry-details">
-                        <div class="detail-item"><label>Phone</label><span>${Utils.escapeHtml(i.phone)}</span></div>
-                        <div class="detail-item"><label>Product</label><span>${Utils.escapeHtml(i.item_name)}</span></div>
-                        <div class="detail-item"><label>Quantity</label><span>${i.quantity}</span></div>
-                        <div class="detail-item"><label>Budget</label><span>${i.budget_range || 'Not specified'}</span></div>
-                        <div class="detail-item"><label>Install Date</label><span>${i.installation_date || 'TBD'}</span></div>
-                        <div class="detail-item"><label>Address</label><span>${Utils.escapeHtml(i.address)}</span></div>
-                    </div>
-                    ${i.notes ? `<div class="mb-3"><small class="text-muted"><strong>Notes:</strong> ${Utils.escapeHtml(i.notes)}</small></div>` : ''}
-                    <div class="inquiry-actions">
-                        <button class="btn-action btn btn-outline-primary btn-sm" onclick="viewInquiry(${i.inquiry_id})">
-                            <i class="bi bi-eye me-1"></i>View
-                        </button>
-                        ${i.status === 'new' ? `
-                            <button class="btn-action btn btn-warning btn-sm" onclick="updateStatus(${i.inquiry_id}, 'processing')">
-                                <i class="bi bi-play me-1"></i>Start Processing
-                            </button>
-                        ` : ''}
-                        ${i.status === 'processing' ? `
-                            <button class="btn-action btn btn-info btn-sm" onclick="updateStatus(${i.inquiry_id}, 'quoted')">
-                                <i class="bi bi-file-text me-1"></i>Mark Quoted
-                            </button>
-                        ` : ''}
-                        ${(i.status === 'quoted' || i.status === 'processing') && i.stock_availability === 'available' ? `
-                            <button class="btn-action btn btn-success btn-sm" onclick="convertToSO(${i.inquiry_id})">
-                                <i class="bi bi-cart-check me-1"></i>Convert to Sales Order
-                            </button>
-                        ` : ''}
-                        ${i.status !== 'converted' && i.status !== 'cancelled' ? `
-                            <button class="btn-action btn btn-outline-danger btn-sm" onclick="updateStatus(${i.inquiry_id}, 'cancelled')">
-                                <i class="bi bi-x-circle me-1"></i>Cancel
-                            </button>
-                        ` : ''}
-                    </div>
-                </div>
-            `
-            }).join('');
-
-            document.getElementById('inquiriesContainer').innerHTML = html;
-        }
-
-        function showEmpty() {
-            document.getElementById('inquiriesContainer').innerHTML = `
-                <div class="empty-state">
-                    <i class="bi bi-inbox"></i>
-                    <h5>No Inquiries Found</h5>
-                    <p>Customer inquiries will appear here when submitted.</p>
-                    <a href="customer-inquiry.html" class="btn btn-primary mt-3" target="_blank">
-                        <i class="bi bi-plus-circle me-2"></i>Submit Test Inquiry
-                    </a>
-                </div>
-            `;
-        }
-
-        async function viewInquiry(id) {
-            try {
-                const token = API.getToken();
-                const res = await fetch(`${API_URL}/inquiries/${id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    const i = data.data;
-                    document.getElementById('modalContent').innerHTML = `
-                        <div class="row g-3">
-                            <div class="col-md-6"><label class="text-muted small">Reference</label><p class="fw-bold">INQ-${String(i.inquiry_id).padStart(8, '0')}</p></div>
-                            <div class="col-md-6"><label class="text-muted small">Status</label><p><span class="inquiry-status ${i.status}">${i.status.toUpperCase()}</span></p></div>
-                            <div class="col-md-6"><label class="text-muted small">Customer</label><p class="fw-bold">${Utils.escapeHtml(i.customer_name)}</p></div>
-                            <div class="col-md-6"><label class="text-muted small">Phone</label><p>${Utils.escapeHtml(i.phone)}</p></div>
-                            <div class="col-md-6"><label class="text-muted small">Email</label><p>${i.email || 'N/A'}</p></div>
-                            <div class="col-md-6"><label class="text-muted small">Address</label><p>${Utils.escapeHtml(i.address)}</p></div>
-                            <div class="col-12"><hr></div>
-                            <div class="col-md-6"><label class="text-muted small">Product</label><p class="fw-bold">${Utils.escapeHtml(i.item_name)}</p></div>
-                            <div class="col-md-3"><label class="text-muted small">Quantity</label><p>${i.quantity}</p></div>
-                            <div class="col-md-3"><label class="text-muted small">Stock</label><p><span class="stock-badge ${i.stock_availability}">${i.stock_availability}</span></p></div>
-                            <div class="col-md-6"><label class="text-muted small">Budget</label><p>${i.budget_range || 'Not specified'}</p></div>
-                            <div class="col-md-6"><label class="text-muted small">Install Date</label><p>${i.installation_date || 'TBD'}</p></div>
-                            ${i.notes ? `<div class="col-12"><label class="text-muted small">Notes</label><p>${Utils.escapeHtml(i.notes)}</p></div>` : ''}
-                            <div class="col-12"><hr></div>
-                            <div class="col-md-6"><label class="text-muted small">Created</label><p>${Utils.formatDate(i.created_at)}</p></div>
-                            <div class="col-md-6"><label class="text-muted small">Assigned To</label><p>${i.assigned_staff_name || 'Unassigned'}</p></div>
-                        </div>
-                    `;
-                    new bootstrap.Modal(document.getElementById('viewModal')).show();
-                }
-            } catch (e) {
-                console.error('View error:', e);
+            if ($segments[1] === 'receive' && isset($segments[2])) {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $input['user_id'] = $user->user_id;
+                Response::success($inventoryService->receiveGoods((int)$segments[2], $input), 'Goods received');
+                exit;
             }
         }
 
-        async function updateStatus(id, status) {
-            if (!confirm(`Update inquiry to "${status}"?`)) return;
-            try {
-                const token = API.getToken();
-                const res = await fetch(`${API_URL}/inquiries/${id}/status`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        status
-                    })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    Utils.showToast('Status updated!', 'success');
-                    await loadStatistics();
-                    await loadInquiries();
-                } else {
-                    Utils.showToast(data.message || 'Update failed', 'error');
-                }
-            } catch (e) {
-                console.error('Update error:', e);
-                Utils.showToast('Update failed', 'error');
+        Response::notFound('PO endpoint not found');
+        exit;
+    }
+
+    // ===============================================
+    // SALES ORDERS
+    // ===============================================
+    elseif ($segments[0] === 'sales-orders') {
+        $inventoryService = new CompleteInventoryService();
+        $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+        if (!$user) exit;
+
+        if ($method === 'GET' && empty($segments[1])) {
+            Response::success($inventoryService->getAllSalesOrders(), 'Sales orders retrieved');
+            exit;
+        }
+
+        if ($method === 'POST') {
+            if (empty($segments[1])) {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $input['created_by'] = $user->user_id;
+                Response::success($inventoryService->createSimpleSalesOrder($input), 'SO created', 201);
+                exit;
+            }
+
+            if ($segments[1] === 'invoice' && isset($segments[2])) {
+                Response::success($inventoryService->processSimpleInvoice((int)$segments[2], $user->user_id), 'Invoice processed');
+                exit;
             }
         }
 
-        async function convertToSO(id) {
-            if (!confirm('Convert this inquiry to a Sales Order? This will create a new SO.')) return;
-            try {
-                const token = API.getToken();
-                const res = await fetch(`${API_URL}/inquiries/${id}/convert`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    Utils.showToast(`Converted! Sales Order #${data.data.sales_order_id} created`, 'success');
-                    await loadStatistics();
-                    await loadInquiries();
-                } else {
-                    Utils.showToast(data.message || 'Conversion failed', 'error');
-                }
-            } catch (e) {
-                console.error('Convert error:', e);
-                Utils.showToast('Conversion failed', 'error');
+        Response::notFound('SO endpoint not found');
+        exit;
+    }
+
+    // ===============================================
+    // SUPPLIERS
+    // ===============================================
+    elseif ($segments[0] === 'suppliers') {
+        $supplierController = new SupplierController();
+
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                $supplierController->getAll();
+                exit;
+            }
+            if (is_numeric($segments[1])) {
+                $supplierController->getById((int)$segments[1]);
+                exit;
             }
         }
 
-        function handleLogout() {
-            if (confirm('Logout?')) API.logout();
+        if ($method === 'POST') {
+            $supplierController->create();
+            exit;
         }
-    </script>
-</body>
 
-</html>
+        if ($method === 'PUT' && isset($segments[1])) {
+            $supplierController->update((int)$segments[1]);
+            exit;
+        }
+
+        Response::notFound('Supplier endpoint not found');
+        exit;
+    }
+
+    // ===============================================
+    // USERS
+    // ===============================================
+    elseif ($segments[0] === 'users') {
+        $userController = new UserController();
+
+        if ($method === 'GET') {
+            if (empty($segments[1])) {
+                $userController->getAll();
+                exit;
+            }
+            if ($segments[1] === 'roles') {
+                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
+                if (!$user) exit;
+                $userService = new \Janstro\InventorySystem\Services\UserService();
+                Response::success($userService->getRoles(), 'Roles retrieved');
+                exit;
+            }
+            if (is_numeric($segments[1])) {
+                $userController->getById((int)$segments[1]);
+                exit;
+            }
+        }
+
+        if ($method === 'POST') {
+            $userController->create();
+            exit;
+        }
+
+        if ($method === 'PUT' && isset($segments[1])) {
+            $userController->update((int)$segments[1]);
+            exit;
+        }
+
+        Response::notFound('User endpoint not found');
+        exit;
+    }
+
+    // ===============================================
+    // REPORTS
+    // ===============================================
+    elseif ($segments[0] === 'reports') {
+        $reportController = new ReportController();
+
+        if ($method === 'GET') {
+            if (!isset($segments[1])) {
+                Response::error('Report type required', null, 400);
+                exit;
+            }
+
+            switch ($segments[1]) {
+                case 'dashboard':
+                    $reportController->getDashboardStats();
+                    break;
+                case 'inventory-summary':
+                    $reportController->getInventorySummary();
+                    break;
+                case 'transactions':
+                    $reportController->getTransactionHistory();
+                    break;
+                case 'low-stock':
+                    $reportController->getLowStockReport();
+                    break;
+                default:
+                    Response::notFound('Report endpoint not found');
+            }
+            exit;
+        }
+
+        Response::error('Method not allowed', null, 405);
+        exit;
+    }
+
+    // ===============================================
+    // NOT FOUND
+    // ===============================================
+    error_log("❌ No matching route for: " . $path);
+    Response::notFound('API endpoint not found: /' . $path);
+    exit;
+} catch (\Exception $e) {
+    error_log("🚨 FATAL ERROR: " . $e->getMessage());
+    error_log($e->getTraceAsString());
+    Response::serverError($e->getMessage());
+    exit;
+}
+
+// ===============================================
+// INQUIRY ROUTES (Add after SALES ORDERS section)
+// ===============================================
+elseif ($segments[0] === 'inquiries') {
+    $inquiryController = new \Janstro\InventorySystem\Controllers\InquiryController();
+
+    // PUBLIC: Create inquiry (no auth required)
+    if ($method === 'POST' && empty($segments[1])) {
+        $inquiryController->create();
+        exit;
+    }
+
+    // STAFF/ADMIN: Get all inquiries
+    if ($method === 'GET' && empty($segments[1])) {
+        $inquiryController->getAll();
+        exit;
+    }
+
+    // STAFF/ADMIN: Get inquiry statistics
+    if ($method === 'GET' && ($segments[1] ?? '') === 'stats') {
+        $inquiryController->getStatistics();
+        exit;
+    }
+
+    // STAFF/ADMIN: Get single inquiry
+    if ($method === 'GET' && is_numeric($segments[1] ?? '')) {
+        $inquiryController->getById((int)$segments[1]);
+        exit;
+    }
+
+    // STAFF/ADMIN: Update inquiry status
+    if ($method === 'PUT' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'status') {
+        $inquiryController->updateStatus((int)$segments[1]);
+        exit;
+    }
+
+    // STAFF/ADMIN: Convert to sales order
+    if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'convert') {
+        $inquiryController->convertToSalesOrder((int)$segments[1]);
+        exit;
+    }
+
+    // STAFF/ADMIN: Add note to inquiry
+    if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'notes') {
+        $inquiryController->addNote((int)$segments[1]);
+        exit;
+    }
+
+    Response::notFound('Inquiry endpoint not found');
+    exit;
+}
+
+// ============================================
+// CUSTOMER INQUIRY ROUTES (NEW)
+// ============================================
+
+// POST /inquiries - Submit inquiry (PUBLIC - no auth)
+if (preg_match('#^/inquiries$#', $path) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $controller = new Controllers\InquiryController();
+    $controller->create();
+    exit;
+}
+
+// GET /inquiries - Get all inquiries (STAFF/ADMIN)
+if (preg_match('#^/inquiries$#', $path) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $controller = new Controllers\InquiryController();
+    $controller->getAll();
+    exit;
+}
+
+// GET /inquiries/{id} - Get inquiry details
+if (preg_match('#^/inquiries/(\d+)$#', $path, $matches) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $controller = new Controllers\InquiryController();
+    $controller->getById((int)$matches[1]);
+    exit;
+}
+
+// PUT /inquiries/{id}/status - Update inquiry status
+if (preg_match('#^/inquiries/(\d+)/status$#', $path, $matches) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+    $controller = new Controllers\InquiryController();
+    $controller->updateStatus((int)$matches[1]);
+    exit;
+}
+
+// POST /inquiries/{id}/convert - Convert to sales order
+if (preg_match('#^/inquiries/(\d+)/convert$#', $path, $matches) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $controller = new Controllers\InquiryController();
+    $controller->convertToSalesOrder((int)$matches[1]);
+    exit;
+}
+
+// POST /inquiries/{id}/notes - Add note
+if (preg_match('#^/inquiries/(\d+)/notes$#', $path, $matches) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $controller = new Controllers\InquiryController();
+    $controller->addNote((int)$matches[1]);
+    exit;
+}
+
+// GET /inquiries/stats - Get statistics
+if (preg_match('#^/inquiries/stats$#', $path) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $controller = new Controllers\InquiryController();
+    $controller->getStatistics();
+    exit;
+}
