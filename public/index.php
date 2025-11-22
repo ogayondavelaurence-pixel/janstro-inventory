@@ -283,6 +283,42 @@ try {
     }
 
     // ===============================================
+    // INVOICES
+    // ===============================================
+    if ($resource === 'invoices') {
+        $user = AuthMiddleware::authenticate();
+        if (!$user) exit;
+
+        // ONLY FIX APPLIED
+        $db = \Janstro\InventorySystem\Config\Database::connect();
+
+        $action = $segments[1] ?? '';
+
+        // GET /invoices
+        if ($method === 'GET' && $action === '') {
+            $stmt = $db->query("SELECT * FROM invoices ORDER BY generated_at DESC");
+            Response::success($stmt->fetchAll(), 'Invoices retrieved');
+            exit;
+        }
+
+        // PUT /invoices/:id
+        if ($method === 'PUT' && is_numeric($action)) {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $stmt = $db->prepare("
+            UPDATE invoices 
+            SET paid_status = ?, paid_date = NOW() 
+            WHERE invoice_id = ?
+        ");
+            $stmt->execute([$data['paid_status'], (int)$action]);
+            Response::success(null, 'Invoice updated');
+            exit;
+        }
+
+        Response::notFound('Invoice endpoint not found');
+        exit;
+    }
+
+    // ===============================================
     // SUPPLIERS
     // ===============================================
     if ($resource === 'suppliers') {

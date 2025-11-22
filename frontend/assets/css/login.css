@@ -280,3 +280,46 @@ body {
     .test-buttons { flex-direction: column; }
     .btn-test { width: 100%; }
 }
+
+/* Inquiry Link Section - Add to existing login.css */
+.inquiry-link-section {
+    text-align: center;
+    margin-top: clamp(20px, 5vw, 32px);
+    padding-top: clamp(16px, 4vw, 24px);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.inquiry-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: clamp(0.85rem, 2.2vw, 1rem);
+    margin-bottom: clamp(12px, 3vw, 16px);
+    font-weight: 500;
+}
+
+.btn-inquiry {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2vw, 12px);
+    padding: clamp(12px, 3vw, 16px) clamp(24px, 6vw, 40px);
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    text-decoration: none;
+    border-radius: clamp(8px, 2vw, 12px);
+    font-size: clamp(0.9rem, 2.3vw, 1.05rem);
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    min-height: 48px;
+}
+
+.btn-inquiry:hover {
+    background: linear-gradient(135deg, #218838, #1e9b7c);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5);
+    color: white;
+}
+
+.btn-inquiry:active {
+    transform: translateY(0);
+}

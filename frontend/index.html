@@ -44,30 +44,45 @@
                             <span class="input-icon" aria-hidden="true">🔒</span>
                             <input type="password" id="password" name="password" class="form-control" 
                                    placeholder="Enter password" required autocomplete="current-password" aria-label="Password">
-                            <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">👁️</button>
+                            <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
+                                <span aria-hidden="true">👁️</span>
+                            </button>
                         </div>
                     </div>
 
                     <button type="submit" class="btn-signin" id="signInBtn">
-                        <span aria-hidden="true">🔑</span><span>Sign In</span>
+                        <span aria-hidden="true">🔑</span>
+                        <span>Sign In</span>
                     </button>
                 </form>
 
+                <!-- Inquiry Link Section -->
                 <div class="inquiry-link-section">
                     <p class="inquiry-text">Want to install solar panels?</p>
                     <a href="inquiry.html" class="btn-inquiry">
-                        ☀️ Install Solar Panel Now
+                        <span aria-hidden="true">☀️</span>
+                        <span>Install Solar Panel Now</span>
                     </a>
                 </div>
 
                 <div class="test-credentials">
                     <div class="test-credentials-header">
-                        <span aria-hidden="true">ℹ️</span><span>Test Credentials</span>
+                        <span aria-hidden="true">ℹ️</span>
+                        <span>Test Credentials</span>
                     </div>
                     <div class="test-buttons" role="group" aria-label="Quick login test credentials">
-                        <button type="button" class="btn-test" data-username="staff" data-password="staff123" aria-label="Login as staff">👨‍💼 Staff</button>
-                        <button type="button" class="btn-test" data-username="admin" data-password="admin123" aria-label="Login as admin">👔 Admin</button>
-                        <button type="button" class="btn-test" data-username="superadmin" data-password="superadmin123" aria-label="Login as superadmin">⭐ Super</button>
+                        <button type="button" class="btn-test" data-username="staff" data-password="staff123" aria-label="Login as staff">
+                            <span aria-hidden="true">👨‍💼</span>
+                            <span>Staff</span>
+                        </button>
+                        <button type="button" class="btn-test" data-username="admin" data-password="admin123" aria-label="Login as admin">
+                            <span aria-hidden="true">👔</span>
+                            <span>Admin</span>
+                        </button>
+                        <button type="button" class="btn-test" data-username="superadmin" data-password="superadmin123" aria-label="Login as superadmin">
+                            <span aria-hidden="true">⭐</span>
+                            <span>Super</span>
+                        </button>
                     </div>
                 </div>
 
@@ -107,7 +122,7 @@
             togglePwd.addEventListener('click', () => {
                 const type = password.type === 'password' ? 'text' : 'password';
                 password.type = type;
-                togglePwd.textContent = type === 'password' ? '👁️' : '🙈';
+                togglePwd.querySelector('span').textContent = type === 'password' ? '👁️' : '🙈';
             });
 
             document.querySelectorAll('.btn-test').forEach(btn => {
