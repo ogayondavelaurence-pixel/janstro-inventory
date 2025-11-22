@@ -422,7 +422,7 @@ try {
         $subAction = $segments[2] ?? '';
 
         if ($method === 'POST' && $action === '') {
-            $inquiryController->submitInquiry();
+            $inquiryController->submitInquiry();  // ✅ This is correct (no auth)
             exit;
         }
         if ($method === 'GET' && $action === '') {

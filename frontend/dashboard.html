@@ -74,43 +74,29 @@
 
     <script>
         async function initDashboard() {
-            try {
-                // ✅ Get current user from backend session
-                const userResponse = await API.getCurrentUser();
-                
-                if (!userResponse || !userResponse.success) {
-                    console.error('Failed to get current user');
-                    window.location.href = 'index.html';
-                    return;
-                }
-
-                const user = userResponse.data;
-                console.log('✅ User loaded:', user.username);
-
-                // Load dashboard stats
-                const statsResponse = await API.getDashboardStats();
-                
-                if (statsResponse && statsResponse.success) {
-                    const stats = statsResponse.data;
-                    
-                    document.getElementById('totalItems').textContent = stats.total_items || 0;
-                    document.getElementById('lowStockItems').textContent = stats.low_stock_items || 0;
-                    document.getElementById('pendingPOs').textContent = stats.pending_pos || 0;
-                    document.getElementById('totalValue').textContent = 
-                        Utils.formatCurrency(stats.total_inventory_value || 0);
-                }
-
-                // Load recent transactions
-                await loadTransactions();
-                
-                // Load low stock items
-                await loadLowStock();
-
-            } catch (error) {
-                console.error('Dashboard init error:', error);
-                Utils.showToast('Failed to load dashboard data', 'error');
-            }
+    try {
+        const userResponse = await API.getCurrentUser();
+        if (!userResponse?.success) {
+            window.location.href = 'index.html';
+            return;
         }
+
+        // Load stats
+        const statsResponse = await API.getDashboardStats();
+        if (statsResponse?.success) {
+            const stats = statsResponse.data;
+            document.getElementById('totalItems').textContent = stats.total_items || 0;
+            document.getElementById('lowStockItems').textContent = stats.low_stock_items || 0;
+            document.getElementById('pendingPOs').textContent = stats.pending_pos || 0;
+            document.getElementById('totalValue').textContent = Utils.formatCurrency(stats.total_inventory_value || 0);
+        }
+
+        await loadTransactions();
+        await loadLowStock();
+    } catch (error) {
+        console.error('Dashboard error:', error);
+    }
+}
 
         async function loadTransactions() {
             try {

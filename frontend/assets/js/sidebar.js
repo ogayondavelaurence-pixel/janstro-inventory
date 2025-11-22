@@ -180,19 +180,18 @@ class JanstroSidebar {
     });
 
     html += `
-        </div>
-        <div class="sidebar-footer">
-          <div class="user-info">
-            <i class="bi bi-person-circle"></i>
-            <span>${this.user.name || this.user.username}</span>
-          </div>
-          <button class="btn btn-danger btn-sm w-100 mt-2" onclick="API.logout()">
-            <i class="bi bi-box-arrow-right"></i> Logout
-          </button>
-        </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <i class="bi bi-person-circle"></i>
+        <span>${this.user.name || this.user.username}</span>
       </div>
-    `;
-
+      <button class="btn btn-danger btn-sm w-100 mt-2" onclick="API.logout()">
+        <i class="bi bi-box-arrow-right"></i> Logout
+      </button>
+    </div>
+  </div>
+  `;
     return html;
   }
 
