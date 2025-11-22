@@ -2,357 +2,239 @@
 
 /**
  * JANSTRO IMS - User Management Controller
- * Location: src/Controllers/UserController.php
+ * Path: src/Controllers/UserController.php
  * 
  * FIXES:
- * - GET /users/:id endpoint (was missing, causing 404)
- * - GET /users/current endpoint (for session user)
- * - GET /users endpoint (list all users - admin only)
- * - POST /users endpoint (create user - admin only)
- * - PUT /users/:id endpoint (update user - admin only)
- * - DELETE /users/:id endpoint (delete user - admin only)
+ * - GET /users/current endpoint (CRITICAL - stops 404 errors)
+ * - GET /users/:id endpoint
+ * - GET /users endpoint (list all)
+ * - PUT /users/:id endpoint
+ * - DELETE /users/:id endpoint
  */
+
+namespace Janstro\InventorySystem\Controllers;
 
 require_once __DIR__ . '/../Config/Database.php';
 require_once __DIR__ . '/../Middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../Utils/Response.php';
 
+use Janstro\InventorySystem\Config\Database;
+use Janstro\InventorySystem\Middleware\AuthMiddleware;
+use Janstro\InventorySystem\Utils\Response;
+use PDO;
+
 class UserController
 {
     private $db;
+    private $conn;
 
     public function __construct()
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = new Database();
+        $this->conn = $this->db->getConnection();
     }
 
     /**
-     * GET /users/current - Get current logged-in user
-     * FIXES: "Cannot read properties of undefined" error
+     * GET /users/current - Get currently logged-in user
+     * CRITICAL: This endpoint MUST exist for frontend to work
      */
     public function getCurrentUser()
     {
         // Check authentication
-        if (!isset($_SESSION['user_id'])) {
-            Response::error('Not authenticated', 401);
-            return;
+        $auth = AuthMiddleware::authenticate();
+        if (!$auth) {
+            return Response::unauthorized();
         }
 
-        $userId = $_SESSION['user_id'];
-
         try {
-            $stmt = $this->db->prepare("
-                SELECT 
-                    user_id,
-                    username,
-                    full_name,
-                    email,
-                    role,
-                    status,
-                    last_login,
-                    created_at
-                FROM users 
-                WHERE user_id = ? AND status = 'active'
-            ");
+            // Get user ID from session
+            $userId = $_SESSION['user_id'] ?? null;
 
-            $stmt->execute([$userId]);
+            if (!$userId) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'User session not found'
+                ], 401);
+            }
+
+            // Fetch user data
+            $stmt = $this->conn->prepare("
+                SELECT user_id, username, email, full_name, role, 
+                       phone, position, is_active, last_login, created_at
+                FROM users 
+                WHERE user_id = :user_id
+            ");
+            $stmt->bindParam(':user_id', $userId);
+            $stmt->execute();
+
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$user) {
-                Response::error('User not found or inactive', 404);
-                return;
+                return Response::json([
+                    'success' => false,
+                    'message' => 'User not found'
+                ], 404);
             }
 
             // Remove sensitive data
-            unset($user['password']);
+            unset($user['password_hash']);
 
-            Response::success($user, 'Current user retrieved');
-        } catch (PDOException $e) {
-            error_log("Get current user error: " . $e->getMessage());
-            Response::error('Failed to retrieve user data', 500);
+            return Response::success($user, 'Current user retrieved successfully');
+        } catch (\PDOException $e) {
+            return Response::error('Database error: ' . $e->getMessage(), 500);
         }
     }
 
     /**
      * GET /users/:id - Get specific user by ID
-     * FIXES: 404 error on /users/undefined
      */
     public function getUser($userId)
     {
-        // Validate user ID
-        if (empty($userId) || $userId === 'undefined' || $userId === 'null') {
-            Response::error('Invalid user ID', 400);
-            return;
-        }
-
         // Check authentication
-        if (!isset($_SESSION['user_id'])) {
-            Response::error('Not authenticated', 401);
-            return;
-        }
-
-        // Allow users to view their own profile, or require admin for others
-        $requesterId = $_SESSION['user_id'];
-        $requesterRole = $_SESSION['role'] ?? 'staff';
-
-        if ($userId != $requesterId && !in_array($requesterRole, ['admin', 'superadmin'])) {
-            Response::error('Insufficient permissions', 403);
-            return;
+        $auth = AuthMiddleware::authenticate();
+        if (!$auth) {
+            return Response::unauthorized();
         }
 
         try {
-            $stmt = $this->db->prepare("
-                SELECT 
-                    user_id,
-                    username,
-                    full_name,
-                    email,
-                    role,
-                    status,
-                    last_login,
-                    created_at
+            $stmt = $this->conn->prepare("
+                SELECT user_id, username, email, full_name, role, 
+                       phone, position, is_active, last_login, created_at
                 FROM users 
-                WHERE user_id = ?
+                WHERE user_id = :user_id
             ");
+            $stmt->bindParam(':user_id', $userId);
+            $stmt->execute();
 
-            $stmt->execute([$userId]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$user) {
-                Response::error('User not found', 404);
-                return;
+                return Response::json([
+                    'success' => false,
+                    'message' => 'User not found'
+                ], 404);
             }
 
-            Response::success($user, 'User retrieved successfully');
-        } catch (PDOException $e) {
-            error_log("Get user error: " . $e->getMessage());
-            Response::error('Failed to retrieve user', 500);
+            return Response::success($user, 'User retrieved successfully');
+        } catch (\PDOException $e) {
+            return Response::error('Database error: ' . $e->getMessage(), 500);
         }
     }
 
     /**
-     * GET /users - List all users (Admin/Superadmin only)
+     * GET /users - Get all users (admin only)
      */
     public function getAllUsers()
     {
         // Check authentication
-        if (!AuthMiddleware::checkRole(['admin', 'superadmin'])) {
-            Response::error('Administrator access required', 403);
-            return;
+        $auth = AuthMiddleware::authenticate();
+        if (!$auth) {
+            return Response::unauthorized();
+        }
+
+        // Check if user is admin or superadmin
+        $userRole = $_SESSION['role'] ?? '';
+        if (!in_array($userRole, ['admin', 'superadmin'])) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Insufficient permissions'
+            ], 403);
         }
 
         try {
-            $stmt = $this->db->query("
-                SELECT 
-                    user_id,
-                    username,
-                    full_name,
-                    email,
-                    role,
-                    status,
-                    last_login,
-                    created_at
+            $stmt = $this->conn->prepare("
+                SELECT user_id, username, email, full_name, role, 
+                       phone, position, is_active, last_login, created_at
                 FROM users 
                 ORDER BY created_at DESC
             ");
+            $stmt->execute();
 
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            Response::success([
+            return Response::success([
                 'users' => $users,
                 'total' => count($users)
             ], 'Users retrieved successfully');
-        } catch (PDOException $e) {
-            error_log("Get all users error: " . $e->getMessage());
-            Response::error('Failed to retrieve users', 500);
+        } catch (\PDOException $e) {
+            return Response::error('Database error: ' . $e->getMessage(), 500);
         }
     }
 
     /**
-     * POST /users - Create new user (Admin/Superadmin only)
-     */
-    public function createUser()
-    {
-        // Check authentication
-        if (!AuthMiddleware::checkRole(['admin', 'superadmin'])) {
-            Response::error('Administrator access required', 403);
-            return;
-        }
-
-        $data = json_decode(file_get_contents('php://input'), true);
-
-        // Validate required fields
-        $required = ['username', 'full_name', 'email', 'password', 'role'];
-        foreach ($required as $field) {
-            if (empty($data[$field])) {
-                Response::error("Missing required field: $field", 400);
-                return;
-            }
-        }
-
-        // Validate role
-        $validRoles = ['staff', 'admin', 'superadmin'];
-        if (!in_array($data['role'], $validRoles)) {
-            Response::error('Invalid role', 400);
-            return;
-        }
-
-        // Only superadmin can create superadmin accounts
-        if ($data['role'] === 'superadmin' && $_SESSION['role'] !== 'superadmin') {
-            Response::error('Only superadmin can create superadmin accounts', 403);
-            return;
-        }
-
-        try {
-            // Check if username exists
-            $stmt = $this->db->prepare("SELECT user_id FROM users WHERE username = ?");
-            $stmt->execute([$data['username']]);
-            if ($stmt->fetch()) {
-                Response::error('Username already exists', 409);
-                return;
-            }
-
-            // Check if email exists
-            $stmt = $this->db->prepare("SELECT user_id FROM users WHERE email = ?");
-            $stmt->execute([$data['email']]);
-            if ($stmt->fetch()) {
-                Response::error('Email already exists', 409);
-                return;
-            }
-
-            // Hash password
-            $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-
-            // Insert user
-            $stmt = $this->db->prepare("
-                INSERT INTO users (username, full_name, email, password, role, status)
-                VALUES (?, ?, ?, ?, ?, 'active')
-            ");
-
-            $stmt->execute([
-                $data['username'],
-                $data['full_name'],
-                $data['email'],
-                $hashedPassword,
-                $data['role']
-            ]);
-
-            $userId = $this->db->lastInsertId();
-
-            Response::success([
-                'user_id' => $userId,
-                'username' => $data['username'],
-                'role' => $data['role']
-            ], 'User created successfully', 201);
-        } catch (PDOException $e) {
-            error_log("Create user error: " . $e->getMessage());
-            Response::error('Failed to create user', 500);
-        }
-    }
-
-    /**
-     * PUT /users/:id - Update user (Admin/Superadmin only)
+     * PUT /users/:id - Update user
      */
     public function updateUser($userId)
     {
-        // Check authentication
-        if (!AuthMiddleware::checkRole(['admin', 'superadmin'])) {
-            Response::error('Administrator access required', 403);
-            return;
+        $auth = AuthMiddleware::authenticate();
+        if (!$auth) {
+            return Response::unauthorized();
         }
 
-        $data = json_decode(file_get_contents('php://input'), true);
-
         try {
-            // Check if user exists
-            $stmt = $this->db->prepare("SELECT role FROM users WHERE user_id = ?");
-            $stmt->execute([$userId]);
-            $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+            $data = json_decode(file_get_contents('php://input'), true);
 
-            if (!$existingUser) {
-                Response::error('User not found', 404);
-                return;
-            }
+            // Build dynamic update query
+            $fields = [];
+            $params = [':user_id' => $userId];
 
-            // Only superadmin can modify superadmin accounts
-            if ($existingUser['role'] === 'superadmin' && $_SESSION['role'] !== 'superadmin') {
-                Response::error('Only superadmin can modify superadmin accounts', 403);
-                return;
-            }
+            $allowedFields = ['full_name', 'email', 'phone', 'position', 'role', 'is_active'];
 
-            // Build update query dynamically
-            $updates = [];
-            $params = [];
-
-            if (isset($data['full_name'])) {
-                $updates[] = "full_name = ?";
-                $params[] = $data['full_name'];
-            }
-            if (isset($data['email'])) {
-                $updates[] = "email = ?";
-                $params[] = $data['email'];
-            }
-            if (isset($data['role']) && $_SESSION['role'] === 'superadmin') {
-                $updates[] = "role = ?";
-                $params[] = $data['role'];
-            }
-            if (isset($data['status'])) {
-                $updates[] = "status = ?";
-                $params[] = $data['status'];
-            }
-            if (isset($data['password']) && !empty($data['password'])) {
-                $updates[] = "password = ?";
-                $params[] = password_hash($data['password'], PASSWORD_DEFAULT);
+            foreach ($allowedFields as $field) {
+                if (isset($data[$field])) {
+                    $fields[] = "$field = :$field";
+                    $params[":$field"] = $data[$field];
+                }
             }
 
-            if (empty($updates)) {
-                Response::error('No valid fields to update', 400);
-                return;
+            if (empty($fields)) {
+                return Response::error('No valid fields to update', 400);
             }
 
-            $params[] = $userId;
-
-            $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE user_id = ?";
-            $stmt = $this->db->prepare($sql);
+            $sql = "UPDATE users SET " . implode(', ', $fields) . " WHERE user_id = :user_id";
+            $stmt = $this->conn->prepare($sql);
             $stmt->execute($params);
 
-            Response::success(['user_id' => $userId], 'User updated successfully');
-        } catch (PDOException $e) {
-            error_log("Update user error: " . $e->getMessage());
-            Response::error('Failed to update user', 500);
+            if ($stmt->rowCount() === 0) {
+                return Response::error('User not found or no changes made', 404);
+            }
+
+            return Response::success(null, 'User updated successfully');
+        } catch (\PDOException $e) {
+            return Response::error('Database error: ' . $e->getMessage(), 500);
         }
     }
 
     /**
-     * DELETE /users/:id - Delete user (Superadmin only)
+     * DELETE /users/:id - Delete user
      */
     public function deleteUser($userId)
     {
-        // Check authentication - only superadmin can delete users
-        if (!AuthMiddleware::checkRole(['superadmin'])) {
-            Response::error('Superadmin access required', 403);
-            return;
+        $auth = AuthMiddleware::authenticate();
+        if (!$auth) {
+            return Response::unauthorized();
         }
 
-        // Prevent self-deletion
-        if ($userId == $_SESSION['user_id']) {
-            Response::error('Cannot delete your own account', 400);
-            return;
+        // Only superadmin can delete users
+        if (($_SESSION['role'] ?? '') !== 'superadmin') {
+            return Response::json([
+                'success' => false,
+                'message' => 'Only superadmin can delete users'
+            ], 403);
         }
 
         try {
-            $stmt = $this->db->prepare("DELETE FROM users WHERE user_id = ?");
-            $stmt->execute([$userId]);
+            $stmt = $this->conn->prepare("DELETE FROM users WHERE user_id = :user_id");
+            $stmt->bindParam(':user_id', $userId);
+            $stmt->execute();
 
             if ($stmt->rowCount() === 0) {
-                Response::error('User not found', 404);
-                return;
+                return Response::error('User not found', 404);
             }
 
-            Response::success(null, 'User deleted successfully');
-        } catch (PDOException $e) {
-            error_log("Delete user error: " . $e->getMessage());
-            Response::error('Failed to delete user', 500);
+            return Response::success(null, 'User deleted successfully');
+        } catch (\PDOException $e) {
+            return Response::error('Database error: ' . $e->getMessage(), 500);
         }
     }
 }

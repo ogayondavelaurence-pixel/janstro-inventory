@@ -372,77 +372,97 @@ try {
         Response::error('Method not allowed', null, 405);
         exit;
     }
+    // ============================================
+    // USER MANAGEMENT ROUTES (ADD THESE)
+    // ============================================
 
-    // ===============================================
-    // INQUIRIES (UNIFIED ROUTES)
-    // ===============================================
-    elseif (($segments[0] ?? '') === 'inquiries') {
-        $inquiryController = new InquiryController();
-
-        // PUBLIC: Create inquiry
-        if ($method === 'POST' && empty($segments[1])) {
-            $inquiryController->create();
-            exit;
-        }
-
-        // STAFF/ADMIN: Get all inquiries
-        if ($method === 'GET' && empty($segments[1])) {
-            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-            if (!$user) exit;
-            $inquiryController->getAll();
-            exit;
-        }
-
-        // STAFF/ADMIN: Get inquiry statistics
-        if ($method === 'GET' && ($segments[1] ?? '') === 'stats') {
-            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-            if (!$user) exit;
-            $inquiryController->getStatistics();
-            exit;
-        }
-
-        // Get inquiry by ID
-        if ($method === 'GET' && is_numeric($segments[1] ?? '')) {
-            $inquiryController->getById((int)$segments[1]);
-            exit;
-        }
-
-        // Update inquiry status
-        if ($method === 'PUT' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'status') {
-            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-            if (!$user) exit;
-            $inquiryController->updateStatus((int)$segments[1]);
-            exit;
-        }
-
-        // Convert inquiry to sales order
-        if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'convert') {
-            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-            if (!$user) exit;
-            $inquiryController->convertToSalesOrder((int)$segments[1]);
-            exit;
-        }
-
-        // Add inquiry note
-        if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'notes') {
-            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
-            if (!$user) exit;
-            $inquiryController->addNote((int)$segments[1]);
-            exit;
-        }
-
-        // Delete inquiry (admin only)
-        if ($method === 'DELETE' && is_numeric($segments[1] ?? '')) {
-            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
-            if (!$user) exit;
-            Response::error("Inquiry deletion not implemented", null, 501);
-            exit;
-        }
-
-        Response::notFound('Inquiry endpoint not found');
+    // GET /users/current - Get current logged-in user (CRITICAL FIX)
+    if ($method === 'GET' && $path === '/users/current') {
+        $controller = new UserController();
+        echo $controller->getCurrentUser();
         exit;
     }
 
+    // GET /users/:id - Get specific user
+    if ($method === 'GET' && preg_match('#^/users/(\d+)$#', $path, $matches)) {
+        $userId = $matches[1];
+        $controller = new UserController();
+        echo $controller->getUser($userId);
+        exit;
+    }
+
+    // GET /users - Get all users (admin only)
+    if ($method === 'GET' && $path === '/users') {
+        $controller = new UserController();
+        echo $controller->getAllUsers();
+        exit;
+    }
+
+    // PUT /users/:id - Update user
+    if ($method === 'PUT' && preg_match('#^/users/(\d+)$#', $path, $matches)) {
+        $userId = $matches[1];
+        $controller = new UserController();
+        echo $controller->updateUser($userId);
+        exit;
+    }
+
+    // DELETE /users/:id - Delete user
+    if ($method === 'DELETE' && preg_match('#^/users/(\d+)$#', $path, $matches)) {
+        $userId = $matches[1];
+        $controller = new UserController();
+        echo $controller->deleteUser($userId);
+        exit;
+    }
+
+    // ============================================
+    // CUSTOMER INQUIRY ROUTES (ADD THESE)
+    // ============================================
+
+    // POST /inquiries - Submit public inquiry (NO AUTH)
+    if ($method === 'POST' && $path === '/inquiries') {
+        $controller = new InquiryController();
+        echo $controller->createInquiry();
+        exit;
+    }
+
+    // GET /inquiries - Get all inquiries (ADMIN)
+    if ($method === 'GET' && $path === '/inquiries') {
+        $controller = new InquiryController();
+        echo $controller->getAllInquiries();
+        exit;
+    }
+
+    // GET /inquiries/:id - Get single inquiry
+    if ($method === 'GET' && preg_match('#^/inquiries/(\d+)$#', $path, $matches)) {
+        $inquiryId = $matches[1];
+        $controller = new InquiryController();
+        echo $controller->getInquiry($inquiryId);
+        exit;
+    }
+
+    // PUT /inquiries/:id - Update inquiry
+    if ($method === 'PUT' && preg_match('#^/inquiries/(\d+)$#', $path, $matches)) {
+        $inquiryId = $matches[1];
+        $controller = new InquiryController();
+        echo $controller->updateInquiry($inquiryId);
+        exit;
+    }
+
+    // POST /inquiries/:id/convert - Convert to sales order
+    if ($method === 'POST' && preg_match('#^/inquiries/(\d+)/convert$#', $path, $matches)) {
+        $inquiryId = $matches[1];
+        $controller = new InquiryController();
+        echo $controller->convertToSalesOrder($inquiryId);
+        exit;
+    }
+
+    // DELETE /inquiries/:id - Delete inquiry
+    if ($method === 'DELETE' && preg_match('#^/inquiries/(\d+)$#', $path, $matches)) {
+        $inquiryId = $matches[1];
+        $controller = new InquiryController();
+        echo $controller->deleteInquiry($inquiryId);
+        exit;
+    }
     // ===============================================
     // NOT FOUND
     // ===============================================
