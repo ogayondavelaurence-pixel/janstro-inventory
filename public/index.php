@@ -1,32 +1,19 @@
 <?php
 
 /**
- * Janstro Inventory Management System - FIXED API Router
+ * Janstro IMS - FIXED API Router v4.1
  * Date: 2025-11-22
- * Version: 4.0.0 - Complete Authentication Fix (cleaned & merged)
- *
- * Notes:
- * - User management and inquiry routes merged into segment-based routing.
- * - Maintains existing code structure and middleware usage.
- * - No obsolete $endpoint references remain.
  */
 
-// Load manual autoloader
 require_once __DIR__ . '/../autoload.php';
 
-// Error handling
 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-    error_reporting(E_ALL);
-    ini_set('display_errors', '1');
-} else {
     error_reporting(E_ALL);
     ini_set('display_errors', '0');
     ini_set('log_errors', '1');
 }
 
-// ============================================
-// CORS Headers (MUST come first)
-// ============================================
+// CORS
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
@@ -34,38 +21,25 @@ header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Max-Age: 86400');
 header('Content-Type: application/json; charset=utf-8');
 
-// Handle preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-// ============================================
-// Path Parsing (CRITICAL FIX)
-// ============================================
+// Parse path
 $requestUri = $_SERVER['REQUEST_URI'];
 $scriptName = dirname($_SERVER['SCRIPT_NAME']);
-
-// Remove base path
 $path = str_replace($scriptName, '', $requestUri);
 $path = parse_url($path, PHP_URL_PATH);
 $path = trim($path, '/');
-
-// Normalise multiple slashes, remove trailing index.php if present
 $path = preg_replace('#/+#', '/', $path);
 $path = preg_replace('#^index\.php/?#', '', $path);
 
 $segments = $path ? explode('/', $path) : [];
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Debug logging
-error_log("========================================");
-error_log("📍 Request URI: " . $requestUri);
-error_log("📍 Parsed Path: " . $path);
-error_log("📍 Method: " . $method);
-error_log("📍 Segments: " . json_encode($segments));
+error_log("📍 Path: $path | Method: $method | Segments: " . json_encode($segments));
 
-// Import classes
 use Janstro\InventorySystem\Controllers\AuthController;
 use Janstro\InventorySystem\Controllers\InventoryController;
 use Janstro\InventorySystem\Controllers\OrderController;
@@ -75,102 +49,158 @@ use Janstro\InventorySystem\Controllers\ReportController;
 use Janstro\InventorySystem\Controllers\InquiryController;
 use Janstro\InventorySystem\Utils\Response;
 use Janstro\InventorySystem\Services\CompleteInventoryService;
+use Janstro\InventorySystem\Middleware\AuthMiddleware;
 
 try {
-    // ===============================================
-    // HEALTH CHECK
-    // ===============================================
+    // Health check
     if (empty($path) || $path === 'health') {
-        Response::success([
-            'name' => 'Janstro Inventory System',
-            'version' => '4.0.0',
-            'environment' => $_ENV['APP_ENV'] ?? 'development',
-            'status' => 'running',
-            'message' => 'API is healthy!',
-            'timestamp' => date('Y-m-d H:i:s')
-        ], 'API is running');
+        Response::success(['status' => 'running', 'version' => '4.1.0'], 'API healthy');
+        exit;
+    }
+
+    $resource = $segments[0] ?? '';
+
+    // ===============================================
+    // AUTH ROUTES
+    // ===============================================
+    if ($resource === 'auth') {
+        $authController = new AuthController();
+        $action = $segments[1] ?? '';
+
+        if ($method === 'POST' && $action === 'login') {
+            $authController->login();
+            exit;
+        }
+        if ($method === 'POST' && $action === 'logout') {
+            $authController->logout();
+            exit;
+        }
+        if ($method === 'GET' && $action === 'me') {
+            $authController->getCurrentUser();
+            exit;
+        }
+        Response::notFound('Auth endpoint not found');
         exit;
     }
 
     // ===============================================
-    // AUTHENTICATION ROUTES
+    // USERS ROUTES (CRITICAL FIX)
     // ===============================================
-    if (($segments[0] ?? '') === 'auth') {
-        error_log("✅ AUTH ROUTE DETECTED");
+    if ($resource === 'users') {
+        $userController = new UserController();
+        $action = $segments[1] ?? '';
 
-        $authController = new AuthController();
-
-        if ($method === 'POST' && ($segments[1] ?? '') === 'login') {
-            error_log("🔐 Processing login request");
-            $authController->login();
+        // GET /users/current - MUST be first
+        if ($method === 'GET' && $action === 'current') {
+            $userController->getCurrentUser();
             exit;
         }
 
-        if ($method === 'POST' && ($segments[1] ?? '') === 'logout') {
-            $authController->logout();
+        // GET /users/roles
+        if ($method === 'GET' && $action === 'roles') {
+            $user = AuthMiddleware::requireRole(['superadmin', 'admin']);
+            if (!$user) exit;
+            $svc = new \Janstro\InventorySystem\Services\UserService();
+            Response::success($svc->getRoles(), 'Roles retrieved');
             exit;
         }
 
-        if ($method === 'GET' && ($segments[1] ?? '') === 'me') {
-            $authController->getCurrentUser();
+        // GET /users
+        if ($method === 'GET' && $action === '') {
+            $userController->getAll();
             exit;
         }
 
-        // If we reach here, endpoint not found
-        error_log("❌ Auth endpoint not recognized: " . ($segments[1] ?? 'none'));
-        Response::notFound('Auth endpoint not found');
+        // GET /users/:id
+        if ($method === 'GET' && is_numeric($action)) {
+            $userController->getById((int)$action);
+            exit;
+        }
+
+        // POST /users
+        if ($method === 'POST' && $action === '') {
+            $userController->create();
+            exit;
+        }
+
+        // PUT /users/:id
+        if ($method === 'PUT' && is_numeric($action)) {
+            $userController->update((int)$action);
+            exit;
+        }
+
+        // DELETE /users/:id
+        if ($method === 'DELETE' && is_numeric($action)) {
+            $userController->delete((int)$action);
+            exit;
+        }
+
+        Response::notFound('User endpoint not found');
         exit;
     }
 
     // ===============================================
     // INVENTORY ROUTES
     // ===============================================
-    elseif (($segments[0] ?? '') === 'inventory') {
+    if ($resource === 'inventory') {
         $inventoryController = new InventoryController();
         $inventoryService = new CompleteInventoryService();
+        $action = $segments[1] ?? '';
 
         if ($method === 'GET') {
-            if (empty($segments[1])) {
+            if ($action === '') {
                 $inventoryController->getAll();
                 exit;
             }
-
-            if (($segments[1] ?? '') === 'status') {
-                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+            if ($action === 'status') {
+                $user = AuthMiddleware::authenticate();
                 if (!$user) exit;
                 Response::success($inventoryService->getInventoryStatus(), 'Status retrieved');
                 exit;
             }
-
-            if (($segments[1] ?? '') === 'check-stock' && isset($_GET['item_id'])) {
-                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+            if ($action === 'check-stock' && isset($_GET['item_id'])) {
+                $user = AuthMiddleware::authenticate();
                 if (!$user) exit;
                 Response::success($inventoryService->checkStockAvailability((int)$_GET['item_id']), 'Stock checked');
                 exit;
             }
-
-            if (($segments[1] ?? '') === 'movements') {
-                $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+            if ($action === 'movements') {
+                $user = AuthMiddleware::authenticate();
                 if (!$user) exit;
-                $filters = [
-                    'item_id' => $_GET['item_id'] ?? null,
-                    'type' => $_GET['type'] ?? null,
-                    'date_from' => $_GET['date_from'] ?? null,
-                    'date_to' => $_GET['date_to'] ?? null
-                ];
+                $filters = ['item_id' => $_GET['item_id'] ?? null, 'type' => $_GET['type'] ?? null];
                 Response::success($inventoryService->getMaterialDocuments($filters), 'Movements retrieved');
                 exit;
             }
-
-            if (($segments[1] ?? '') === 'low-stock') {
+            if ($action === 'low-stock') {
                 $inventoryController->getLowStock();
                 exit;
             }
-
-            if (is_numeric($segments[1] ?? '')) {
-                $inventoryController->getById((int)$segments[1]);
+            if ($action === 'categories') {
+                $user = AuthMiddleware::authenticate();
+                if (!$user) exit;
+                $svc = new \Janstro\InventorySystem\Services\InventoryService();
+                Response::success($svc->getCategories(), 'Categories retrieved');
                 exit;
             }
+            if (is_numeric($action)) {
+                $inventoryController->getById((int)$action);
+                exit;
+            }
+        }
+
+        if ($method === 'POST' && $action === '') {
+            $inventoryController->create();
+            exit;
+        }
+
+        if ($method === 'PUT' && is_numeric($action)) {
+            $inventoryController->update((int)$action);
+            exit;
+        }
+
+        if ($method === 'DELETE' && is_numeric($action)) {
+            $inventoryController->delete((int)$action);
+            exit;
         }
 
         Response::notFound('Inventory endpoint not found');
@@ -180,35 +210,37 @@ try {
     // ===============================================
     // PURCHASE ORDERS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'purchase-orders') {
+    if ($resource === 'purchase-orders') {
         $orderController = new OrderController();
         $inventoryService = new CompleteInventoryService();
-        $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+        $action = $segments[1] ?? '';
+        $subAction = $segments[2] ?? '';
+
+        $user = AuthMiddleware::authenticate();
         if (!$user) exit;
 
         if ($method === 'GET') {
-            if (empty($segments[1])) {
+            if ($action === '') {
                 $orderController->getAll();
                 exit;
             }
-            if (is_numeric($segments[1] ?? '')) {
-                $orderController->getById((int)$segments[1]);
+            if (is_numeric($action)) {
+                $orderController->getById((int)$action);
                 exit;
             }
         }
 
         if ($method === 'POST') {
-            if (empty($segments[1])) {
+            if ($action === '') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $input['created_by'] = $user->user_id;
                 Response::success($inventoryService->createPurchaseOrder($input), 'PO created', 201);
                 exit;
             }
-
-            if (($segments[1] ?? '') === 'receive' && isset($segments[2])) {
+            if ($action === 'receive' && is_numeric($subAction)) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $input['user_id'] = $user->user_id;
-                Response::success($inventoryService->receiveGoods((int)$segments[2], $input), 'Goods received');
+                Response::success($inventoryService->receiveGoods((int)$subAction, $input), 'Goods received');
                 exit;
             }
         }
@@ -220,26 +252,28 @@ try {
     // ===============================================
     // SALES ORDERS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'sales-orders') {
+    if ($resource === 'sales-orders') {
         $inventoryService = new CompleteInventoryService();
-        $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+        $action = $segments[1] ?? '';
+        $subAction = $segments[2] ?? '';
+
+        $user = AuthMiddleware::authenticate();
         if (!$user) exit;
 
-        if ($method === 'GET' && empty($segments[1])) {
+        if ($method === 'GET' && $action === '') {
             Response::success($inventoryService->getAllSalesOrders(), 'Sales orders retrieved');
             exit;
         }
 
         if ($method === 'POST') {
-            if (empty($segments[1])) {
+            if ($action === '') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $input['created_by'] = $user->user_id;
                 Response::success($inventoryService->createSimpleSalesOrder($input), 'SO created', 201);
                 exit;
             }
-
-            if (($segments[1] ?? '') === 'invoice' && isset($segments[2])) {
-                Response::success($inventoryService->processSimpleInvoice((int)$segments[2], $user->user_id), 'Invoice processed');
+            if ($action === 'invoice' && is_numeric($subAction)) {
+                Response::success($inventoryService->processSimpleInvoice((int)$subAction, $user->user_id), 'Invoice processed');
                 exit;
             }
         }
@@ -251,27 +285,30 @@ try {
     // ===============================================
     // SUPPLIERS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'suppliers') {
+    if ($resource === 'suppliers') {
         $supplierController = new SupplierController();
+        $action = $segments[1] ?? '';
 
         if ($method === 'GET') {
-            if (empty($segments[1])) {
+            if ($action === '') {
                 $supplierController->getAll();
                 exit;
             }
-            if (is_numeric($segments[1] ?? '')) {
-                $supplierController->getById((int)$segments[1]);
+            if (is_numeric($action)) {
+                $supplierController->getById((int)$action);
                 exit;
             }
         }
-
         if ($method === 'POST') {
             $supplierController->create();
             exit;
         }
-
-        if ($method === 'PUT' && isset($segments[1])) {
-            $supplierController->update((int)$segments[1]);
+        if ($method === 'PUT' && is_numeric($action)) {
+            $supplierController->update((int)$action);
+            exit;
+        }
+        if ($method === 'DELETE' && is_numeric($action)) {
+            $supplierController->delete((int)$action);
             exit;
         }
 
@@ -280,198 +317,108 @@ try {
     }
 
     // ===============================================
-    // USERS (COMPLETE MERGED BLOCK)
+    // CUSTOMERS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'users') {
-        $userController = new UserController();
+    if ($resource === 'customers') {
+        $user = AuthMiddleware::authenticate();
+        if (!$user) exit;
 
-        // GET /users/current
-        if ($method === 'GET' && ($segments[1] ?? '') === 'current') {
-            $userController->getCurrentUser();
+        $action = $segments[1] ?? '';
+        $db = \Janstro\InventorySystem\Config\Database::connect();
+
+        if ($method === 'GET' && $action === '') {
+            $stmt = $db->query("SELECT * FROM customers ORDER BY customer_name");
+            Response::success($stmt->fetchAll(), 'Customers retrieved');
+            exit;
+        }
+        if ($method === 'GET' && is_numeric($action)) {
+            $stmt = $db->prepare("SELECT * FROM customers WHERE customer_id = ?");
+            $stmt->execute([(int)$action]);
+            $customer = $stmt->fetch();
+            $customer ? Response::success($customer, 'Customer found') : Response::notFound('Customer not found');
+            exit;
+        }
+        if ($method === 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $stmt = $db->prepare("INSERT INTO customers (customer_name, contact_number, email, address, customer_type) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$data['customer_name'], $data['contact_number'] ?? null, $data['email'] ?? null, $data['address'] ?? null, $data['customer_type'] ?? 'individual']);
+            Response::success(['customer_id' => (int)$db->lastInsertId()], 'Customer created', 201);
             exit;
         }
 
-        // GET /users/roles
-        if ($method === 'GET' && ($segments[1] ?? '') === 'roles') {
-            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
-            if (!$user) exit;
-            $svc = new \Janstro\InventorySystem\Services\UserService();
-            Response::success($svc->getRoles(), 'Roles retrieved');
-            exit;
-        }
-
-        // GET /users (admin only)
-        if ($method === 'GET' && empty($segments[1])) {
-            \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['admin', 'superadmin']);
-            $userController->getAll();
-            exit;
-        }
-
-        // GET /users/:id
-        if ($method === 'GET' && is_numeric($segments[1] ?? '')) {
-            $userController->getById((int)$segments[1]);
-            exit;
-        }
-
-        // POST /users (admin only)
-        if ($method === 'POST' && empty($segments[1])) {
-            \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['admin', 'superadmin']);
-            $userController->create();
-            exit;
-        }
-
-        // PUT /users/:id (admin only)
-        if ($method === 'PUT' && is_numeric($segments[1] ?? '')) {
-            \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['admin', 'superadmin']);
-            $userController->update((int)$segments[1]);
-            exit;
-        }
-
-        // DELETE /users/:id (superadmin only)
-        if ($method === 'DELETE' && is_numeric($segments[1] ?? '')) {
-            \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin']);
-            $userController->delete((int)$segments[1]);
-            exit;
-        }
-
-        Response::notFound('User endpoint not found');
+        Response::notFound('Customer endpoint not found');
         exit;
     }
 
     // ===============================================
     // REPORTS
     // ===============================================
-    elseif (($segments[0] ?? '') === 'reports') {
+    if ($resource === 'reports') {
         $reportController = new ReportController();
+        $action = $segments[1] ?? '';
 
         if ($method === 'GET') {
-            if (!isset($segments[1])) {
-                Response::error('Report type required', null, 400);
-                exit;
-            }
-
-            switch ($segments[1]) {
+            switch ($action) {
                 case 'dashboard':
                     $reportController->getDashboardStats();
-                    break;
+                    exit;
                 case 'inventory-summary':
                     $reportController->getInventorySummary();
-                    break;
+                    exit;
                 case 'transactions':
                     $reportController->getTransactionHistory();
-                    break;
+                    exit;
                 case 'low-stock':
                     $reportController->getLowStockReport();
-                    break;
-                default:
-                    Response::notFound('Report endpoint not found');
+                    exit;
             }
+        }
+        Response::notFound('Report endpoint not found');
+        exit;
+    }
+
+    // ===============================================
+    // INQUIRIES
+    // ===============================================
+    if ($resource === 'inquiries') {
+        $inquiryController = new InquiryController();
+        $action = $segments[1] ?? '';
+        $subAction = $segments[2] ?? '';
+
+        if ($method === 'POST' && $action === '') {
+            $inquiryController->submitInquiry();
+            exit;
+        }
+        if ($method === 'GET' && $action === '') {
+            $inquiryController->getAllInquiries();
+            exit;
+        }
+        if ($method === 'GET' && is_numeric($action)) {
+            $inquiryController->getInquiry((int)$action);
+            exit;
+        }
+        if ($method === 'PUT' && is_numeric($action)) {
+            $inquiryController->updateInquiry((int)$action);
+            exit;
+        }
+        if ($method === 'POST' && is_numeric($action) && $subAction === 'convert') {
+            $inquiryController->convertToSalesOrder((int)$action);
+            exit;
+        }
+        if ($method === 'DELETE' && is_numeric($action)) {
+            $inquiryController->deleteInquiry((int)$action);
             exit;
         }
 
-        Response::error('Method not allowed', null, 405);
-        exit;
-    }
-    // ============================================
-    // USER MANAGEMENT ROUTES (ADD THESE)
-    // ============================================
-
-    // GET /users/current - Get current logged-in user (CRITICAL FIX)
-    if ($method === 'GET' && $path === '/users/current') {
-        $controller = new UserController();
-        echo $controller->getCurrentUser();
+        Response::notFound('Inquiry endpoint not found');
         exit;
     }
 
-    // GET /users/:id - Get specific user
-    if ($method === 'GET' && preg_match('#^/users/(\d+)$#', $path, $matches)) {
-        $userId = $matches[1];
-        $controller = new UserController();
-        echo $controller->getUser($userId);
-        exit;
-    }
-
-    // GET /users - Get all users (admin only)
-    if ($method === 'GET' && $path === '/users') {
-        $controller = new UserController();
-        echo $controller->getAllUsers();
-        exit;
-    }
-
-    // PUT /users/:id - Update user
-    if ($method === 'PUT' && preg_match('#^/users/(\d+)$#', $path, $matches)) {
-        $userId = $matches[1];
-        $controller = new UserController();
-        echo $controller->updateUser($userId);
-        exit;
-    }
-
-    // DELETE /users/:id - Delete user
-    if ($method === 'DELETE' && preg_match('#^/users/(\d+)$#', $path, $matches)) {
-        $userId = $matches[1];
-        $controller = new UserController();
-        echo $controller->deleteUser($userId);
-        exit;
-    }
-
-    // ============================================
-    // CUSTOMER INQUIRY ROUTES (ADD THESE)
-    // ============================================
-
-    // POST /inquiries - Submit public inquiry (NO AUTH)
-    if ($method === 'POST' && $path === '/inquiries') {
-        $controller = new InquiryController();
-        echo $controller->createInquiry();
-        exit;
-    }
-
-    // GET /inquiries - Get all inquiries (ADMIN)
-    if ($method === 'GET' && $path === '/inquiries') {
-        $controller = new InquiryController();
-        echo $controller->getAllInquiries();
-        exit;
-    }
-
-    // GET /inquiries/:id - Get single inquiry
-    if ($method === 'GET' && preg_match('#^/inquiries/(\d+)$#', $path, $matches)) {
-        $inquiryId = $matches[1];
-        $controller = new InquiryController();
-        echo $controller->getInquiry($inquiryId);
-        exit;
-    }
-
-    // PUT /inquiries/:id - Update inquiry
-    if ($method === 'PUT' && preg_match('#^/inquiries/(\d+)$#', $path, $matches)) {
-        $inquiryId = $matches[1];
-        $controller = new InquiryController();
-        echo $controller->updateInquiry($inquiryId);
-        exit;
-    }
-
-    // POST /inquiries/:id/convert - Convert to sales order
-    if ($method === 'POST' && preg_match('#^/inquiries/(\d+)/convert$#', $path, $matches)) {
-        $inquiryId = $matches[1];
-        $controller = new InquiryController();
-        echo $controller->convertToSalesOrder($inquiryId);
-        exit;
-    }
-
-    // DELETE /inquiries/:id - Delete inquiry
-    if ($method === 'DELETE' && preg_match('#^/inquiries/(\d+)$#', $path, $matches)) {
-        $inquiryId = $matches[1];
-        $controller = new InquiryController();
-        echo $controller->deleteInquiry($inquiryId);
-        exit;
-    }
-    // ===============================================
-    // NOT FOUND
-    // ===============================================
-    error_log("❌ No matching route for: " . $path);
+    // Not found
     Response::notFound('API endpoint not found: /' . $path);
     exit;
 } catch (\Exception $e) {
-    error_log("🚨 FATAL ERROR: " . $e->getMessage());
-    error_log($e->getTraceAsString());
+    error_log("🚨 FATAL: " . $e->getMessage());
     Response::serverError($e->getMessage());
     exit;
 }
