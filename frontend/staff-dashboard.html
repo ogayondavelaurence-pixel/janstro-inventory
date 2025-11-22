@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard - Janstro Prime</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        /* Mobile-first Responsive Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            height: 100vh;
+            width: 280px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+            transition: left 0.3s;
+        }
+        .sidebar.show { left: 0; }
+        
+        @media (min-width: 992px) {
+            .sidebar { left: 0; }
+            .main-content { margin-left: 280px; }
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .sidebar-header i { font-size: 48px; margin-bottom: 10px; }
+        .menu-item {
+            padding: 14px 25px;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+        .menu-item:hover, .menu-item.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-left-color: white;
+            color: white;
+        }
+        .menu-item i {
+            font-size: 20px;
+            margin-right: 15px;
+            width: 24px;
+        }
+
+        /* Top Nav - Responsive */
+        .top-nav {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+        .mobile-toggle {
+            display: block;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        @media (min-width: 992px) {
+            .mobile-toggle { display: none; }
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+        }
+
+        /* Content - Responsive Grid */
+        .content-area { padding: clamp(15px, 4vw, 30px); }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+        .stat-value {
+            font-size: clamp(28px, 5vw, 36px);
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        /* Inquiry Inbox - NEW */
+        .inquiry-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+        .inquiry-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+        }
+        .inquiry-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .inquiry-badge.new {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .inquiry-badge.processing {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Responsive Charts */
+        .chart-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+        .chart-container { position: relative; height: 300px; }
+        
+        @media (max-width: 576px) {
+            .stat-value { font-size: 24px; }
+            .chart-container { height: 250px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Sidebar Toggle -->
+    <button class="mobile-toggle" id="sidebarToggle" style="position: fixed; top: 15px; left: 15px; z-index: 1001;">
+        <i class="bi bi-list" style="font-size: 24px;"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="bi bi-sun"></i>
+            <h4 style="font-weight: 700; margin: 0;">Janstro Prime</h4>
+            <small>Solar IMS v3.0</small>
+        </div>
+        <div style="padding: 20px 0;">
+            <a href="#" class="menu-item active">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="menu-item">
+                <i class="bi bi-inbox"></i>
+                <span>Inquiries <span class="badge bg-danger ms-2" id="inquiryBadge">0</span></span>
+            </a>
+            <a href="#" class="menu-item">
+                <i class="bi bi-box"></i>
+                <span>Inventory</span>
+            </a>
+            <a href="#" class="menu-item">
+                <i class="bi bi-cart-check"></i>
+                <span>Sales Orders</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Nav -->
+        <div class="top-nav">
+            <h5 style="margin: 0; font-weight: 700; color: #667eea;">
+                <i class="bi bi-speedometer2 me-2"></i>Staff Dashboard
+            </h5>
+            <div class="d-flex align-items-center gap-3">
+                <div class="user-avatar">S</div>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">
+                    <i class="bi bi-box-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(40, 167, 69, 0.1); color: #28a745;">
+                        <i class="bi bi-inbox"></i>
+                    </div>
+                    <div class="stat-value" id="newInquiries">0</div>
+                    <div style="color: #666; font-size: 14px;">New Inquiries</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-value" id="lowStock">0</div>
+                    <div style="color: #666; font-size: 14px;">Low Stock Items</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(102, 126, 234, 0.1); color: #667eea;">
+                        <i class="bi bi-cart-plus"></i>
+                    </div>
+                    <div class="stat-value" id="pendingOrders">0</div>
+                    <div style="color: #666; font-size: 14px;">Pending Orders</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(23, 162, 184, 0.1); color: #17a2b8;">
+                        <i class="bi bi-box"></i>
+                    </div>
+                    <div class="stat-value" id="totalItems">0</div>
+                    <div style="color: #666; font-size: 14px;">Total Items</div>
+                </div>
+            </div>
+
+            <!-- Inquiry Inbox Section - NEW -->
+            <div class="chart-card">
+                <h5 style="margin-bottom: 20px; font-weight: 700; display: flex; align-items: center;">
+                    <i class="bi bi-inbox me-2 text-primary"></i>
+                    Customer Inquiries
+                    <span class="badge bg-warning ms-2" id="inquiryCount">0</span>
+                </h5>
+                <div id="inquiriesContainer">
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox" style="font-size: 48px; opacity: 0.3;"></i>
+                        <p class="mt-3">No new inquiries</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="chart-card">
+                        <h5 style="margin-bottom: 20px; font-weight: 700;">
+                            <i class="bi bi-pie-chart me-2"></i>Inventory by Category
+                        </h5>
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="chart-card">
+                        <h5 style="margin-bottom: 20px; font-weight: 700;">
+                            <i class="bi bi-graph-up me-2"></i>Stock Movements
+                        </h5>
+                        <div class="chart-container">
+                            <canvas id="movementsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Mobile sidebar toggle
+        document.getElementById('sidebarToggle').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('show');
+        });
+
+        // Close sidebar on outside click (mobile)
+        document.addEventListener('click', (e) => {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebarToggle');
+            if (window.innerWidth < 992 && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                sidebar.classList.remove('show');
+            }
+        });
+
+        // Mock data load (replace with real API calls)
+        async function loadDashboard() {
+            // Simulate API calls
+            document.getElementById('newInquiries').textContent = '5';
+            document.getElementById('lowStock').textContent = '3';
+            document.getElementById('pendingOrders').textContent = '7';
+            document.getElementById('totalItems').textContent = '45';
+            document.getElementById('inquiryBadge').textContent = '5';
+            document.getElementById('inquiryCount').textContent = '5';
+
+            loadInquiries();
+            loadCharts();
+        }
+
+        function loadInquiries() {
+            const inquiries = [
+                { id: 1, name: 'Juan Dela Cruz', product: '5kW Solar System', date: '2025-11-22', status: 'new' },
+                { id: 2, name: 'Maria Santos', product: '10kW Solar System', date: '2025-11-22', status: 'new' },
+                { id: 3, name: 'Pedro Garcia', product: 'Solar Panel 300W', date: '2025-11-21', status: 'processing' }
+            ];
+
+            const container = document.getElementById('inquiriesContainer');
+            container.innerHTML = inquiries.map(inq => `
+                <div class="inquiry-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="mb-1" style="font-weight: 700;">${inq.name}</h6>
+                            <p class="mb-1 text-muted" style="font-size: 14px;">
+                                <i class="bi bi-sun me-1"></i>${inq.product}
+                            </p>
+                            <small class="text-muted">
+                                <i class="bi bi-calendar"></i> ${inq.date}
+                            </small>
+                        </div>
+                        <div>
+                            <span class="inquiry-badge ${inq.status}">${inq.status.toUpperCase()}</span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-primary" onclick="viewInquiry(${inq.id})">
+                            <i class="bi bi-eye me-1"></i>View Details
+                        </button>
+                        <button class="btn btn-sm btn-success ms-2" onclick="processInquiry(${inq.id})">
+                            <i class="bi bi-check-circle me-1"></i>Process
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadCharts() {
+            // Category Chart
+            const ctx1 = document.getElementById('categoryChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Solar Panels', 'Inverters', 'Batteries', 'Cables', 'Mounting'],
+                    datasets: [{
+                        data: [35, 25, 20, 12, 8],
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Movements Chart
+            const ctx2 = document.getElementById('movementsChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Stock IN',
+                        data: [12, 19, 8, 15, 22, 10, 18],
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Stock OUT',
+                        data: [8, 11, 13, 9, 14, 12, 10],
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function viewInquiry(id) {
+            alert('Viewing inquiry #' + id + '\n\nThis will open the full inquiry details.');
+        }
+
+        function processInquiry(id) {
+            alert('Processing inquiry #' + id + '\n\nThis will:\n1. Check stock availability\n2. Generate sales order\n3. Process BOM if needed');
+        }
+
+        function handleLogout() {
+            if (confirm('Logout?')) {
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+</html>
