@@ -24,7 +24,7 @@
             </div>
 
             <div class="login-body">
-            <div id="errorAlert" class="alert alert-danger d-none" role="alert">
+                <div id="errorAlert" class="alert alert-danger d-none" role="alert">
                     <span aria-live="polite">❌ Invalid credentials</span>
                 </div>
 
@@ -34,7 +34,7 @@
                         <div class="input-group">
                             <span class="input-icon" aria-hidden="true">👤</span>
                             <input type="text" id="username" name="username" class="form-control" 
-                                   placeholder="Enter username" required autocomplete="username">
+                                   placeholder="Enter username" required autocomplete="username" aria-label="Username">
                         </div>
                     </div>
 
@@ -43,7 +43,7 @@
                         <div class="input-group">
                             <span class="input-icon" aria-hidden="true">🔒</span>
                             <input type="password" id="password" name="password" class="form-control" 
-                                   placeholder="Enter password" required autocomplete="current-password">
+                                   placeholder="Enter password" required autocomplete="current-password" aria-label="Password">
                             <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">👁️</button>
                         </div>
                     </div>
@@ -53,14 +53,21 @@
                     </button>
                 </form>
 
+                <div class="inquiry-link-section">
+                    <p class="inquiry-text">Want to install solar panels?</p>
+                    <a href="inquiry.html" class="btn-inquiry">
+                        ☀️ Install Solar Panel Now
+                    </a>
+                </div>
+
                 <div class="test-credentials">
                     <div class="test-credentials-header">
                         <span aria-hidden="true">ℹ️</span><span>Test Credentials</span>
                     </div>
                     <div class="test-buttons" role="group" aria-label="Quick login test credentials">
-                        <button type="button" class="btn-test" data-username="staff" data-password="staff123">👨‍💼 Staff</button>
-                        <button type="button" class="btn-test" data-username="admin" data-password="admin123">👔 Admin</button>
-                        <button type="button" class="btn-test" data-username="superadmin" data-password="superadmin123">⭐ Super</button>
+                        <button type="button" class="btn-test" data-username="staff" data-password="staff123" aria-label="Login as staff">👨‍💼 Staff</button>
+                        <button type="button" class="btn-test" data-username="admin" data-password="admin123" aria-label="Login as admin">👔 Admin</button>
+                        <button type="button" class="btn-test" data-username="superadmin" data-password="superadmin123" aria-label="Login as superadmin">⭐ Super</button>
                     </div>
                 </div>
 
@@ -107,20 +114,20 @@
                 btn.addEventListener('click', () => {
                     username.value = btn.dataset.username;
                     password.value = btn.dataset.password;
-                    errorAlert.style.display = 'none';
+                    errorAlert.classList.add('d-none');
                 });
             });
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                errorAlert.style.display = 'none';
+                errorAlert.classList.add('d-none');
 
                 const u = username.value.trim();
                 const p = password.value.trim();
 
                 if (!u || !p) {
                     errorAlert.querySelector('span').textContent = '⚠️ Please enter both username and password';
-                    errorAlert.style.display = 'block';
+                    errorAlert.classList.remove('d-none');
                     return;
                 }
 
@@ -137,7 +144,7 @@
                     }
                 } catch (err) {
                     errorAlert.querySelector('span').textContent = '❌ Invalid username or password';
-                    errorAlert.style.display = 'block';
+                    errorAlert.classList.remove('d-none');
                     signInBtn.disabled = false;
                     signInBtn.innerHTML = '<span>🔑</span><span>Sign In</span>';
                 }
