@@ -3,7 +3,13 @@
 /**
  * Janstro Inventory Management System - FIXED API Router
  * Date: 2025-11-21
- * Version: 4.0.0 - Complete Authentication Fix
+ * Version: 4.0.0 - Complete Authentication Fix (cleaned)
+ *
+ * Notes:
+ * - Duplicate/fragmented inquiry-route blocks removed.
+ * - Single, unified inquiry route block inserted BEFORE the final 404 handler (inside the main try).
+ * - No orphan `elseif` after a closed `try/catch`.
+ * - Added InquiryController import.
  */
 
 // Load manual autoloader
@@ -63,6 +69,7 @@ use Janstro\InventorySystem\Controllers\OrderController;
 use Janstro\InventorySystem\Controllers\UserController;
 use Janstro\InventorySystem\Controllers\SupplierController;
 use Janstro\InventorySystem\Controllers\ReportController;
+use Janstro\InventorySystem\Controllers\InquiryController;
 use Janstro\InventorySystem\Utils\Response;
 use Janstro\InventorySystem\Services\CompleteInventoryService;
 
@@ -343,6 +350,77 @@ try {
     }
 
     // ===============================================
+    // INQUIRIES (UNIFIED ROUTES)
+    // Inserted: AFTER existing routes and BEFORE the final 404 handler
+    // ===============================================
+    elseif ($segments[0] === 'inquiries') {
+        $inquiryController = new InquiryController();
+
+        // PUBLIC: Create inquiry (no auth required)
+        if ($method === 'POST' && empty($segments[1])) {
+            $inquiryController->create();
+            exit;
+        }
+
+        // STAFF/ADMIN: Get all inquiries (auth required)
+        if ($method === 'GET' && empty($segments[1])) {
+            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+            if (!$user) exit;
+            $inquiryController->getAll();
+            exit;
+        }
+
+        // STAFF/ADMIN: Get inquiry statistics
+        if ($method === 'GET' && ($segments[1] ?? '') === 'stats') {
+            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+            if (!$user) exit;
+            $inquiryController->getStatistics();
+            exit;
+        }
+
+        // Get single inquiry (public or auth depending on app rules)
+        if ($method === 'GET' && is_numeric($segments[1] ?? '')) {
+            $inquiryController->getById((int)$segments[1]);
+            exit;
+        }
+
+        // Update inquiry status (auth required)
+        if ($method === 'PUT' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'status') {
+            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+            if (!$user) exit;
+            $inquiryController->updateStatus((int)$segments[1]);
+            exit;
+        }
+
+        // Convert to sales order (auth required)
+        if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'convert') {
+            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+            if (!$user) exit;
+            $inquiryController->convertToSalesOrder((int)$segments[1]);
+            exit;
+        }
+
+        // Add note to inquiry (auth required)
+        if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'notes') {
+            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::authenticate();
+            if (!$user) exit;
+            $inquiryController->addNote((int)$segments[1]);
+            exit;
+        }
+
+        // Delete inquiry (admin only) - placeholder / not implemented
+        if ($method === 'DELETE' && is_numeric($segments[1] ?? '')) {
+            $user = \Janstro\InventorySystem\Middleware\AuthMiddleware::requireRole(['superadmin', 'admin']);
+            if (!$user) exit;
+            Response::error("Inquiry deletion not implemented", null, 501);
+            exit;
+        }
+
+        Response::notFound('Inquiry endpoint not found');
+        exit;
+    }
+
+    // ===============================================
     // NOT FOUND
     // ===============================================
     error_log("❌ No matching route for: " . $path);
@@ -352,110 +430,5 @@ try {
     error_log("🚨 FATAL ERROR: " . $e->getMessage());
     error_log($e->getTraceAsString());
     Response::serverError($e->getMessage());
-    exit;
-}
-
-// ===============================================
-// INQUIRY ROUTES (Add after SALES ORDERS section)
-// ===============================================
-elseif ($segments[0] === 'inquiries') {
-    $inquiryController = new \Janstro\InventorySystem\Controllers\InquiryController();
-
-    // PUBLIC: Create inquiry (no auth required)
-    if ($method === 'POST' && empty($segments[1])) {
-        $inquiryController->create();
-        exit;
-    }
-
-    // STAFF/ADMIN: Get all inquiries
-    if ($method === 'GET' && empty($segments[1])) {
-        $inquiryController->getAll();
-        exit;
-    }
-
-    // STAFF/ADMIN: Get inquiry statistics
-    if ($method === 'GET' && ($segments[1] ?? '') === 'stats') {
-        $inquiryController->getStatistics();
-        exit;
-    }
-
-    // STAFF/ADMIN: Get single inquiry
-    if ($method === 'GET' && is_numeric($segments[1] ?? '')) {
-        $inquiryController->getById((int)$segments[1]);
-        exit;
-    }
-
-    // STAFF/ADMIN: Update inquiry status
-    if ($method === 'PUT' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'status') {
-        $inquiryController->updateStatus((int)$segments[1]);
-        exit;
-    }
-
-    // STAFF/ADMIN: Convert to sales order
-    if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'convert') {
-        $inquiryController->convertToSalesOrder((int)$segments[1]);
-        exit;
-    }
-
-    // STAFF/ADMIN: Add note to inquiry
-    if ($method === 'POST' && is_numeric($segments[1] ?? '') && ($segments[2] ?? '') === 'notes') {
-        $inquiryController->addNote((int)$segments[1]);
-        exit;
-    }
-
-    Response::notFound('Inquiry endpoint not found');
-    exit;
-}
-
-// ============================================
-// CUSTOMER INQUIRY ROUTES (NEW)
-// ============================================
-
-// POST /inquiries - Submit inquiry (PUBLIC - no auth)
-if (preg_match('#^/inquiries$#', $path) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $controller = new Controllers\InquiryController();
-    $controller->create();
-    exit;
-}
-
-// GET /inquiries - Get all inquiries (STAFF/ADMIN)
-if (preg_match('#^/inquiries$#', $path) && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    $controller = new Controllers\InquiryController();
-    $controller->getAll();
-    exit;
-}
-
-// GET /inquiries/{id} - Get inquiry details
-if (preg_match('#^/inquiries/(\d+)$#', $path, $matches) && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    $controller = new Controllers\InquiryController();
-    $controller->getById((int)$matches[1]);
-    exit;
-}
-
-// PUT /inquiries/{id}/status - Update inquiry status
-if (preg_match('#^/inquiries/(\d+)/status$#', $path, $matches) && $_SERVER['REQUEST_METHOD'] === 'PUT') {
-    $controller = new Controllers\InquiryController();
-    $controller->updateStatus((int)$matches[1]);
-    exit;
-}
-
-// POST /inquiries/{id}/convert - Convert to sales order
-if (preg_match('#^/inquiries/(\d+)/convert$#', $path, $matches) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $controller = new Controllers\InquiryController();
-    $controller->convertToSalesOrder((int)$matches[1]);
-    exit;
-}
-
-// POST /inquiries/{id}/notes - Add note
-if (preg_match('#^/inquiries/(\d+)/notes$#', $path, $matches) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $controller = new Controllers\InquiryController();
-    $controller->addNote((int)$matches[1]);
-    exit;
-}
-
-// GET /inquiries/stats - Get statistics
-if (preg_match('#^/inquiries/stats$#', $path) && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    $controller = new Controllers\InquiryController();
-    $controller->getStatistics();
     exit;
 }
