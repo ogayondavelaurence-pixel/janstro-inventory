@@ -1,0 +1,322 @@
+	<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-graph-up" aria-hidden="true"></i>
+                Analytics & Reports
+            </h1>
+            <p class="text-muted">Business intelligence and inventory analytics</p>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-primary">
+                    <i class="bi bi-box-seam stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value" id="totalItems">-</div>
+                    <div class="stat-label">Total Items</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-warning">
+                    <i class="bi bi-exclamation-triangle stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value" id="lowStockItems">-</div>
+                    <div class="stat-label">Low Stock Items</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-success">
+                    <i class="bi bi-cash-stack stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value" id="totalValue">-</div>
+                    <div class="stat-label">Inventory Value</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-danger">
+                    <i class="bi bi-cart-plus stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value" id="pendingPOs">-</div>
+                    <div class="stat-label">Pending POs</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-lg-6">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-pie-chart" aria-hidden="true"></i>
+                            Category Distribution
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="categoryChart" aria-label="Category distribution chart"></canvas>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-lg-6">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-bar-chart" aria-hidden="true"></i>
+                            Inventory Valuation by Category
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="valuationChart" aria-label="Inventory valuation chart"></canvas>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <section class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    Recent Transactions
+                </h2>
+                <button id="btnRefresh" class="btn btn-sm btn-secondary" aria-label="Refresh data">
+                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" aria-label="Recent transactions table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Item</th>
+                                <th scope="col">Quantity</th>
+                                <th scope="col">Reference</th>
+                                <th scope="col">User</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsBody">
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="spinner-border text-primary"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            let categoryChart = null;
+            let valuationChart = null;
+
+            async function loadDashboardData() {
+                try {
+                    const stats = await ErrorHandler.safeApiCall(
+                        () => API.getDashboardStats(),
+                        { data: { total_items: 0, low_stock_items: 0, total_inventory_value: 0, pending_pos: 0 } }
+                    );
+
+                    const data = stats.data || stats;
+                    document.getElementById('totalItems').textContent = data.total_items || 0;
+                    document.getElementById('lowStockItems').textContent = data.low_stock_items || 0;
+                    document.getElementById('totalValue').textContent = '₱' + (parseFloat(data.total_inventory_value || 0).toLocaleString('en-PH', {minimumFractionDigits: 2}));
+                    document.getElementById('pendingPOs').textContent = data.pending_pos || 0;
+                } catch (error) {
+                    console.error('Load dashboard stats error:', error);
+                }
+            }
+
+            async function loadCategoryChart() {
+                try {
+                    const summary = await ErrorHandler.safeApiCall(
+                        () => API.getInventorySummary(),
+                        { data: { by_category: [] } }
+                    );
+
+                    const categories = summary.data?.by_category || [];
+                    
+                    if (categories.length === 0) {
+                        document.getElementById('categoryChart').parentElement.innerHTML = 
+                            '<p class="text-center text-muted py-4">No category data available</p>';
+                        return;
+                    }
+
+                    const ctx = document.getElementById('categoryChart');
+                    
+                    if (categoryChart) {
+                        categoryChart.destroy();
+                    }
+
+                    categoryChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: categories.map(c => c.category),
+                            datasets: [{
+                                data: categories.map(c => c.total_items),
+                                backgroundColor: [
+                                    '#667eea',
+                                    '#764ba2',
+                                    '#f093fb',
+                                    '#4facfe',
+                                    '#43e97b',
+                                    '#fa709a'
+                                ],
+                                borderWidth: 2,
+                                borderColor: '#ffffff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { padding: 15, font: { size: 12 } }
+                                }
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('Load category chart error:', error);
+                }
+            }
+
+            async function loadValuationChart() {
+                try {
+                    const summary = await ErrorHandler.safeApiCall(
+                        () => API.getInventorySummary(),
+                        { data: { by_category: [] } }
+                    );
+
+                    const categories = summary.data?.by_category || [];
+                    
+                    if (categories.length === 0) {
+                        document.getElementById('valuationChart').parentElement.innerHTML = 
+                            '<p class="text-center text-muted py-4">No valuation data available</p>';
+                        return;
+                    }
+
+                    const ctx = document.getElementById('valuationChart');
+                    
+                    if (valuationChart) {
+                        valuationChart.destroy();
+                    }
+
+                    valuationChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: categories.map(c => c.category),
+                            datasets: [{
+                                label: 'Value (₱)',
+                                data: categories.map(c => parseFloat(c.total_value || 0)),
+                                backgroundColor: '#667eea',
+                                borderRadius: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => '₱' + context.parsed.y.toLocaleString('en-PH', {minimumFractionDigits: 2})
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: (value) => '₱' + value.toLocaleString('en-PH')
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('Load valuation chart error:', error);
+                }
+            }
+
+            async function loadTransactions() {
+                try {
+                    const tbody = document.getElementById('transactionsBody');
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+
+                    const response = await API.getTransactionHistory(20);
+                    
+                    if (!response.success || !response.data || response.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">No recent transactions</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = response.data.map(t => {
+                        const typeClass = t.transaction_type === 'IN' ? 'text-success' : 'text-danger';
+                        const typeIcon = t.transaction_type === 'IN' ? 'arrow-down-circle' : 'arrow-up-circle';
+                        
+                        return `
+                            <tr>
+                                <td>${Utils.formatDateTime(t.movement_date || t.transaction_date)}</td>
+                                <td class="${typeClass}">
+                                    <i class="bi bi-${typeIcon}" aria-hidden="true"></i>
+                                    ${t.transaction_type}
+                                </td>
+                                <td>${t.item_name || 'N/A'}</td>
+                                <td><strong>${t.quantity}</strong></td>
+                                <td><small>${t.reference_type || 'N/A'}</small></td>
+                                <td>${t.user_name || t.created_by_name || 'System'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } catch (error) {
+                    console.error('Load transactions error:', error);
+                    document.getElementById('transactionsBody').innerHTML = 
+                        '<tr><td colspan="6" class="text-center py-3 text-danger">Failed to load transactions</td></tr>';
+                }
+            }
+
+            async function refreshAll() {
+                await Promise.all([
+                    loadDashboardData(),
+                    loadCategoryChart(),
+                    loadValuationChart(),
+                    loadTransactions()
+                ]);
+            }
+
+            document.getElementById('btnRefresh').addEventListener('click', refreshAll);
+
+            await refreshAll();
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Settings - Janstro Inventory</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-test {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-test:hover {
+            background: #218838;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 30px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(30px);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .info-box h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .info-box ul li {
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-envelope"></i> Email Configuration</h1>
+            <p>Configure SMTP settings for system notifications</p>
+        </div>
+
+        <div class="content">
+            <div id="alertContainer"></div>
+
+            <!-- Email Notifications Toggle -->
+            <div class="section">
+                <div class="toggle-container">
+                    <label class="toggle">
+                        <input type="checkbox" id="emailEnabled" checked aria-label="Enable Email Notifications">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div>
+                        <strong>Enable Email Notifications</strong>
+                        <div class="help-text">Turn on/off all email notifications system-wide</div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="emailSettingsForm">
+                <!-- SMTP Server Configuration -->
+                <div class="section">
+                    <h3 class="section-title">
+                        <i class="fas fa-server"></i>
+                        SMTP Server Configuration
+                    </h3>
+
+                    <div class="form-group">
+                        <label for="smtpHost">SMTP Host *</label>
+                        <input type="text" id="smtpHost" name="smtp_host" placeholder="smtp.gmail.com" required>
+                        <div class="help-text">Your SMTP server address</div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="smtpPort">SMTP Port *</label>
+                            <input type="number" id="smtpPort" name="smtp_port" value="587" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="smtpEncryption">Encryption *</label>
+                            <select id="smtpEncryption" name="smtp_encryption" required>
+                                <option value="tls">TLS (Port 587)</option>
+                                <option value="ssl">SSL (Port 465)</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="smtpUsername">SMTP Username *</label>
+                            <input type="text" id="smtpUsername" name="smtp_username" placeholder="your-email@gmail.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="smtpPassword">SMTP Password *</label>
+                            <input type="password" id="smtpPassword" name="smtp_password" placeholder="••••••••" required>
+                            <div class="help-text">Use App Password for Gmail</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Details -->
+                <div class="section">
+                    <h3 class="section-title">
+                        <i class="fas fa-id-card"></i>
+                        Sender Information
+                    </h3>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fromEmail">From Email Address *</label>
+                            <input type="email" id="fromEmail" name="from_email" placeholder="noreply@janstro.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fromName">From Name *</label>
+                            <input type="text" id="fromName" name="from_name" value="Janstro Inventory System" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="replyTo">Reply-To Email</label>
+                        <input type="email" id="replyTo" name="reply_to" placeholder="support@janstro.com">
+                        <div class="help-text">Email address for replies (optional)</div>
+                    </div>
+                </div>
+
+                <!-- Notification Settings -->
+                <div class="section">
+                    <h3 class="section-title">
+                        <i class="fas fa-bell"></i>
+                        Notification Triggers
+                    </h3>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="notify_low_stock" id="notifyLowStock" checked>
+                            Low Stock Alerts
+                        </label>
+                        <div class="help-text">Send email when items reach reorder level</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="notify_new_order" id="notifyNewOrder" checked>
+                            New Sales Orders
+                        </label>
+                        <div class="help-text">Notify admins of new customer orders</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="notify_po_delivered" id="notifyPODelivered" checked>
+                            Purchase Order Deliveries
+                        </label>
+                        <div class="help-text">Notify when supplier deliveries are received</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="notify_installation_complete" id="notifyInstallationComplete" checked>
+                            Installation Completed
+                        </label>
+                        <div class="help-text">Notify when installations are marked complete</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="adminEmails">Admin Email Recipients *</label>
+                        <textarea id="adminEmails" name="admin_emails" placeholder="admin1@janstro.com, admin2@janstro.com" required></textarea>
+                        <div class="help-text">Comma-separated list of email addresses for system notifications</div>
+                    </div>
+                </div>
+
+                <!-- Email Template -->
+                <div class="section">
+                    <h3 class="section-title">
+                        <i class="fas fa-palette"></i>
+                        Email Template
+                    </h3>
+
+                    <div class="form-group">
+                        <label for="emailFooter">Email Footer</label>
+                        <textarea id="emailFooter" name="email_footer" placeholder="Best regards,\nJanstro Prime Renewable Energy Solutions Corp."></textarea>
+                        <div class="help-text">Custom footer text for all outgoing emails</div>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> Gmail SMTP Setup</h4>
+                    <ul>
+                        <li>SMTP Host: <code>smtp.gmail.com</code></li>
+                        <li>Port: <code>587</code> (TLS) or <code>465</code> (SSL)</li>
+                        <li>Enable "Less secure app access" OR use App Password</li>
+                        <li>App Password: Google Account → Security → 2-Step Verification → App passwords</li>
+                    </ul>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="btn-group">
+                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                        <i class="fas fa-arrow-left"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-test" id="btnTestEmail">
+                        <i class="fas fa-paper-plane"></i> Send Test Email
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '../api';
+
+        // Load existing settings on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadEmailSettings();
+        });
+
+        // Load email settings from API
+        async function loadEmailSettings() {
+            try {
+                const response = await fetch(`${API_BASE}/email-settings.php?action=get`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const settings = result.data;
+                    document.getElementById('emailEnabled').checked = settings.enabled === '1';
+                    document.getElementById('smtpHost').value = settings.smtp_host || '';
+                    document.getElementById('smtpPort').value = settings.smtp_port || '587';
+                    document.getElementById('smtpEncryption').value = settings.smtp_encryption || 'tls';
+                    document.getElementById('smtpUsername').value = settings.smtp_username || '';
+                    document.getElementById('smtpPassword').value = settings.smtp_password || '';
+                    document.getElementById('fromEmail').value = settings.from_email || '';
+                    document.getElementById('fromName').value = settings.from_name || 'Janstro Inventory System';
+                    document.getElementById('replyTo').value = settings.reply_to || '';
+                    document.getElementById('notifyLowStock').checked = settings.notify_low_stock === '1';
+                    document.getElementById('notifyNewOrder').checked = settings.notify_new_order === '1';
+                    document.getElementById('notifyPODelivered').checked = settings.notify_po_delivered === '1';
+                    document.getElementById('notifyInstallationComplete').checked = settings.notify_installation_complete === '1';
+                    document.getElementById('adminEmails').value = settings.admin_emails || '';
+                    document.getElementById('emailFooter').value = settings.email_footer || '';
+                }
+            } catch (error) {
+                showAlert('Failed to load email settings', 'error');
+            }
+        }
+
+        // Save email settings
+        document.getElementById('emailSettingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('action', 'save');
+            formData.append('enabled', document.getElementById('emailEnabled').checked ? '1' : '0');
+            formData.append('smtp_host', document.getElementById('smtpHost').value);
+            formData.append('smtp_port', document.getElementById('smtpPort').value);
+            formData.append('smtp_encryption', document.getElementById('smtpEncryption').value);
+            formData.append('smtp_username', document.getElementById('smtpUsername').value);
+            formData.append('smtp_password', document.getElementById('smtpPassword').value);
+            formData.append('from_email', document.getElementById('fromEmail').value);
+            formData.append('from_name', document.getElementById('fromName').value);
+            formData.append('reply_to', document.getElementById('replyTo').value);
+            formData.append('notify_low_stock', document.getElementById('notifyLowStock').checked ? '1' : '0');
+            formData.append('notify_new_order', document.getElementById('notifyNewOrder').checked ? '1' : '0');
+            formData.append('notify_po_delivered', document.getElementById('notifyPODelivered').checked ? '1' : '0');
+            formData.append('notify_installation_complete', document.getElementById('notifyInstallationComplete').checked ? '1' : '0');
+            formData.append('admin_emails', document.getElementById('adminEmails').value);
+            formData.append('email_footer', document.getElementById('emailFooter').value);
+
+            try {
+                const response = await fetch(`${API_BASE}/email-settings.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Email settings saved successfully!', 'success');
+                } else {
+                    showAlert(result.message || 'Failed to save settings', 'error');
+                }
+            } catch (error) {
+                showAlert('Error saving email settings', 'error');
+            }
+        });
+
+        // Send test email
+        document.getElementById('btnTestEmail').addEventListener('click', async () => {
+            const testEmail = prompt('Enter email address to send test email:');
+            if (!testEmail) return;
+
+            const formData = new FormData();
+            formData.append('action', 'test');
+            formData.append('test_email', testEmail);
+            formData.append('smtp_host', document.getElementById('smtpHost').value);
+            formData.append('smtp_port', document.getElementById('smtpPort').value);
+            formData.append('smtp_encryption', document.getElementById('smtpEncryption').value);
+            formData.append('smtp_username', document.getElementById('smtpUsername').value);
+            formData.append('smtp_password', document.getElementById('smtpPassword').value);
+            formData.append('from_email', document.getElementById('fromEmail').value);
+            formData.append('from_name', document.getElementById('fromName').value);
+
+            try {
+                showAlert('Sending test email...', 'info');
+
+                const response = await fetch(`${API_BASE}/email-settings.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Test email sent successfully! Check your inbox.', 'success');
+                } else {
+                    showAlert(result.message || 'Failed to send test email', 'error');
+                }
+            } catch (error) {
+                showAlert('Error sending test email', 'error');
+            }
+        });
+
+        // Show alert message
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alert.style.display = 'block';
+            
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    alert.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

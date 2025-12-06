@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoices - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-receipt" aria-hidden="true"></i>
+                Invoices (VF01)
+            </h1>
+            <p class="text-muted">Process sales invoices and finalize stock deductions</p>
+        </header>
+
+        <div class="row g-4">
+            <!-- Pending Sales Orders -->
+            <div class="col-12 col-lg-6">
+                <section class="card">
+                    <div class="card-header bg-warning">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-clock-history" aria-hidden="true"></i>
+                            Pending Sales Orders
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" aria-label="Pending sales orders">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">SO #</th>
+                                        <th scope="col">Customer</th>
+                                        <th scope="col">Amount</th>
+                                        <th scope="col">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pendingSOBody">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Processed Invoices -->
+            <div class="col-12 col-lg-6">
+                <section class="card">
+                    <div class="card-header bg-success text-white">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-check-circle" aria-hidden="true"></i>
+                            Recent Invoices
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" aria-label="Recent invoices">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Invoice #</th>
+                                        <th scope="col">Customer</th>
+                                        <th scope="col">Amount</th>
+                                        <th scope="col">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoicesBody">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Process Invoice Modal -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h3 class="modal-title h5" id="invoiceModalLabel">Process Invoice</h3>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="invoiceDetails" class="alert alert-info"></div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        <strong>Warning:</strong> This action will:
+                        <ul class="mb-0 mt-2">
+                            <li>Deduct stock from inventory</li>
+                            <li>Mark sales order as completed</li>
+                            <li>Generate invoice document</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmProcess" required>
+                        <label class="form-check-label" for="confirmProcess">
+                            I confirm this order is ready for invoicing
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btnProcessInvoice" disabled>Process Invoice</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            let pendingSOs = [];
+            let invoices = [];
+            let selectedSO = null;
+
+            const pendingSOBody = document.getElementById('pendingSOBody');
+            const invoicesBody = document.getElementById('invoicesBody');
+            const invoiceModal = new bootstrap.Modal(document.getElementById('invoiceModal'));
+            const confirmCheckbox = document.getElementById('confirmProcess');
+            const processBtn = document.getElementById('btnProcessInvoice');
+
+            async function loadData() {
+                await Promise.all([loadPendingSOs(), loadInvoices()]);
+            }
+
+            async function loadPendingSOs() {
+                try {
+                    const response = await API.getSalesOrders();
+                    if (response.success && Array.isArray(response.data)) {
+                        pendingSOs = response.data.filter(so => so.status === 'pending' || so.status === 'scheduled');
+                        renderPendingSOs();
+                    }
+                } catch (error) {
+                    console.error('Load pending SOs error:', error);
+                    pendingSOBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load</td></tr>';
+                }
+            }
+
+            async function loadInvoices() {
+                try {
+                    const response = await API.getInvoices();
+                    if (response.success && Array.isArray(response.data)) {
+                        invoices = response.data.slice(0, 10);
+                        renderInvoices();
+                    }
+                } catch (error) {
+                    console.error('Load invoices error:', error);
+                    invoicesBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No invoices yet</td></tr>';
+                }
+            }
+
+            function renderPendingSOs() {
+                if (!pendingSOs.length) {
+                    pendingSOBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No pending orders</td></tr>';
+                    return;
+                }
+
+                const canInvoice = RBAC.can('sales_orders', 'invoice');
+
+                pendingSOBody.innerHTML = pendingSOs.map(so => `
+                    <tr>
+                        <td><strong>SO-${String(so.sales_order_id).padStart(5, '0')}</strong></td>
+                        <td>${so.customer_name}</td>
+                        <td>₱${parseFloat(so.total_amount).toFixed(2)}</td>
+                        <td>
+                            ${canInvoice ? `<button class="btn btn-sm btn-primary" onclick="processInvoice(${so.sales_order_id})" aria-label="Process invoice for SO ${so.sales_order_id}">
+                                <i class="bi bi-receipt" aria-hidden="true"></i>
+                                Invoice
+                            </button>` : '<span class="text-muted small">No permission</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            function renderInvoices() {
+                if (!invoices.length) {
+                    invoicesBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No invoices yet</td></tr>';
+                    return;
+                }
+
+                invoicesBody.innerHTML = invoices.map(inv => `
+                    <tr>
+                        <td><strong>${inv.invoice_number}</strong></td>
+                        <td>${inv.customer_name}</td>
+                        <td>₱${parseFloat(inv.total_amount).toFixed(2)}</td>
+                        <td>${Utils.formatDate(inv.generated_at)}</td>
+                    </tr>
+                `).join('');
+            }
+
+            window.processInvoice = (salesOrderId) => {
+                selectedSO = pendingSOs.find(so => so.sales_order_id === salesOrderId);
+                if (selectedSO) {
+                    document.getElementById('invoiceDetails').innerHTML = `
+                        <strong>Sales Order: SO-${String(salesOrderId).padStart(5, '0')}</strong><br>
+                        Customer: ${selectedSO.customer_name}<br>
+                        Amount: ₱${parseFloat(selectedSO.total_amount).toFixed(2)}<br>
+                        Items: ${selectedSO.items_summary || 'See order details'}
+                    `;
+                    
+                    confirmCheckbox.checked = false;
+                    processBtn.disabled = true;
+                    invoiceModal.show();
+                }
+            };
+
+            confirmCheckbox.addEventListener('change', (e) => {
+                processBtn.disabled = !e.target.checked;
+            });
+
+            processBtn.addEventListener('click', async () => {
+                processBtn.disabled = true;
+                processBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+                try {
+                    const response = await API.processInvoice(selectedSO.sales_order_id);
+                    
+                    if (response.success) {
+                        Utils.showToast(
+                            `Invoice ${response.invoice_number} generated. Stock deducted: ${response.previous_stock} → ${response.new_stock_level}`,
+                            'success'
+                        );
+                        invoiceModal.hide();
+                        loadData();
+                    } else {
+                        Utils.showToast(response.message || 'Failed to process invoice', 'error');
+                    }
+                } catch (error) {
+                    console.error('Process invoice error:', error);
+                    Utils.showToast('Error processing invoice', 'error');
+                } finally {
+                    processBtn.disabled = false;
+                    processBtn.innerHTML = 'Process Invoice';
+                }
+            });
+
+            await loadData();
+            setInterval(loadData, 30000); // Refresh every 30 seconds
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

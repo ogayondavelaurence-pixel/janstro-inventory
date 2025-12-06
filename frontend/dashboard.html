@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                Dashboard
+            </h1>
+            <p class="text-muted">Real-time inventory overview</p>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-primary">
+                    <i class="bi bi-box-seam stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value" id="totalItems">-</div>
+                    <div class="stat-label">Total Items</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-warning">
+                    <i class="bi bi-exclamation-triangle stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value" id="lowStockItems">-</div>
+                    <div class="stat-label">Low Stock Alerts</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-danger">
+                    <i class="bi bi-cart-plus stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value" id="pendingPOs">-</div>
+                    <div class="stat-label">Pending POs</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-success">
+                    <i class="bi bi-cash-stack stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value" id="inventoryValue">-</div>
+                    <div class="stat-label">Inventory Value</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-lg-8">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-graph-up" aria-hidden="true"></i>
+                            Stock Movement Trend (Last 7 Days)
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="movementChart" aria-label="Stock movement trend chart"></canvas>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-lg-4">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-pie-chart" aria-hidden="true"></i>
+                            Inventory Status
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="statusChart" aria-label="Inventory status chart"></canvas>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Tables Row -->
+        <div class="row g-4">
+            <div class="col-12 col-lg-6">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                            Low Stock Items
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" aria-label="Low stock items">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Item</th>
+                                        <th scope="col">Current</th>
+                                        <th scope="col">Reorder</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lowStockTable">
+                                    <tr>
+                                        <td colspan="3" class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-lg-6">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-clock-history" aria-hidden="true"></i>
+                            Recent Transactions
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" aria-label="Recent transactions">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Item</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Qty</th>
+                                        <th scope="col">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentTransactions">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            let movementChart = null;
+            let statusChart = null;
+
+            async function loadStats() {
+                try {
+                    const response = await ErrorHandler.safeApiCall(
+                        () => API.getDashboardStats(),
+                        { data: { total_items: 0, low_stock_items: 0, pending_pos: 0, total_inventory_value: 0 } }
+                    );
+
+                    const stats = response.data || response;
+                    document.getElementById('totalItems').textContent = stats.total_items || 0;
+                    document.getElementById('lowStockItems').textContent = stats.low_stock_items || 0;
+                    document.getElementById('pendingPOs').textContent = stats.pending_pos || 0;
+                    document.getElementById('inventoryValue').textContent = '₱' + 
+                        parseFloat(stats.total_inventory_value || 0).toLocaleString('en-PH', {minimumFractionDigits: 2});
+                } catch (error) {
+                    console.error('Load stats error:', error);
+                }
+            }
+
+            async function loadMovementChart() {
+                try {
+                    const response = await ErrorHandler.safeApiCall(
+                        () => API.getStockMovements({ days: 7 }),
+                        { data: [] }
+                    );
+
+                    const movements = response.data || [];
+                    
+                    // Group by date
+                    const grouped = {};
+                    movements.forEach(m => {
+                        const date = new Date(m.movement_date || m.transaction_date).toLocaleDateString('en-PH');
+                        if (!grouped[date]) {
+                            grouped[date] = { in: 0, out: 0 };
+                        }
+                        if (m.transaction_type === 'IN') {
+                            grouped[date].in += m.quantity;
+                        } else {
+                            grouped[date].out += m.quantity;
+                        }
+                    });
+
+                    const labels = Object.keys(grouped).slice(-7);
+                    const dataIn = labels.map(l => grouped[l].in);
+                    const dataOut = labels.map(l => grouped[l].out);
+
+                    const ctx = document.getElementById('movementChart');
+                    
+                    if (movementChart) {
+                        movementChart.destroy();
+                    }
+
+                    movementChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Stock IN',
+                                    data: dataIn,
+                                    borderColor: '#48bb78',
+                                    backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Stock OUT',
+                                    data: dataOut,
+                                    borderColor: '#f56565',
+                                    backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('Load movement chart error:', error);
+                }
+            }
+
+            async function loadStatusChart() {
+                try {
+                    const response = await ErrorHandler.safeApiCall(
+                        () => API.getInventory(),
+                        { data: [] }
+                    );
+
+                    const items = response.data || [];
+                    
+                    let sufficient = 0;
+                    let low = 0;
+                    let critical = 0;
+
+                    items.forEach(item => {
+                        if (item.quantity === 0) {
+                            critical++;
+                        } else if (item.quantity <= item.reorder_level) {
+                            low++;
+                        } else {
+                            sufficient++;
+                        }
+                    });
+
+                    const ctx = document.getElementById('statusChart');
+                    
+                    if (statusChart) {
+                        statusChart.destroy();
+                    }
+
+                    statusChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Sufficient', 'Low Stock', 'Out of Stock'],
+                            datasets: [{
+                                data: [sufficient, low, critical],
+                                backgroundColor: ['#48bb78', '#ed8936', '#f56565'],
+                                borderWidth: 2,
+                                borderColor: '#ffffff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { padding: 15 }
+                                }
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('Load status chart error:', error);
+                }
+            }
+
+            async function loadLowStock() {
+                try {
+                    const tbody = document.getElementById('lowStockTable');
+                    const response = await API.getInventory();
+                    
+                    const lowStock = (response.data || [])
+                        .filter(item => item.quantity <= item.reorder_level)
+                        .slice(0, 5);
+
+                    if (lowStock.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3 text-muted">No low stock items</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = lowStock.map(item => {
+                        const statusClass = item.quantity === 0 ? 'text-danger' : 'text-warning';
+                        return `
+                            <tr>
+                                <td><strong>${item.item_name}</strong></td>
+                                <td class="${statusClass}">${item.quantity}</td>
+                                <td>${item.reorder_level}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } catch (error) {
+                    console.error('Load low stock error:', error);
+                    document.getElementById('lowStockTable').innerHTML = 
+                        '<tr><td colspan="3" class="text-center py-3 text-danger">Failed to load</td></tr>';
+                }
+            }
+
+            async function loadRecentTransactions() {
+                try {
+                    const tbody = document.getElementById('recentTransactions');
+                    const response = await API.getTransactionHistory(5);
+                    
+                    if (!response.success || !response.data || response.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No transactions</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = response.data.map(t => {
+                        const typeClass = t.transaction_type === 'IN' ? 'text-success' : 'text-danger';
+                        const typeIcon = t.transaction_type === 'IN' ? 'arrow-down' : 'arrow-up';
+                        
+                        return `
+                            <tr>
+                                <td><small>${t.item_name || 'N/A'}</small></td>
+                                <td class="${typeClass}">
+                                    <i class="bi bi-${typeIcon}" aria-hidden="true"></i>
+                                    ${t.transaction_type}
+                                </td>
+                                <td><strong>${t.quantity}</strong></td>
+                                <td><small>${Utils.formatTime(t.movement_date || t.transaction_date)}</small></td>
+                            </tr>
+                        `;
+                    }).join('');
+                } catch (error) {
+                    console.error('Load transactions error:', error);
+                    document.getElementById('recentTransactions').innerHTML = 
+                        '<tr><td colspan="4" class="text-center py-3 text-danger">Failed to load</td></tr>';
+                }
+            }
+
+            async function loadAll() {
+                await Promise.all([
+                    loadStats(),
+                    loadMovementChart(),
+                    loadStatusChart(),
+                    loadLowStock(),
+                    loadRecentTransactions()
+                ]);
+            }
+
+            await loadAll();
+
+            // Auto-refresh every 30 seconds
+            setInterval(loadAll, 30000);
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

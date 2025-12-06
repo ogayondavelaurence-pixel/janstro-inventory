@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Janstro IMS - API Tester</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .subtitle {
+            color: #6c757d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid #dee2e6;
+        }
+        .result.success { border-left: 4px solid #28a745; }
+        .result.error { border-left: 4px solid #dc3545; }
+        .token-display {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            word-wrap: break-word;
+        }
+        .token-label {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+        .token-value {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #333;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status-connected { background: #d4edda; color: #155724; }
+        .status-disconnected { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            🧪 Janstro IMS API Tester
+            <span id="connectionStatus" class="status-badge status-disconnected">Not Connected</span>
+        </h1>
+        <p class="subtitle">Test all API endpoints one by one. Login first to get your token.</p>
+
+        <!-- Token Display -->
+        <div id="tokenDisplay" class="token-display" style="display: none;">
+            <div class="token-label">🎟️ Current Token:</div>
+            <div class="token-value" id="tokenValue"></div>
+        </div>
+
+        <!-- 1. AUTHENTICATION -->
+        <div class="test-section">
+            <h2>1️⃣ Authentication (Public)</h2>
+            <div class="input-group">
+                <label>Username:</label>
+                <input type="text" id="loginUsername" value="admin" placeholder="admin, staff, or superadmin">
+            </div>
+            <div class="input-group">
+                <label>Password:</label>
+                <input type="password" id="loginPassword" value="Admin@2024" aria-label="Password">
+            </div>
+            <button class="btn btn-primary" onclick="testLogin()">🔐 Test Login</button>
+            <button class="btn btn-danger" onclick="testLogout()">🚪 Test Logout</button>
+            <button class="btn btn-warning" onclick="testGetCurrentUser()">👤 Get Current User</button>
+            <div id="authResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 2. CATEGORIES -->
+        <div class="test-section">
+            <h2>2️⃣ Categories (All Roles)</h2>
+            <button class="btn btn-primary" onclick="testGetCategories()">📂 Get All Categories</button>
+            <div id="categoriesResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 3. INVENTORY -->
+        <div class="test-section">
+            <h2>3️⃣ Inventory / Items (All Roles)</h2>
+            <button class="btn btn-primary" onclick="testGetInventory()">📦 Get All Items</button>
+            <button class="btn btn-success" onclick="testGetLowStock()">⚠️ Get Low Stock</button>
+            <button class="btn btn-warning" onclick="testGetInventoryStatus()">📊 Get Status</button>
+            <div id="inventoryResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 4. SUPPLIERS -->
+        <div class="test-section">
+            <h2>4️⃣ Suppliers (Admin Only)</h2>
+            <button class="btn btn-primary" onclick="testGetSuppliers()">🚚 Get All Suppliers</button>
+            <div id="suppliersResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 5. PURCHASE ORDERS -->
+        <div class="test-section">
+            <h2>5️⃣ Purchase Orders (All Roles)</h2>
+            <button class="btn btn-primary" onclick="testGetPOs()">📋 Get Purchase Orders</button>
+            <div class="input-group">
+                <label>Create PO - Supplier ID:</label>
+                <input type="number" id="poSupplierId" value="1" min="1" aria-label="Supplier ID">   
+            </div>
+            <div class="input-group">
+                <label>Item ID:</label>
+                <input type="number" id="poItemId" value="1" min="1" aria-label="Item ID">
+            </div>
+            <div class="input-group">
+                <label>Quantity:</label>
+                <input type="number" id="poQuantity" value="10" min="1" aria-label="Quantity">
+            </div>
+            <button class="btn btn-success" onclick="testCreatePO()">➕ Create Purchase Order</button>
+            <div id="poResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 6. TRANSACTIONS -->
+        <div class="test-section">
+            <h2>6️⃣ Stock Movements / Transactions (All Roles)</h2>
+            <button class="btn btn-primary" onclick="testGetTransactions()">📈 Get Transactions (Last 50)</button>
+            <div id="transactionsResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 7. REPORTS -->
+        <div class="test-section">
+            <h2>7️⃣ Reports & Dashboard (All Roles)</h2>
+            <button class="btn btn-primary" onclick="testGetDashboard()">📊 Dashboard Stats</button>
+            <button class="btn btn-success" onclick="testGetInventorySummary()">📋 Inventory Summary</button>
+            <div id="reportsResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 8. USERS -->
+        <div class="test-section">
+            <h2>8️⃣ Users (Superadmin Only)</h2>
+            <button class="btn btn-primary" onclick="testGetUsers()">👥 Get All Users</button>
+            <div id="usersResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/janstro-inventory/public';
+        let TOKEN = localStorage.getItem('janstro_token') || '';
+
+        // Initialize
+        if (TOKEN) {
+            showToken(TOKEN);
+            updateConnectionStatus(true);
+        }
+
+        function updateConnectionStatus(connected) {
+            const badge = document.getElementById('connectionStatus');
+            if (connected) {
+                badge.className = 'status-badge status-connected';
+                badge.textContent = '✅ Connected';
+            } else {
+                badge.className = 'status-badge status-disconnected';
+                badge.textContent = '❌ Not Connected';
+            }
+        }
+
+        function showToken(token) {
+            document.getElementById('tokenDisplay').style.display = 'block';
+            document.getElementById('tokenValue').textContent = token;
+            TOKEN = token;
+            localStorage.setItem('janstro_token', token);
+            updateConnectionStatus(true);
+        }
+
+        function showResult(elementId, data, success = true) {
+            const el = document.getElementById(elementId);
+            el.style.display = 'block';
+            el.className = success ? 'result success' : 'result error';
+            el.textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            };
+
+            if (TOKEN) {
+                options.headers['Authorization'] = `Bearer ${TOKEN}`;
+            }
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                console.log(`📡 ${method} ${API_BASE}/${endpoint}`);
+                const response = await fetch(`${API_BASE}/${endpoint}`, options);
+                const data = await response.json();
+                
+                console.log(`✅ Response:`, data);
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                console.error('❌ Error:', error);
+                return { success: false, data: { error: error.message }, status: 0 };
+            }
+        }
+
+        // 1. AUTHENTICATION
+        async function testLogin() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const result = await apiCall('auth/login', 'POST', { username, password });
+            showResult('authResult', result.data, result.success);
+
+            if (result.success && result.data.data?.token) {
+                showToken(result.data.data.token);
+            }
+        }
+
+        async function testLogout() {
+            const result = await apiCall('auth/logout', 'POST');
+            showResult('authResult', result.data, result.success);
+            
+            if (result.success) {
+                TOKEN = '';
+                localStorage.removeItem('janstro_token');
+                document.getElementById('tokenDisplay').style.display = 'none';
+                updateConnectionStatus(false);
+            }
+        }
+
+        async function testGetCurrentUser() {
+            const result = await apiCall('auth/me');
+            showResult('authResult', result.data, result.success);
+        }
+
+        // 2. CATEGORIES
+        async function testGetCategories() {
+            const result = await apiCall('categories');
+            showResult('categoriesResult', result.data, result.success);
+        }
+
+        // 3. INVENTORY
+        async function testGetInventory() {
+            const result = await apiCall('inventory');
+            showResult('inventoryResult', result.data, result.success);
+        }
+
+        async function testGetLowStock() {
+            const result = await apiCall('inventory/low-stock');
+            showResult('inventoryResult', result.data, result.success);
+        }
+
+        async function testGetInventoryStatus() {
+            const result = await apiCall('inventory/status');
+            showResult('inventoryResult', result.data, result.success);
+        }
+
+        // 4. SUPPLIERS
+        async function testGetSuppliers() {
+            const result = await apiCall('suppliers');
+            showResult('suppliersResult', result.data, result.success);
+        }
+
+        // 5. PURCHASE ORDERS
+        async function testGetPOs() {
+            const result = await apiCall('purchase-orders');
+            showResult('poResult', result.data, result.success);
+        }
+
+        async function testCreatePO() {
+            const supplierId = document.getElementById('poSupplierId').value;
+            const itemId = document.getElementById('poItemId').value;
+            const quantity = document.getElementById('poQuantity').value;
+
+            const result = await apiCall('purchase-orders', 'POST', {
+                supplier_id: parseInt(supplierId),
+                item_id: parseInt(itemId),
+                quantity: parseInt(quantity)
+            });
+            showResult('poResult', result.data, result.success);
+        }
+
+        // 6. TRANSACTIONS
+        async function testGetTransactions() {
+            const result = await apiCall('transactions?limit=50');
+            showResult('transactionsResult', result.data, result.success);
+        }
+
+        // 7. REPORTS
+        async function testGetDashboard() {
+            const result = await apiCall('reports/dashboard');
+            showResult('reportsResult', result.data, result.success);
+        }
+
+        async function testGetInventorySummary() {
+            const result = await apiCall('reports/inventory-summary');
+            showResult('reportsResult', result.data, result.success);
+        }
+
+        // 8. USERS
+        async function testGetUsers() {
+            const result = await apiCall('users');
+            showResult('usersResult', result.data, result.success);
+        }
+    </script>
+</body>
+</html>
