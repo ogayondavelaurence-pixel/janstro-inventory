@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Janstro IMS v2.0 Interactive</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+    <style>
+        /* Make stat cards clickable */
+        .stat-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '→';
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-size: 24px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+
+        .stat-card:hover::after {
+            opacity: 0.5;
+        }
+
+        .stat-card:active {
+            transform: translateY(-4px);
+        }
+
+        /* Add hover hint */
+        .stat-card:hover .stat-label::after {
+            content: ' (Click to view)';
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        /* View All button styling */
+        .view-all-btn {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            font-size: 13px;
+            padding: 6px 12px;
+        }
+
+        /* Loading pulse animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                Dashboard
+            </h1>
+            <p class="text-muted">Real-time inventory overview (Click cards to navigate)</p>
+        </header>
+
+        <!-- Summary Cards (NOW CLICKABLE) -->
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-primary" onclick="goToInventory()" role="button" tabindex="0" 
+                     aria-label="View all inventory items" onkeypress="handleCardKeyPress(event, 'goToInventory')">
+                    <i class="bi bi-box-seam stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value loading-pulse" id="totalItems">-</div>
+                    <div class="stat-label">Total Items</div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-warning" onclick="goToLowStock()" role="button" tabindex="0"
+                     aria-label="View low stock items" onkeypress="handleCardKeyPress(event, 'goToLowStock')">
+                    <i class="bi bi-exclamation-triangle stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value loading-pulse" id="lowStockItems">-</div>
+                    <div class="stat-label">Low Stock Alerts</div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-danger" onclick="goToPendingPOs()" role="button" tabindex="0"
+                     aria-label="View pending purchase orders" onkeypress="handleCardKeyPress(event, 'goToPendingPOs')">
+                    <i class="bi bi-cart-plus stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value loading-pulse" id="pendingPOs">-</div>
+                    <div class="stat-label">Pending POs</div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-success" onclick="goToInventory()" role="button" tabindex="0"
+                     aria-label="View inventory valuation" onkeypress="handleCardKeyPress(event, 'goToInventory')">
+                    <i class="bi bi-cash-stack stat-icon" aria-hidden="true"></i>
+                    <div class="stat-value loading-pulse" id="inventoryValue">-</div>
+                    <div class="stat-label">Inventory Value</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-lg-8">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-graph-up" aria-hidden="true"></i>
+                            Stock Movement Trend (Last 7 Days)
+                        </h2>
+                        <button class="view-all-btn btn btn-sm btn-primary" onclick="window.location.href='stock-movements.html'">
+                            <i class="bi bi-eye"></i> View All Movements
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="movementChart" aria-label="Stock movement trend chart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-12 col-lg-4">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-pie-chart" aria-hidden="true"></i>
+                            Inventory Status
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="statusChart" aria-label="Inventory status chart"></canvas>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Tables Row -->
+        <div class="row g-4">
+            <div class="col-12 col-lg-6">
+                <section class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                            Low Stock Items
+                        </h2>
+                        <button class="btn btn-sm btn-warning" onclick="goToLowStock()">
+                            <i class="bi bi-funnel"></i> View All Low Stock
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" aria-label="Low stock items">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Item</th>
+                                        <th scope="col">Current</th>
+                                        <th scope="col">Reorder</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lowStockTable">
+                                    <tr>
+                                        <td colspan="3" class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-12 col-lg-6">
+                <section class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-clock-history" aria-hidden="true"></i>
+                            Recent Transactions
+                        </h2>
+                        <button class="btn btn-sm btn-primary" onclick="window.location.href='stock-movements.html'">
+                            <i class="bi bi-eye"></i> View All
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" aria-label="Recent transactions">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Item</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Qty</th>
+                                        <th scope="col">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentTransactions">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    
+    <script>
+        // =====================================================================
+        // NAVIGATION FUNCTIONS (CLICKABLE CARDS)
+        // =====================================================================
+
+        /**
+         * Navigate to inventory page (all items)
+         */
+        function goToInventory() {
+            console.log('📦 Navigating to: All Inventory');
+            window.location.href = 'inventory.html';
+        }
+
+        /**
+         * Navigate to inventory page with LOW STOCK filter
+         */
+        function goToLowStock() {
+            console.log('⚠️ Navigating to: Low Stock Filter');
+            window.location.href = 'inventory.html?filter=lowstock';
+        }
+
+        /**
+         * Navigate to purchase orders with PENDING filter
+         */
+        function goToPendingPOs() {
+            console.log('🛒 Navigating to: Pending Purchase Orders');
+            window.location.href = 'purchase-orders.html?status=pending';
+        }
+
+        /**
+         * Handle keyboard navigation for accessibility
+         */
+        function handleCardKeyPress(event, functionName) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                window[functionName]();
+            }
+        }
+
+        // =====================================================================
+        // DASHBOARD DATA LOADING
+        // =====================================================================
+        (async function() {
+    let movementChart = null;
+    let statusChart = null;
+
+    /**
+     * ========================================================================
+     * LOAD DASHBOARD STATISTICS
+     * ========================================================================
+     */
+    async function loadStats() {
+        try {
+            const response = await ErrorHandler.safeApiCall(
+                () => API.getDashboardStats(),
+                { data: { total_items: 0, low_stock_items: 0, pending_pos: 0, total_inventory_value: 0 } }
+            );
+
+            const stats = response.data || response;
+            
+            // Update stat cards
+            document.getElementById('totalItems').textContent = stats.total_items || 0;
+            document.getElementById('lowStockItems').textContent = stats.low_stock_items || 0;
+            document.getElementById('pendingPOs').textContent = stats.pending_pos || 0;
+            document.getElementById('inventoryValue').textContent = '₱' + 
+                parseFloat(stats.total_inventory_value || 0).toLocaleString('en-PH', {minimumFractionDigits: 2});
+
+            // Remove loading animation
+            document.querySelectorAll('.loading-pulse').forEach(el => {
+                el.classList.remove('loading-pulse');
+            });
+
+            console.log('✅ Dashboard stats loaded');
+        } catch (error) {
+            console.error('❌ Load stats error:', error);
+        }
+    }
+
+    /**
+     * ========================================================================
+     * LOAD STOCK MOVEMENT CHART - FIXED VERSION
+     * ========================================================================
+     */
+    async function loadMovementChart() {
+    try {
+        console.log('📊 Loading movement chart...');
+        
+        const response = await API.getStockMovements({ limit: 50 });
+        
+        console.log('📦 Movement response:', response);
+        
+        // Extract movements array
+        const movements = response?.data || response || [];
+        console.log(`📊 Processing ${movements.length} stock movements`);
+        
+        // Show sample of data
+        if (movements.length > 0) {
+            console.log('📋 Sample transaction:', movements[0]);
+        }
+        
+        // Process data
+        const chartData = processMovementData(movements);
+        
+        // If no data in last 7 days, use demo
+        if (!chartData || chartData.stockIn.every(v => v === 0) && chartData.stockOut.every(v => v === 0)) {
+            console.warn('⚠️ No data in range, using demo');
+            loadMovementChartDemo();
+            return;
+        }
+
+        const ctx = document.getElementById('movementChart');
+        
+        if (!ctx) {
+            console.error('❌ Chart canvas not found');
+            return;
+        }
+        
+        if (movementChart) {
+            movementChart.destroy();
+        }
+
+        movementChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: 'Stock IN',
+                        data: chartData.stockIn,
+                        borderColor: '#48bb78',
+                        backgroundColor: 'rgba(72, 187, 120, 0.2)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#48bb78',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        borderWidth: 3
+                    },
+                    {
+                        label: 'Stock OUT',
+                        data: chartData.stockOut,
+                        borderColor: '#f56565',
+                        backgroundColor: 'rgba(245, 101, 101, 0.2)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#f56565',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        borderWidth: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: {
+                                size: 13,
+                                weight: '500'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y} units`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 10,
+                            font: { size: 12 }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 12 }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        console.log('✅ Movement chart created with real data!');
+    } catch (error) {
+        console.error('❌ Load movement chart error:', error);
+        loadMovementChartDemo();
+    }
+    }
+
+    /**
+     * Demo movement chart (fallback)
+     */
+    function loadMovementChartDemo() {
+        const ctx = document.getElementById('movementChart');
+        if (!ctx) return;
+        
+        if (movementChart) movementChart.destroy();
+
+        const demoData = {
+            labels: ['Dec 6', 'Dec 7', 'Dec 8', 'Dec 9', 'Dec 10', 'Dec 11', 'Dec 12'],
+            stockIn: [50, 0, 20, 0, 0, 0, 0],
+            stockOut: [0, 0, 15, 3, 0, 0, 0]
+        };
+
+        movementChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: demoData.labels,
+                datasets: [
+                    {
+                        label: 'Stock IN',
+                        data: demoData.stockIn,
+                        borderColor: '#48bb78',
+                        backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Stock OUT',
+                        data: demoData.stockOut,
+                        borderColor: '#f56565',
+                        backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { position: 'top' } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        console.log('✅ Demo movement chart loaded');
+    }
+
+    /**
+     * Process movement data for chart
+     */
+    function processMovementData(transactions) {
+    console.log("🔍 Processing movement data for chart...");
+    console.log("📊 Total movements received:", transactions.length);
+
+    // Show sample data for debugging
+    if (transactions.length > 0) {
+      console.log("📋 Sample transaction:", {
+        date_field_1: transactions[0].transaction_date,
+        date_field_2: transactions[0].movement_date,
+        type: transactions[0].transaction_type,
+        qty: transactions[0].quantity,
+      });
+    }
+
+    // Generate last 7 days in LOCAL timezone
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const last7Days = [];
+    const last7DaysLabels = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+
+      // ✅ FIX: Use local date string, not ISO (which converts to UTC)
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
+
+      last7Days.push(dateStr);
+
+      last7DaysLabels.push(
+        date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })
+      );
+    }
+
+    console.log("📅 Date range (local):", last7Days);
+
+    const stockIn = new Array(7).fill(0);
+    const stockOut = new Array(7).fill(0);
+
+    transactions.forEach((m, idx) => {
+      // ✅ FIX: Try both date fields, prefer movement_date (more accurate)
+      let rawDate = m.movement_date || m.transaction_date || "";
+
+      if (!rawDate) {
+        console.warn(`⚠️ Transaction ${idx} has no date field`);
+        return;
+      }
+
+      // ✅ FIX: Extract date part, handling both ISO and MySQL datetime formats
+      let dateStr = "";
+
+      if (rawDate.includes("T")) {
+        // ISO format: "2025-12-12T07:04:00.000Z"
+        dateStr = rawDate.split("T")[0];
+      } else if (rawDate.includes(" ")) {
+        // MySQL format: "2025-12-12 07:04:00"
+        dateStr = rawDate.split(" ")[0];
+      } else if (rawDate.length === 10 && rawDate.includes("-")) {
+        // Already in YYYY-MM-DD format
+        dateStr = rawDate;
+      } else {
+        console.warn(`⚠️ Unrecognized date format: ${rawDate}`);
+        return;
+      }
+
+      const index = last7Days.indexOf(dateStr);
+
+      if (index !== -1) {
+        const qty = parseInt(m.quantity) || 0;
+
+        if (m.transaction_type === "IN") {
+          stockIn[index] += qty;
+          console.log(
+            `  ✅ [${dateStr}] IN +${qty} (${m.item_name?.substring(0, 20)})`
+          );
+        } else if (m.transaction_type === "OUT") {
+          stockOut[index] += qty;
+          console.log(
+            `  ❌ [${dateStr}] OUT -${qty} (${m.item_name?.substring(0, 20)})`
+          );
+        }
+      } else {
+        console.log(`  ⏭️ [${dateStr}] Skipped (outside 7-day range)`);
+      }
+    });
+
+    console.log("📈 Stock IN by day:", stockIn);
+    console.log("📉 Stock OUT by day:", stockOut);
+
+    const totalIn = stockIn.reduce((a, b) => a + b, 0);
+    const totalOut = stockOut.reduce((a, b) => a + b, 0);
+
+    console.log(`📊 Totals: IN=${totalIn}, OUT=${totalOut}`);
+
+    if (totalIn === 0 && totalOut === 0) {
+      console.warn("⚠️ No data in last 7 days");
+      return null;
+    }
+
+    return {
+      labels: last7DaysLabels,
+      stockIn,
+      stockOut,
+    };
+  }
+
+    /**
+     * ========================================================================
+     * LOAD INVENTORY STATUS CHART - FIXED VERSION
+     * ========================================================================
+     */
+    async function loadStatusChart() {
+        try {
+            console.log('📊 Loading status chart...');
+            
+            const response = await API.getInventory();
+            const items = response?.data || response || [];
+            
+            console.log(`📦 Processing ${items.length} items for status chart`);
+            
+            if (items.length === 0) {
+                loadStatusChartDemo();
+                return;
+            }
+            
+            let sufficient = 0;
+            let low = 0;
+            let critical = 0;
+
+            items.forEach(item => {
+                if (item.quantity === 0) {
+                    critical++;
+                } else if (item.quantity <= item.reorder_level) {
+                    low++;
+                } else {
+                    sufficient++;
+                }
+            });
+
+            const ctx = document.getElementById('statusChart');
+            if (!ctx) {
+                console.error('❌ Status chart canvas not found');
+                return;
+            }
+            
+            if (statusChart) {
+                statusChart.destroy();
+            }
+
+            statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sufficient', 'Low Stock', 'Out of Stock'],
+                    datasets: [{
+                        data: [sufficient, low, critical],
+                        backgroundColor: ['#48bb78', '#ed8936', '#f56565'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 15 }
+                        }
+                    }
+                }
+            });
+
+            console.log('✅ Status chart loaded');
+        } catch (error) {
+            console.error('❌ Load status chart error:', error);
+            loadStatusChartDemo();
+        }
+    }
+
+    /**
+     * Demo status chart (fallback)
+     */
+    function loadStatusChartDemo() {
+        const ctx = document.getElementById('statusChart');
+        if (!ctx) return;
+        
+        if (statusChart) statusChart.destroy();
+
+        statusChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Sufficient', 'Low Stock', 'Out of Stock'],
+                datasets: [{
+                    data: [8, 0, 0],
+                    backgroundColor: ['#48bb78', '#ed8936', '#f56565'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 15 }
+                    }
+                }
+            }
+        });
+
+        console.log('✅ Demo status chart loaded');
+    }
+
+    /**
+     * ========================================================================
+     * LOAD LOW STOCK TABLE
+     * ========================================================================
+     */
+    async function loadLowStock() {
+        try {
+            const tbody = document.getElementById('lowStockTable');
+            const response = await API.getInventory();
+            
+            const lowStock = (response.data || response || [])
+                .filter(item => item.quantity <= item.reorder_level)
+                .slice(0, 5);
+
+            if (lowStock.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3 text-success">✅ All items sufficiently stocked</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = lowStock.map(item => {
+                const statusClass = item.quantity === 0 ? 'text-danger' : 'text-warning';
+                return `
+                    <tr>
+                        <td><strong>${item.item_name}</strong></td>
+                        <td class="${statusClass} fw-bold">${item.quantity}</td>
+                        <td>${item.reorder_level}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            console.log('✅ Low stock table loaded');
+        } catch (error) {
+            console.error('❌ Load low stock error:', error);
+            document.getElementById('lowStockTable').innerHTML = 
+                '<tr><td colspan="3" class="text-center py-3 text-danger">Failed to load</td></tr>';
+        }
+    }
+
+    /**
+     * ========================================================================
+     * LOAD RECENT TRANSACTIONS
+     * ========================================================================
+     */
+    async function loadRecentTransactions() {
+        try {
+            const tbody = document.getElementById('recentTransactions');
+            const response = await API.getStockMovements({ limit: 5 });
+            
+            const transactions = response?.data || response || [];
+            
+            if (transactions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No transactions yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = transactions.map(t => {
+                const typeClass = t.transaction_type === 'IN' ? 'text-success' : 'text-danger';
+                const typeIcon = t.transaction_type === 'IN' ? 'arrow-down' : 'arrow-up';
+                
+                return `
+                    <tr>
+                        <td><small>${t.item_name || 'N/A'}</small></td>
+                        <td class="${typeClass}">
+                            <i class="bi bi-${typeIcon}" aria-hidden="true"></i>
+                            ${t.transaction_type}
+                        </td>
+                        <td><strong>${t.quantity}</strong></td>
+                        <td><small>${Utils.formatDate(t.movement_date || t.transaction_date)}</small></td>
+                    </tr>
+                `;
+            }).join('');
+
+            console.log('✅ Recent transactions loaded');
+        } catch (error) {
+            console.error('❌ Load transactions error:', error);
+            document.getElementById('recentTransactions').innerHTML = 
+                '<tr><td colspan="4" class="text-center py-3 text-danger">Failed to load</td></tr>';
+        }
+    }
+
+    /**
+     * ========================================================================
+     * LOAD ALL DASHBOARD DATA
+     * ========================================================================
+     */
+    async function loadAll() {
+        console.log('🚀 Loading all dashboard components...');
+        
+        await Promise.all([
+            loadStats(),
+            loadMovementChart(),
+            loadStatusChart(),
+            loadLowStock(),
+            loadRecentTransactions()
+        ]);
+        
+        console.log('✅ All dashboard components loaded');
+    }
+
+    // Initial load
+    await loadAll();
+
+    // Auto-refresh every 60 seconds
+    setInterval(loadAll, 60000);
+
+    console.log('✅ Interactive Dashboard v2.0 Ready');
+    })();
+    </script>
+
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

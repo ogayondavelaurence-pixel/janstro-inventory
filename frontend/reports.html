@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Reports & Analytics - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+    
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5 id="loadingText">Processing report...</h5>
+        </div>
+    </div>
+
+    <!-- Drill-Down Overlay -->
+    <div class="drill-down-overlay" id="drillDownOverlay">
+        <div class="drill-down-content">
+            <span class="drill-down-close" onclick="closeDrillDown()" aria-label="Close drill-down view">&times;</span>
+            <div id="drillDownContent"></div>
+        </div>
+    </div>
+
+    <button class="mobile-menu-toggle no-print" aria-label="Toggle menu"><i class="bi bi-list"></i></button>
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1><i class="bi bi-graph-up"></i> Ultimate Business Analytics</h1>
+            <p class="text-muted">Advanced reporting with drill-down, comparison, automation & custom builder</p>
+        </header>
+
+        <!-- Advanced Controls -->
+        <section class="date-range-selector no-print">
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold"><i class="bi bi-calendar-check"></i> From Date</label>
+                    <input type="date" id="dateFrom" class="form-control" aria-label="Select start date for report">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold"><i class="bi bi-calendar-x"></i> To Date</label>
+                    <input type="date" id="dateTo" class="form-control" aria-label="Select end date for report">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold"><i class="bi bi-file-earmark-text"></i> Report Type</label>
+                    <select id="reportType" class="form-select" aria-label="Select type of report to generate">
+                        <option value="inventory">Inventory Analysis</option>
+                        <option value="financial">Financial Summary</option>
+                        <option value="comparison">Period Comparison</option>
+                        <option value="custom">Custom Report</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" onclick="generateReport()" aria-label="Generate report">
+                        <i class="bi bi-play-circle"></i> Generate
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="btn-group btn-group-sm" role="group" aria-label="Date range presets">
+                <button class="btn btn-outline-secondary" onclick="setDateRange(7)">Last 7 Days</button>
+                <button class="btn btn-outline-secondary" onclick="setDateRange(30)">Last 30 Days</button>
+                <button class="btn btn-outline-secondary" onclick="setDateRange(90)">Last 90 Days</button>
+                <button class="btn btn-outline-secondary" onclick="setDateRange('mtd')">MTD</button>
+                <button class="btn btn-outline-secondary" onclick="setDateRange('ytd')">YTD</button>
+            </div>
+        </section>
+
+        <!-- Export Action Buttons -->
+        <div class="export-buttons no-print">
+            <button class="btn btn-success" onclick="exportToExcel()" aria-label="Export to Excel">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger" onclick="exportToPDF()" aria-label="Export to PDF">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+            </button>
+            <button class="btn btn-secondary" onclick="window.print()" aria-label="Print report">
+                <i class="bi bi-printer"></i> Print
+            </button>
+            <button class="btn btn-info" onclick="showScheduleModal()" aria-label="Schedule report">
+                <i class="bi bi-clock"></i> Schedule
+            </button>
+            <button class="btn btn-primary" onclick="emailReport()" aria-label="Email report">
+                <i class="bi bi-envelope"></i> Email
+            </button>
+            <button class="btn btn-warning" onclick="showCustomBuilder()" aria-label="Custom report builder">
+                <i class="bi bi-sliders"></i> Custom Builder
+            </button>
+        </div>
+
+        <!-- Summary Stats (Clickable for Drill-Down) -->
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-primary" onclick="drillDownItems()" role="button" aria-label="View total items details" tabindex="0">
+                    <i class="bi bi-box-seam stat-icon"></i>
+                    <div class="stat-value" id="totalItems">-</div>
+                    <div class="stat-label">Total Items</div>
+                    <div class="stat-trend up" id="trendItems"><i class="bi bi-arrow-up"></i> +2.5%</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-warning" onclick="drillDownLowStock()" role="button" aria-label="View low stock details" tabindex="0">
+                    <i class="bi bi-exclamation-triangle stat-icon"></i>
+                    <div class="stat-value" id="lowStockItems">-</div>
+                    <div class="stat-label">Low Stock</div>
+                    <div class="stat-trend down" id="trendLowStock"><i class="bi bi-arrow-down"></i> -15%</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-success" onclick="drillDownValue()" role="button" aria-label="View inventory value details" tabindex="0">
+                    <i class="bi bi-cash-stack stat-icon"></i>
+                    <div class="stat-value" id="totalValue">-</div>
+                    <div class="stat-label">Inventory Value</div>
+                    <div class="stat-trend up" id="trendValue"><i class="bi bi-arrow-up"></i> +8.3%</div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="stat-card stat-info" onclick="drillDownTurnover()" role="button" aria-label="View turnover details" tabindex="0">
+                    <i class="bi bi-arrow-repeat stat-icon"></i>
+                    <div class="stat-value" id="turnoverRate">-</div>
+                    <div class="stat-label">Turnover Rate</div>
+                    <div class="stat-trend up" id="trendTurnover"><i class="bi bi-arrow-up"></i> +12%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Section -->
+        <div id="comparisonSection" style="display: none;">
+            <div class="comparison-highlight">
+                <h4><i class="bi bi-arrow-left-right"></i> Period Comparison</h4>
+                <div class="row" id="comparisonData"></div>
+            </div>
+        </div>
+
+        <!-- Charts (Clickable) -->
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-lg-6">
+                <section class="card" onclick="drillDownCategory()" role="button" aria-label="View category breakdown details" tabindex="0">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0"><i class="bi bi-pie-chart"></i> Category Distribution</h2>
+                    </div>
+                    <div class="card-body" style="min-height: 380px;">
+                        <canvas id="categoryChart" aria-label="Category distribution chart"></canvas>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-lg-6">
+                <section class="card" onclick="drillDownValuation()" role="button" aria-label="View valuation details" tabindex="0">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0"><i class="bi bi-bar-chart"></i> Inventory Valuation</h2>
+                    </div>
+                    <div class="card-body" style="min-height: 380px;">
+                        <canvas id="valuationChart" aria-label="Valuation chart"></canvas>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Movement Trend -->
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0"><i class="bi bi-graph-up"></i> Stock Movement Trend (30 Days)</h2>
+                    </div>
+                    <div class="card-body" style="min-height: 380px;">
+                        <canvas id="movementTrendChart" aria-label="Stock movement trend chart"></canvas>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Transaction Table -->
+        <section class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0"><i class="bi bi-clock-history"></i> Transaction History</h2>
+                <button id="btnRefresh" class="btn btn-sm btn-secondary no-print" onclick="refreshTransactions()" aria-label="Refresh transaction history">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="transactionsTable" aria-label="Transaction history table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Item</th>
+                                <th scope="col">Quantity</th>
+                                <th scope="col">Unit Price</th>
+                                <th scope="col">Total</th>
+                                <th scope="col">Reference</th>
+                                <th scope="col">User</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsBody">
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Schedule Modal -->
+    <div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="scheduleModalLabel"><i class="bi bi-clock"></i> Schedule Report</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="scheduleFrequency" class="form-label">Frequency</label>
+                        <select class="form-select" id="scheduleFrequency" aria-label="Select frequency for scheduled report">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="scheduleEmails" class="form-label">Recipients (comma-separated)</label>
+                        <input type="text" class="form-control" id="scheduleEmails" placeholder="admin@janstro.com, manager@janstro.com" aria-label="Enter recipient email addresses">
+                    </div>
+                    <div class="mb-3">
+                        <label for="scheduleReportType" class="form-label">Report Type</label>
+                        <select class="form-select" id="scheduleReportType" aria-label="Select type of report for scheduling">
+                            <option>Inventory Summary</option>
+                            <option>Financial Report</option>
+                            <option>Full Analytics</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSchedule()">Save Schedule</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Builder Modal -->
+    <div class="modal fade" id="customBuilderModal" tabindex="-1" aria-labelledby="customBuilderModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="customBuilderModalLabel"><i class="bi bi-sliders"></i> Custom Report Builder</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Select Fields to Include:</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="field_sku" checked aria-label="Include SKU in custom report">
+                                <label class="form-check-label" for="field_sku">SKU</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="field_name" checked aria-label="Include Item Name in custom report">
+                                <label class="form-check-label" for="field_name">Item Name</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="field_category" checked aria-label="Include Category in custom report">
+                                <label class="form-check-label" for="field_category">Category</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="field_quantity" checked aria-label="Include Quantity in custom report">
+                                <label class="form-check-label" for="field_quantity">Quantity</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="field_price" checked aria-label="Include Unit Price in custom report">
+                                <label class="form-check-label" for="field_price">Unit Price</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="field_value" checked aria-label="Include Total Value in custom report">
+                                <label class="form-check-label" for="field_value">Total Value</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="field_reorder" aria-label="Include Reorder Level in custom report">
+                                <label class="form-check-label" for="field_reorder">Reorder Level</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="field_supplier" aria-label="Include Supplier in custom report">
+                                <label class="form-check-label" for="field_supplier">Supplier</label>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6>Filter Options:</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="customCategory" class="form-label">Category Filter</label>
+                            <select class="form-select" id="customCategory" aria-label="Filter by category">
+                                <option value="">All Categories</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="customStockStatus" class="form-label">Stock Status</label>
+                            <select class="form-select" id="customStockStatus" aria-label="Filter by stock status">
+                                <option value="">All</option>
+                                <option value="low">Low Stock Only</option>
+                                <option value="sufficient">Sufficient Stock</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="generateCustomReport()">Generate Custom Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts - CRITICAL ORDER -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script src="assets/js/reports-ultimate.js?v=2.1"></script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>
