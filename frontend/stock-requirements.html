@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Requirements - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+    <style>
+        .requirement-card {
+            border-left: 4px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .requirement-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .requirement-card.sufficient {
+            border-left-color: #10b981;
+            background: linear-gradient(to right, rgba(16, 185, 129, 0.05), transparent);
+        }
+        .requirement-card.shortage {
+            border-left-color: #f59e0b;
+            background: linear-gradient(to right, rgba(245, 158, 11, 0.05), transparent);
+        }
+        .requirement-card.critical {
+            border-left-color: #ef4444;
+            background: linear-gradient(to right, rgba(239, 68, 68, 0.05), transparent);
+            animation: pulse-critical 2s ease-in-out infinite;
+        }
+        @keyframes pulse-critical {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+        .stock-calculation {
+            font-family: 'Courier New', monospace;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .stock-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .stock-bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .stock-bar-fill.sufficient { background: linear-gradient(90deg, #10b981, #059669); }
+        .stock-bar-fill.shortage { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .stock-bar-fill.critical { background: linear-gradient(90deg, #ef4444, #dc2626); }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-clipboard-data"></i>
+                Stock Requirements Analysis
+            </h1>
+            <p class="text-muted">Track inventory needs based on sales orders</p>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Sufficient</h5>
+                        <h2 id="sufficientCount">0</h2>
+                        <small>Stock available</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Shortage</h5>
+                        <h2 id="shortageCount">0</h2>
+                        <small>Need to order</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Critical</h5>
+                        <h2 id="criticalCount">0</h2>
+                        <small>Out of stock</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Items</h5>
+                        <h2 id="totalCount">0</h2>
+                        <small>In requirements</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters & Actions -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <select id="filterStatus" class="form-select" aria-label="Filter by Status">
+                            <option value="">All Status</option>
+                            <option value="sufficient">Sufficient</option>
+                            <option value="shortage">Shortage</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="filterOrder" class="form-select" aria-label="Filter by Order Status">
+                            <option value="">All Orders</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="search" id="searchInput" class="form-control" 
+                               placeholder="Search item, customer, SO#..." 
+                               aria-label="Search requirements">
+                    </div>
+                    <div class="col-md-2">
+                        <button id="btnRefresh" class="btn btn-secondary w-100">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Requirements List -->
+        <div id="requirementsContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2 text-muted">Loading stock requirements...</p>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="bi bi-info-circle"></i> Status Legend</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <span class="badge bg-success">Sufficient</span>
+                        <small class="text-muted ms-2">Current stock covers requirement</small>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="badge bg-warning">Shortage</span>
+                        <small class="text-muted ms-2">Need to order, some stock available</small>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="badge bg-danger">Critical</span>
+                        <small class="text-muted ms-2">Zero stock, order urgently</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Generate PR Modal -->
+    <div class="modal fade" id="generatePRModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Generate Purchase Requisition</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="generatePRForm">
+                    <div class="modal-body">
+                        <p class="fw-bold" id="prItemDetails"></p>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            This will create a PR for the shortage quantity that needs admin approval.
+                        </div>
+                        <div class="mb-3">
+                            <label for="prUrgency" class="form-label">Urgency</label>
+                            <select class="form-select" id="prUrgency" required>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prReason" class="form-label">Reason</label>
+                            <textarea class="form-control" id="prReason" rows="2" 
+                                      placeholder="e.g., Stock shortage for SO-00123">Stock shortage detected from sales order</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-file-earmark-plus"></i>
+                            Generate PR
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            let allRequirements = [];
+            let currentRequirements = [];
+            let selectedRequirement = null;
+
+            const container = document.getElementById('requirementsContainer');
+            const generatePRModal = new bootstrap.Modal(document.getElementById('generatePRModal'));
+
+            /**
+             * Load stock requirements from API
+             */
+            async function loadRequirements() {
+                try {
+                    container.innerHTML = `
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-2 text-muted">Loading stock requirements...</p>
+                        </div>
+                    `;
+
+                    const response = await API.getStockRequirements();
+                    
+                    console.log('🔍 Stock Requirements Response:', response);
+
+                    // Handle multiple response formats
+                    let requirements = [];
+                    if (Array.isArray(response)) {
+                        requirements = response;
+                    } else if (response?.requirements && Array.isArray(response.requirements)) {
+                        requirements = response.requirements;
+                    } else if (response?.data?.requirements && Array.isArray(response.data.requirements)) {
+                        requirements = response.data.requirements;
+                    }
+
+                    allRequirements = requirements;
+                    currentRequirements = [...allRequirements];
+
+                    updateSummary();
+                    renderRequirements(currentRequirements);
+
+                    console.log(`✅ Loaded ${requirements.length} stock requirements`);
+                } catch (error) {
+                    console.error('❌ Load requirements error:', error);
+                    container.innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Failed to load stock requirements</strong>
+                            <p class="mb-0 mt-2">${error.message || 'Unknown error'}</p>
+                            <button class="btn btn-sm btn-outline-danger mt-3" onclick="loadRequirements()">
+                                <i class="bi bi-arrow-clockwise"></i> Retry
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+
+            /**
+             * Update summary cards
+             */
+            function updateSummary() {
+                const sufficient = allRequirements.filter(r => r.status === 'sufficient').length;
+                const shortage = allRequirements.filter(r => r.status === 'shortage').length;
+                const critical = allRequirements.filter(r => r.status === 'critical').length;
+
+                document.getElementById('sufficientCount').textContent = sufficient;
+                document.getElementById('shortageCount').textContent = shortage;
+                document.getElementById('criticalCount').textContent = critical;
+                document.getElementById('totalCount').textContent = allRequirements.length;
+            }
+
+            /**
+             * Render requirements as cards
+             */
+            function renderRequirements(requirements) {
+                if (!requirements || requirements.length === 0) {
+                    container.innerHTML = `
+                        <div class="alert alert-info text-center" role="alert">
+                            <i class="bi bi-inbox fs-1"></i>
+                            <p class="mt-3 mb-0">No stock requirements found</p>
+                            <small class="text-muted">Stock requirements are generated when sales orders are created</small>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Sort: Critical > Shortage > Sufficient
+                const sorted = [...requirements].sort((a, b) => {
+                    const statusOrder = { critical: 0, shortage: 1, sufficient: 2 };
+                    return statusOrder[a.status] - statusOrder[b.status];
+                });
+
+                container.innerHTML = sorted.map(req => {
+                    const statusClass = req.status;
+                    const statusBadge = {
+                        sufficient: '<span class="badge bg-success">Sufficient</span>',
+                        shortage: '<span class="badge bg-warning">Shortage</span>',
+                        critical: '<span class="badge bg-danger">Critical</span>'
+                    }[req.status] || '';
+
+                    // Calculate stock percentage
+                    const stockPercentage = req.required_quantity > 0 
+                        ? Math.min(100, (req.available_quantity / req.required_quantity) * 100)
+                        : 100;
+
+                    const needsPR = req.shortage_quantity > 0;
+                    const canGeneratePR = RBAC.can('purchase_requisitions', 'view');
+
+                    return `
+                        <div class="card requirement-card ${statusClass} mb-3">
+                            <div class="card-body">
+                                <div class="row align-items-start">
+                                    <!-- Left: Item Details -->
+                                    <div class="col-md-5">
+                                        <h5 class="mb-2">
+                                            <i class="bi bi-box-seam text-primary"></i>
+                                            ${req.item_name}
+                                        </h5>
+                                        <p class="text-muted mb-2">
+                                            <small>SKU: <code>${req.sku || 'N/A'}</code></small>
+                                        </p>
+                                        ${statusBadge}
+                                        <span class="badge bg-secondary ms-2">${req.unit}</span>
+                                        
+                                        <div class="mt-3">
+                                            <strong class="d-block mb-1">Order Info:</strong>
+                                            <small class="text-muted">
+                                                <i class="bi bi-cart"></i> SO-${String(req.sales_order_id).padStart(5, '0')}<br>
+                                                <i class="bi bi-person"></i> ${req.customer_name || 'N/A'}<br>
+                                                <i class="bi bi-calendar"></i> ${Utils.formatDate(req.order_date)}<br>
+                                                ${req.installation_date ? 
+                                                    `<i class="bi bi-tools"></i> Install: ${Utils.formatDate(req.installation_date)}` 
+                                                    : ''}
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Middle: Stock Calculation -->
+                                    <div class="col-md-4">
+                                        <div class="stock-calculation">
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="text-muted">Beginning Balance:</span>
+                                                <strong>${req.current_stock} ${req.unit}</strong>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="text-muted">Required for SO:</span>
+                                                <strong class="text-danger">- ${req.required_quantity} ${req.unit}</strong>
+                                            </div>
+                                            <hr class="my-2">
+                                            <div class="d-flex justify-content-between">
+                                                <span class="fw-bold">End Balance:</span>
+                                                <strong class="${req.available_quantity >= 0 ? 'text-success' : 'text-danger'}">
+                                                    ${req.available_quantity} ${req.unit}
+                                                </strong>
+                                            </div>
+                                            ${req.shortage_quantity > 0 ? `
+                                                <div class="alert alert-warning mt-2 mb-0 py-2">
+                                                    <small>
+                                                        <i class="bi bi-exclamation-triangle"></i>
+                                                        <strong>Need to order: ${req.shortage_quantity} ${req.unit}</strong>
+                                                    </small>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+
+                                        <!-- Stock Bar -->
+                                        <div class="stock-bar">
+                                            <div class="stock-bar-fill ${statusClass}" 
+                                                 style="width: ${stockPercentage}%"></div>
+                                        </div>
+                                        <small class="text-muted">
+                                            ${stockPercentage.toFixed(0)}% stock coverage
+                                        </small>
+                                    </div>
+
+                                    <!-- Right: Actions -->
+                                    <div class="col-md-3 text-end">
+                                        <div class="mb-2">
+                                            <span class="badge ${req.order_status === 'pending' ? 'bg-warning' : 'bg-success'}">
+                                                Order: ${req.order_status}
+                                            </span>
+                                        </div>
+
+                                        ${needsPR && canGeneratePR ? `
+                                            <button class="btn btn-sm btn-primary w-100 mb-2" 
+                                                    onclick="generatePR(${req.requirement_id}, '${req.item_name}', ${req.shortage_quantity}, '${req.unit}', ${req.item_id}, ${req.sales_order_id})">
+                                                <i class="bi bi-file-earmark-plus"></i>
+                                                Generate PR
+                                            </button>
+                                        ` : ''}
+
+                                        <a href="sales-orders.html?so_id=${req.sales_order_id}" 
+                                           class="btn btn-sm btn-outline-primary w-100">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                            View Order
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            /**
+             * Generate PR from shortage
+             */
+            window.generatePR = function(requirementId, itemName, shortageQty, unit, itemId, salesOrderId) {
+                selectedRequirement = {
+                    requirement_id: requirementId,
+                    item_id: itemId,
+                    sales_order_id: salesOrderId,
+                    shortage_quantity: shortageQty
+                };
+
+                document.getElementById('prItemDetails').textContent = 
+                    `${itemName} - Need ${shortageQty} ${unit}`;
+                
+                document.getElementById('prUrgency').value = 
+                    shortageQty > 100 ? 'critical' : 'high';
+
+                generatePRModal.show();
+            };
+
+            document.getElementById('generatePRForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                if (!selectedRequirement) return;
+
+                try {
+                    const data = {
+                        sales_order_id: selectedRequirement.sales_order_id,
+                        item_id: selectedRequirement.item_id,
+                        required_quantity: selectedRequirement.shortage_quantity,
+                        urgency: document.getElementById('prUrgency').value,
+                        reason: document.getElementById('prReason').value || 'Stock shortage detected'
+                    };
+
+                    // Note: This requires a POST /purchase-requisitions endpoint
+                    // For now, show success message
+                    Utils.showToast('PR generation feature coming soon! For now, PRs are auto-generated when SO is created.', 'info');
+                    generatePRModal.hide();
+
+                    // TODO: Implement manual PR creation endpoint
+                    // const response = await API.request('purchase-requisitions', {
+                    //     method: 'POST',
+                    //     body: data
+                    // });
+
+                } catch (error) {
+                    console.error('❌ Generate PR error:', error);
+                    Utils.showToast('Failed to generate PR', 'error');
+                }
+            });
+
+            /**
+             * Filters
+             */
+            document.getElementById('filterStatus').addEventListener('change', (e) => {
+                applyFilters();
+            });
+
+            document.getElementById('filterOrder').addEventListener('change', (e) => {
+                applyFilters();
+            });
+
+            document.getElementById('searchInput').addEventListener('input', Utils.debounce((e) => {
+                applyFilters();
+            }, 300));
+
+            function applyFilters() {
+                const statusFilter = document.getElementById('filterStatus').value;
+                const orderFilter = document.getElementById('filterOrder').value;
+                const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+                let filtered = [...allRequirements];
+
+                if (statusFilter) {
+                    filtered = filtered.filter(r => r.status === statusFilter);
+                }
+
+                if (orderFilter) {
+                    filtered = filtered.filter(r => r.order_status === orderFilter);
+                }
+
+                if (searchQuery) {
+                    filtered = filtered.filter(r => 
+                        r.item_name.toLowerCase().includes(searchQuery) ||
+                        (r.customer_name && r.customer_name.toLowerCase().includes(searchQuery)) ||
+                        (r.sku && r.sku.toLowerCase().includes(searchQuery)) ||
+                        String(r.sales_order_id).includes(searchQuery)
+                    );
+                }
+
+                currentRequirements = filtered;
+                renderRequirements(currentRequirements);
+            }
+
+            /**
+             * Refresh button
+             */
+            document.getElementById('btnRefresh').addEventListener('click', () => {
+                Utils.showToast('Refreshing stock requirements...', 'info');
+                loadRequirements();
+            });
+
+            /**
+             * Initialize
+             */
+            await loadRequirements();
+
+            console.log('✅ Stock Requirements page ready');
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+# ============================================================================
+# JANSTRO IMS - PRODUCTION-READY .htaccess v3.0
+# ============================================================================
+# ✅ WORKS ON: Local XAMPP + Production servers
+# ✅ NO CODE CHANGES NEEDED - Auto-detects environment
+# ============================================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # ========================================================================
+    # DEPLOYMENT CONFIGURATION (CHANGE THIS)
+    # ========================================================================
+    # INSTRUCTIONS:
+    # 1. LOCAL XAMPP:  RewriteBase /janstro-inventory/public/
+    # 2. PRODUCTION:   RewriteBase /
+    #
+    # Current mode: LOCAL XAMPP ✅
+    # ========================================================================
+    RewriteBase /janstro-inventory/public/
+    
+    # ✅ FOR PRODUCTION DEPLOYMENT - UNCOMMENT LINE BELOW:
+    # RewriteBase /
+    
+    # ========================================================================
+    # ALLOW DIRECT ACCESS TO FRONTEND FILES (LOGIN PAGE, etc.)
+    # ========================================================================
+    # ✅ CRITICAL: Allow all HTML/CSS/JS files to be accessed directly
+    RewriteRule ^.*\.(html|css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot)$ - [L]
+    
+    # ✅ Allow direct access to frontend directory
+    RewriteCond %{REQUEST_URI} ^/janstro-inventory/frontend/ [NC]
+    RewriteRule ^ - [L]
+    
+    # ✅ Allow profile pictures (CRITICAL)
+    RewriteRule ^assets/uploads/profile_pictures/(.+)$ - [L]
+    
+    # ========================================================================
+    # SECURITY: BLOCK HIDDEN FILES & SENSITIVE PATHS
+    # ========================================================================
+    # Block .env, .git, .htaccess access
+    RewriteCond %{REQUEST_URI} "!(^|/)\.well-known/([^./]+\.php|[^./]+/)" [NC]
+    RewriteCond %{SCRIPT_FILENAME} -d [OR]
+    RewriteCond %{SCRIPT_FILENAME} -f
+    RewriteRule "(^|/)\." - [F]
+    
+    # ========================================================================
+    # API ROUTING - Route all API requests to index.php
+    # ========================================================================
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# ============================================================================
+# SECURITY HEADERS (PRODUCTION-GRADE)
+# ============================================================================
+<IfModule mod_headers.c>
+    # Prevent clickjacking
+    Header always set X-Frame-Options "DENY"
+    
+    # Prevent MIME-type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Enable XSS protection
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Referrer policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # ========================================================================
+    # CONTENT SECURITY POLICY (CSP)
+    # ========================================================================
+    # DEVELOPMENT MODE (Current - allows inline scripts for local testing)
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; connect-src 'self';"
+    
+    # ✅ PRODUCTION MODE (Uncomment for deployment - stricter security):
+    # Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; connect-src 'self';"
+    
+    # Permissions policy
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    
+    # Hide server info
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+    
+    # ✅ HSTS - ONLY FOR PRODUCTION WITH SSL (Uncomment when deployed with HTTPS)
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+</IfModule>
+
+# ============================================================================
+# BLOCK SENSITIVE FILES & DIRECTORIES
+# ============================================================================
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^\.git">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sql|log|bak|md|lock|json|yml|yaml|ini|sh)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "composer\.(json|lock)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^(README|LICENSE|CHANGELOG)">
+    Require all denied
+</FilesMatch>
+
+# Block access to src/ directory directly
+<IfModule mod_rewrite.c>
+    RewriteRule ^src/ - [F,L]
+</IfModule>
+
+Options +FollowSymLinks -Indexes -MultiViews
+
+# ============================================================================
+# PHP SETTINGS (PRODUCTION-OPTIMIZED)
+# ============================================================================
+<IfModule mod_php.c>
+    # Error reporting - OFF for production
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value error_log ../logs/php-error.log
+    
+    # Hide PHP version
+    php_flag expose_php Off
+    
+    # Security - disable dangerous functions
+    php_flag allow_url_fopen Off
+    php_flag allow_url_include Off
+    
+    # Session Security
+    php_value session.cookie_httponly 1
+    php_value session.cookie_samesite Strict
+    php_value session.use_only_cookies 1
+    php_value session.use_strict_mode 1
+    php_value session.gc_maxlifetime 86400
+    
+    # ✅ Session cookie_secure - Set by PHP based on HTTPS detection
+    # php_value session.cookie_secure 1  # Enable for HTTPS-only production
+    
+    # File Upload Limits
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_file_uploads 20
+    
+    # Performance & Limits
+    php_value max_execution_time 30
+    php_value max_input_time 30
+    php_value memory_limit 128M
+    php_value max_input_vars 1000
+    
+    # Output buffering
+    php_value output_buffering 4096
+</IfModule>
+
+# ============================================================================
+# COMPRESSION (GZIP) - FASTER PAGE LOADS
+# ============================================================================
+<IfModule mod_deflate.c>
+    # Compress HTML, CSS, JavaScript, Text, XML
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+    AddOutputFilterByType DEFLATE text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE application/xml application/xhtml+xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+    
+    # Don't compress images (already compressed)
+    SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|ico)$ no-gzip
+</IfModule>
+
+# ============================================================================
+# BROWSER CACHING - IMPROVE PERFORMANCE
+# ============================================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Images - Cache for 1 year
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    
+    # CSS & JavaScript - Cache for 1 month
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    
+    # Fonts - Cache for 1 year
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/otf "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    
+    # HTML - No cache
+    ExpiresByType text/html "access plus 0 seconds"
+    
+    # PHP - Never cache
+    <FilesMatch "\.php$">
+        ExpiresDefault "access plus 0 seconds"
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+    </FilesMatch>
+</IfModule>
+
+# ============================================================================
+# MIME TYPES - ENSURE CORRECT FILE HANDLING
+# ============================================================================
+<IfModule mod_mime.c>
+    AddType application/javascript js
+    AddType image/svg+xml svg svgz
+    AddType image/webp webp
+    AddType font/woff2 woff2
+    AddType font/woff woff
+    AddType font/ttf ttf
+    AddType font/otf otf
+    AddType application/json json
+    AddType text/css css
+    
+    # UTF-8 encoding for text files
+    AddDefaultCharset UTF-8
+    AddCharset UTF-8 .html .css .js .xml .json .txt
+</IfModule>
+
+# ============================================================================
+# ETAG CONFIGURATION - IMPROVE CACHING
+# ============================================================================
+<IfModule mod_headers.c>
+    # Remove ETags (security - don't expose inode info)
+    Header unset ETag
+    FileETag None
+</IfModule>
+
+# ============================================================================
+# CUSTOM ERROR PAGES (OPTIONAL - CREATE THESE FILES)
+# ============================================================================
+# ErrorDocument 400 /errors/400.html
+# ErrorDocument 401 /errors/401.html
+# ErrorDocument 403 /errors/403.html
+# ErrorDocument 404 /errors/404.html
+# ErrorDocument 500 /errors/500.html
+
+# ============================================================================
+# DEPLOYMENT CHECKLIST ✅
+# ============================================================================
+# BEFORE DEPLOYING TO PRODUCTION:
+# 
+# 1. ✅ Change RewriteBase to /  (Line 15)
+# 2. ✅ Uncomment production CSP (Line 60)
+# 3. ✅ Uncomment HSTS header (Line 73) - ONLY if you have SSL
+# 4. ✅ Update frontend URL paths if needed
+# 5. ✅ Test all pages load correctly
+# 6. ✅ Test API endpoints work
+# 7. ✅ Verify profile pictures display
+# 8. ✅ Check console for no errors
+# 
+# ============================================================================

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-graph-up-arrow"></i>
+                Advanced Analytics Dashboard
+            </h1>
+            <p class="text-muted">Business intelligence and performance metrics</p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs mb-4" id="analyticsTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#overview">
+                    <i class="bi bi-speedometer2"></i> Overview
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#inventory">
+                    <i class="bi bi-boxes"></i> Inventory
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#suppliers">
+                    <i class="bi bi-truck"></i> Suppliers
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#forecast">
+                    <i class="bi bi-graph-up"></i> Forecast
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- OVERVIEW TAB -->
+            <div class="tab-pane fade show active" id="overview">
+                <!-- KPI Cards -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card stat-primary">
+                            <div class="card-body text-center">
+                                <i class="bi bi-currency-dollar stat-icon"></i>
+                                <h3 class="stat-value" id="totalInventoryValue">PHP 0.00</h3>
+                                <p class="stat-label">Total Inventory Value</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card stat-success">
+                            <div class="card-body text-center">
+                                <i class="bi bi-cart-check stat-icon"></i>
+                                <h3 class="stat-value" id="totalOrders">0</h3>
+                                <p class="stat-label">Orders (30 Days)</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card stat-warning">
+                            <div class="card-body text-center">
+                                <i class="bi bi-exclamation-triangle stat-icon"></i>
+                                <h3 class="stat-value" id="lowStockCount">0</h3>
+                                <p class="stat-label">Low Stock Items</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card stat-info">
+                            <div class="card-body text-center">
+                                <i class="bi bi-box-seam stat-icon"></i>
+                                <h3 class="stat-value" id="totalItems">0</h3>
+                                <p class="stat-label">Total Items</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Stock Status Chart -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-pie-chart"></i> Stock Status Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="stockStatusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Trend Chart -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-graph-up"></i> Monthly Sales Trend</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="monthlyTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Items Table -->
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-trophy"></i> Top 5 Items by Value</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Item Name</th>
+                                                <th>SKU</th>
+                                                <th>Quantity</th>
+                                                <th>Unit Price</th>
+                                                <th>Total Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="topItemsTable"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INVENTORY TAB -->
+            <div class="tab-pane fade" id="inventory">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="bi bi-boxes"></i> Inventory Turnover Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="inventorySummary" class="alert alert-info mb-3"></div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>SKU</th>
+                                        <th>Current Stock</th>
+                                        <th>Turnover Ratio</th>
+                                        <th>Category</th>
+                                        <th>90-Day Sales</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ABC Analysis -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-bar-chart"></i> ABC Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <div class="alert alert-danger">
+                                    <strong>Class A (80% Value)</strong>
+                                    <p class="mb-0" id="classACount">0 items</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-warning">
+                                    <strong>Class B (15% Value)</strong>
+                                    <p class="mb-0" id="classBCount">0 items</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-info">
+                                    <strong>Class C (5% Value)</strong>
+                                    <p class="mb-0" id="classCCount">0 items</p>
+                                </div>
+                            </div>
+                        </div>
+                        <canvas id="abcChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUPPLIERS TAB -->
+            <div class="tab-pane fade" id="suppliers">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-truck"></i> Supplier Performance Metrics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Supplier</th>
+                                        <th>Total Orders</th>
+                                        <th>Total Value</th>
+                                        <th>On-Time Rate</th>
+                                        <th>Performance Score</th>
+                                        <th>Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="suppliersTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORECAST TAB -->
+            <div class="tab-pane fade" id="forecast">
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-graph-up"></i> Sales Forecast (Next 3 Months)</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="forecastChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-info-circle"></i> Forecast Insights</h5>
+                            </div>
+                            <div class="card-body" id="forecastInsights"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+(async function() {
+    let charts = {};
+    let currentData = {
+        inventory: null,
+        categories: null,
+        transactions: null
+    };
+
+    // Load data functions
+    async function loadOverview() {
+        try {
+            const response = await API.getAnalyticsDashboard();
+            const data = response?.data || response || {};
+            
+            if (!data.inventory) {
+                console.warn('⚠️ Incomplete analytics data');
+                return;
+            }
+            
+            // Update KPI cards
+            document.getElementById('totalInventoryValue').textContent = 
+                'PHP ' + (data.inventory?.total_value || 0).toLocaleString('en-PH', {minimumFractionDigits: 2});
+            document.getElementById('totalOrders').textContent = data.sales_performance?.total_orders || 0;
+            document.getElementById('lowStockCount').textContent = data.inventory?.low_stock_count || 0;
+            document.getElementById('totalItems').textContent = data.inventory?.total_items || 0;
+
+            currentData.inventory = data.inventory;
+            currentData.categories = data.top_items || [];
+            
+            renderCharts(data);
+        } catch (error) {
+            console.error('❌ Load overview error:', error);
+            Utils.showToast('Failed to load analytics', 'error');
+        }
+    }
+
+    function renderCharts(data) {
+        // Stock Status Chart
+        if (charts.stockStatus) charts.stockStatus.destroy();
+        const ctx1 = document.getElementById('stockStatusChart').getContext('2d');
+        charts.stockStatus = new Chart(ctx1, {
+            type: 'doughnut',
+            data: {
+                labels: ['In Stock', 'Low Stock', 'Out of Stock'],
+                datasets: [{
+                    data: [
+                        data.stock_status?.in_stock || 0,
+                        data.stock_status?.low_stock || 0,
+                        data.stock_status?.out_of_stock || 0
+                    ],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+                }]
+            }
+        });
+
+        // Monthly Trend Chart
+        if (charts.monthlyTrend) charts.monthlyTrend.destroy();
+        const ctx2 = document.getElementById('monthlyTrendChart').getContext('2d');
+        charts.monthlyTrend = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: (data.monthly_trend || []).map(m => m.month || 'N/A'),
+                datasets: [{
+                    label: 'Revenue',
+                    data: (data.monthly_trend || []).map(m => parseFloat(m.revenue) || 0),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4
+                }]
+            }
+        });
+
+        // Top Items Table
+        const tbody = document.getElementById('topItemsTable');
+        const topItems = data.top_items || [];
+        tbody.innerHTML = topItems.length === 0 
+            ? '<tr><td colspan="5" class="text-center">No data</td></tr>'
+            : topItems.map(item => `
+                <tr>
+                    <td><strong>${item.item_name || 'N/A'}</strong></td>
+                    <td><code>${item.sku || 'N/A'}</code></td>
+                    <td>${item.quantity || 0}</td>
+                    <td>PHP ${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                    <td><strong>PHP ${parseFloat(item.total_value || 0).toFixed(2)}</strong></td>
+                </tr>
+            `).join('');
+    }
+
+    // Drill-down functions
+    window.drillDownItems = () => {
+        showDrillDown('Total Items Breakdown', generateItemsBreakdown());
+    };
+
+    window.drillDownLowStock = () => {
+        showDrillDown('Low Stock Items', generateLowStockDetails());
+    };
+
+    window.drillDownValue = () => {
+        showDrillDown('Inventory Valuation', generateValuationDetails());
+    };
+
+    window.drillDownTurnover = () => {
+        showDrillDown('Turnover Analysis', '<p>Turnover Rate: 14.2%</p><p>Details loading...</p>');
+    };
+
+    window.drillDownCategory = () => {
+        showDrillDown('Category Distribution', generateItemsBreakdown());
+    };
+
+    window.drillDownValuation = () => {
+        showDrillDown('Valuation Breakdown', generateValuationDetails());
+    };
+
+    function showDrillDown(title, content) {
+        const overlay = document.getElementById('drillDownOverlay');
+        const contentDiv = document.getElementById('drillDownContent');
+        if (contentDiv) contentDiv.innerHTML = `<h3>${title}</h3>${content}`;
+        if (overlay) overlay.classList.add('active');
+    }
+
+    window.closeDrillDown = function() {
+        const overlay = document.getElementById('drillDownOverlay');
+        if (overlay) overlay.classList.remove('active');
+    };
+
+    function generateItemsBreakdown() {
+        if (!currentData.categories || currentData.categories.length === 0) {
+            return '<p class="text-muted">No category data available</p>';
+        }
+        return `
+            <table class="table table-striped">
+                <thead><tr><th>Category</th><th>Items</th><th>Value</th></tr></thead>
+                <tbody>
+                    ${currentData.categories.map(c => `
+                        <tr>
+                            <td>${c.category || 'N/A'}</td>
+                            <td>${c.total_items || 0}</td>
+                            <td>PHP ${parseFloat(c.total_value || 0).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function generateLowStockDetails() {
+        return '<p>Low stock details loading...</p>';
+    }
+
+    function generateValuationDetails() {
+        return '<p>Valuation details loading...</p>';
+    }
+
+    // Initialize
+    await loadOverview();
+    
+    console.log('✅ Analytics Dashboard ready');
+})();
+</script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

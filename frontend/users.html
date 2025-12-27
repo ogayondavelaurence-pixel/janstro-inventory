@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-people" aria-hidden="true"></i>
+                User Management
+            </h1>
+            <p class="text-muted">Manage system users and access control</p>
+        </header>
+
+        <section class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">
+                    <i class="bi bi-person-badge" aria-hidden="true"></i>
+                    System Users
+                </h2>
+                <button id="btnAddUser" class="btn btn-primary">
+                    <i class="bi bi-plus-circle" aria-hidden="true"></i>
+                    Add User
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" aria-label="Users list">
+                        <thead>
+                            <tr>
+                                <th scope="col">Username</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Role</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Last Login</th>
+                                <th scope="col" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading users...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- User Modal -->
+    <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalLabel">Add User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm" novalidate>
+                        <input type="hidden" id="userId">
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="username" required 
+                                   aria-required="true" aria-describedby="usernameHelp">
+                            <div id="usernameHelp" class="form-text">Unique username for login</div>
+                            <div class="invalid-feedback">Please enter a username</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" required aria-required="true">
+                            <div class="invalid-feedback">Please enter full name</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" required aria-required="true">
+                            <div class="invalid-feedback">Please enter a valid email</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="contactNo" class="form-label">Contact Number</label>
+                            <input type="tel" class="form-control" id="contactNo" 
+                                   placeholder="+63-XXX-XXX-XXXX">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="roleId" class="form-label">Role <span class="text-danger">*</span></label>
+                            <select class="form-select" id="roleId" required aria-required="true">
+                                <option value="">Select role...</option>
+                                <option value="1">Staff</option>
+                                <option value="2">Admin</option>
+                                <option value="3">Superadmin</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a role</div>
+                        </div>
+
+                        <div class="mb-3" id="passwordSection">
+                            <label for="password" class="form-label">
+                                Password <span class="text-danger" id="passwordRequired">*</span>
+                            </label>
+                            <input type="password" class="form-control" id="password" 
+                                   aria-describedby="passwordHelp">
+                            <div id="passwordHelp" class="form-text">Minimum 6 characters (leave blank to keep current)</div>
+                            <div class="invalid-feedback">Password must be at least 6 characters</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveUser">
+                        <i class="bi bi-check-circle" aria-hidden="true"></i>
+                        Save User
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            const form = document.getElementById('userForm');
+            let editingUserId = null;
+
+            // Check superadmin access
+            if (RBAC.getRole() !== 'superadmin') {
+                Utils.showAlert('Access denied. Superadmin only.', 'danger');
+                setTimeout(() => window.location.href = 'dashboard.html', 2000);
+                return;
+            }
+
+            async function loadUsers() {
+                try {
+                    const tbody = document.getElementById('usersTable');
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+
+                    const response = await API.getUsers();
+                    
+                    if (!response.success || !response.data || response.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">No users found</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = response.data.map(user => {
+                        const statusClass = user.status === 'active' ? 'success' : 'secondary';
+                        const roleColors = {
+                            'superadmin': 'danger',
+                            'admin': 'primary',
+                            'staff': 'info'
+                        };
+                        const roleBadge = roleColors[user.role_name] || 'secondary';
+                        
+                        return `
+                            <tr>
+                                <td><strong>${user.username}</strong></td>
+                                <td>${user.name || '-'}</td>
+                                <td>${user.email || '-'}</td>
+                                <td><span class="badge bg-${roleBadge}">${user.role_name}</span></td>
+                                <td><span class="badge bg-${statusClass}">${user.status}</span></td>
+                                <td><small>${user.last_login ? Utils.formatDateTime(user.last_login) : 'Never'}</small></td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="editUser(${user.user_id})"
+                                            aria-label="Edit ${user.username}">
+                                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteUser(${user.user_id}, '${user.username}')"
+                                            aria-label="Delete ${user.username}"
+                                            ${user.user_id === 1 ? 'disabled title="Cannot delete default admin"' : ''}>
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } catch (error) {
+                    console.error('Load users error:', error);
+                    document.getElementById('usersTable').innerHTML = 
+                        '<tr><td colspan="7" class="text-center py-3 text-danger">Failed to load users</td></tr>';
+                }
+            }
+
+            window.editUser = async function(userId) {
+                try {
+                    const response = await API.getUsers();
+                    const user = response.data.find(u => u.user_id === userId);
+                    
+                    if (!user) {
+                        Utils.showAlert('User not found', 'danger');
+                        return;
+                    }
+
+                    editingUserId = userId;
+                    document.getElementById('userModalLabel').textContent = 'Edit User';
+                    document.getElementById('userId').value = userId;
+                    document.getElementById('username').value = user.username;
+                    document.getElementById('name').value = user.name || '';
+                    document.getElementById('email').value = user.email || '';
+                    document.getElementById('contactNo').value = user.contact_no || '';
+                    document.getElementById('roleId').value = user.role_id;
+                    document.getElementById('status').value = user.status;
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').required = false;
+                    document.getElementById('passwordRequired').style.display = 'none';
+                    document.getElementById('passwordHelp').textContent = 'Leave blank to keep current password';
+
+                    form.classList.remove('was-validated');
+                    modal.show();
+                } catch (error) {
+                    Utils.showAlert('Failed to load user: ' + error.message, 'danger');
+                }
+            };
+
+            window.deleteUser = async function(userId, username) {
+                if (!confirm(`Delete user "${username}"? This action cannot be undone.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await API.deleteUser(userId);
+                    
+                    if (response.success) {
+                        Utils.showAlert('User deleted successfully', 'success');
+                        await loadUsers();
+                    } else {
+                        Utils.showAlert(response.message || 'Failed to delete user', 'danger');
+                    }
+                } catch (error) {
+                    Utils.showAlert('Error: ' + error.message, 'danger');
+                }
+            };
+
+            document.getElementById('btnAddUser').addEventListener('click', () => {
+                editingUserId = null;
+                document.getElementById('userModalLabel').textContent = 'Add User';
+                form.reset();
+                document.getElementById('userId').value = '';
+                document.getElementById('password').required = true;
+                document.getElementById('passwordRequired').style.display = 'inline';
+                document.getElementById('passwordHelp').textContent = 'Minimum 6 characters';
+                form.classList.remove('was-validated');
+                modal.show();
+            });
+
+            document.getElementById('btnSaveUser').addEventListener('click', async () => {
+                form.classList.add('was-validated');
+                
+                if (!form.checkValidity()) {
+                    return;
+                }
+
+                const password = document.getElementById('password').value;
+                if (password && password.length < 6) {
+                    document.getElementById('password').setCustomValidity('Password must be at least 6 characters');
+                    return;
+                }
+                document.getElementById('password').setCustomValidity('');
+
+                const userData = {
+                    username: document.getElementById('username').value.trim(),
+                    name: document.getElementById('name').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    contact_no: document.getElementById('contactNo').value.trim(),
+                    role_id: parseInt(document.getElementById('roleId').value),
+                    status: document.getElementById('status').value
+                };
+
+                if (password) {
+                    userData.password = password;
+                }
+
+                try {
+                    let response;
+                    if (editingUserId) {
+                        response = await API.updateUser(editingUserId, userData);
+                    } else {
+                        response = await API.createUser(userData);
+                    }
+
+                    if (response.success) {
+                        Utils.showAlert(
+                            editingUserId ? 'User updated successfully' : 'User created successfully',
+                            'success'
+                        );
+                        modal.hide();
+                        await loadUsers();
+                    } else {
+                        Utils.showAlert(response.message || 'Failed to save user', 'danger');
+                    }
+                } catch (error) {
+                    Utils.showAlert('Error: ' + error.message, 'danger');
+                }
+            });
+
+            await loadUsers();
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Orders - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-cart-check" aria-hidden="true"></i>
+                Sales Orders (VA01)
+            </h1>
+            <p class="text-muted">Create and manage customer sales orders</p>
+        </header>
+
+        <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+            <button id="btnCreateSO" class="btn btn-primary" aria-label="Create new sales order">
+                <i class="bi bi-plus-circle" aria-hidden="true"></i>
+                Create Sales Order
+            </button>
+            <div class="d-flex gap-2 flex-wrap">
+                <select id="filterStatus" class="form-select" style="width: auto;" aria-label="Filter by status">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <button id="btnRefresh" class="btn btn-secondary" aria-label="Refresh sales orders">
+                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+
+        <section class="card">
+            <div class="card-header">
+                <h2 class="h5 mb-0">
+                    <i class="bi bi-list-ul" aria-hidden="true"></i>
+                    Sales Order List
+                </h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" aria-label="Sales orders table">
+                        <thead>
+                            <tr>
+                                <th scope="col">SO #</th>
+                                <th scope="col">Date</th>
+                                <th scope="col">Customer</th>
+                                <th scope="col">Customer PO</th>
+                                <th scope="col">Contact</th>
+                                <th scope="col">Total Amount</th>
+                                <th scope="col">Installation Date</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="soTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading sales orders...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Create SO Modal -->
+    <div class="modal fade" id="createSOModal" tabindex="-1" aria-labelledby="createSOModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title h5" id="createSOModalLabel">Create Sales Order</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="soForm">
+                    <div class="modal-body">
+                        <h4 class="h6 mb-3">Customer Information</h4>
+                        
+                        <!-- ✅ NEW: Customer Dropdown -->
+                        <div class="mb-3">
+                            <label for="customerId" class="form-label">
+                                Customer <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="customerId" required>
+                                <option value="">-- Select Customer --</option>
+                            </select>
+                            <small class="text-muted">
+                                Select from customers master data
+                            </small>
+                        </div>
+
+                        <!-- ✅ NEW: Customer Reference Order Number -->
+                        <div class="mb-3">
+                            <label for="customerOrderNumber" class="form-label">
+                                Customer Reference PO Number
+                            </label>
+                            <input type="text" class="form-control" id="customerOrderNumber" 
+                                   placeholder="e.g., ABC-CORP-2024-001">
+                            <small class="text-muted">
+                                Customer's purchase order number (optional)
+                            </small>
+                        </div>
+
+                        <!-- ✅ Auto-filled customer details (read-only) -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="displayContact" class="form-label">Contact Number</label>
+                                <input type="text" class="form-control" id="displayContact" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="displayEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="displayEmail" readonly>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="deliveryAddress" class="form-label">
+                                Installation Address <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="deliveryAddress" rows="2" required></textarea>
+                        </div>
+
+                        <hr>
+                        <h4 class="h6 mb-3">Order Details</h4>
+
+                        <!-- ✅ Materials dropdown (unchanged) -->
+                        <div class="mb-3">
+                            <label for="itemId" class="form-label">
+                                Material <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="itemId" required>
+                                <option value="">Loading materials...</option>
+                            </select>
+                            <small class="text-muted">Available stock: <span id="availableStock">-</span></small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="quantity" class="form-label">
+                                    Quantity <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="quantity" min="1" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="installationDate" class="form-label">Installation Date</label>
+                                <input type="date" class="form-control" id="installationDate">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="totalAmount" class="form-label">Total Amount (PHP )</label>
+                            <input type="text" class="form-control" id="totalAmount" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="soNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="soNotes" rows="2"></textarea>
+                        </div>
+
+                        <div id="stockWarning" class="alert alert-warning d-none">
+                            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                            <strong>Insufficient Stock!</strong> Current stock cannot fulfill this order.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmitSO">Create Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            let currentSOs = [];
+            let items = [];
+            let customers = [];
+            let selectedItem = null;
+            let selectedCustomer = null;
+
+            const tbody = document.getElementById('soTableBody');
+            const createSOModal = new bootstrap.Modal(document.getElementById('createSOModal'));
+            const soForm = document.getElementById('soForm');
+
+            // ============================================================================
+            // LOAD SALES ORDERS - ✅ FIXED: Use API client
+            // ============================================================================
+            async function loadSalesOrders() {
+                try {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
+                    
+                    // ✅ FIXED: Use API client instead of fetch
+                    const response = await API.getSalesOrders();
+                    
+                    let sos = [];
+                    if (Array.isArray(response)) {
+                        sos = response;
+                    } else if (response?.data && Array.isArray(response.data)) {
+                        sos = response.data;
+                    } else if (response?.success && Array.isArray(response.data)) {
+                        sos = response.data;
+                    }
+                    
+                    currentSOs = sos;
+                    renderTable(currentSOs);
+                } catch (error) {
+                    console.error('❌ Load SOs error:', error);
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load sales orders</td></tr>';
+                }
+            }
+
+            // ============================================================================
+            // ✅ FIXED: LOAD CUSTOMERS - Use API client
+            // ============================================================================
+            async function loadCustomers() {
+                try {
+                    // ✅ FIXED: Use API client
+                    const response = await API.getCustomers();
+                    
+                    let customerList = [];
+                    if (Array.isArray(response)) {
+                        customerList = response;
+                    } else if (response?.data && Array.isArray(response.data)) {
+                        customerList = response.data;
+                    }
+
+                    customers = customerList;
+                    populateCustomerSelect();
+                    console.log('✅ Loaded customers:', customers.length);
+                } catch (error) {
+                    console.error('❌ Load customers error:', error);
+                    Utils.showToast('Failed to load customers', 'error');
+                }
+            }
+
+            // ============================================================================
+            // POPULATE CUSTOMER DROPDOWN
+            // ============================================================================
+            function populateCustomerSelect() {
+                const select = document.getElementById('customerId');
+                select.innerHTML = '<option value="">-- Select Customer --</option>';
+                
+                customers.forEach(c => {
+                    const typeLabel = c.customer_type ? `[${c.customer_type.toUpperCase()}]` : '';
+                    select.innerHTML += `<option value="${c.customer_id}" 
+                        data-name="${c.customer_name}"
+                        data-contact="${c.contact_number || ''}"
+                        data-email="${c.email || ''}"
+                        data-address="${c.address || ''}"
+                    >${c.customer_name} ${typeLabel}</option>`;
+                });
+            }
+
+            // ============================================================================
+            // ✅ FIXED: LOAD MATERIALS - Use API client
+            // ============================================================================
+            async function loadItems() {
+    try {
+        const response = await API.getInventory();
+        
+        // ✅ FIX: Handle array response (same pattern as customers)
+        let itemList = [];
+        if (Array.isArray(response)) {
+            itemList = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+            itemList = response.data;
+        }
+        
+        items = itemList.filter(i => i.status === 'active');
+        populateItemSelect();
+        console.log('✅ Loaded materials:', items.length);
+    } catch (error) {
+        console.error('❌ Load items error:', error);
+    }
+}
+
+            function populateItemSelect() {
+                const select = document.getElementById('itemId');
+                select.innerHTML = '<option value="">Select material</option>';
+                items.forEach(i => {
+                    select.innerHTML += `<option value="${i.item_id}" 
+                        data-price="${i.unit_price}" 
+                        data-stock="${i.quantity}"
+                    >${i.item_name} (Stock: ${i.quantity})</option>`;
+                });
+            }
+
+            // ============================================================================
+            // RENDER TABLE
+            // ============================================================================
+            function renderTable(sos) {
+                if (!sos || sos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">No sales orders found</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = sos.map(so => {
+                    const statusBadge = {
+                        pending: 'bg-warning',
+                        scheduled: 'bg-info',
+                        completed: 'bg-success',
+                        cancelled: 'bg-secondary'
+                    }[so.status] || 'bg-secondary';
+
+                    return `
+                        <tr>
+                            <td><strong>SO-${String(so.sales_order_id).padStart(5, '0')}</strong></td>
+                            <td>${Utils.formatDate(so.order_date)}</td>
+                            <td>${so.customer_name}</td>
+                            <td>${so.customer_order_number || '<span class="text-muted">N/A</span>'}</td>
+                            <td>${so.contact_number || 'N/A'}</td>
+                            <td>PHP ${parseFloat(so.total_amount).toFixed(2)}</td>
+                            <td>${so.installation_date ? Utils.formatDate(so.installation_date) : 'N/A'}</td>
+                            <td><span class="badge ${statusBadge}">${so.status.toUpperCase()}</span></td>
+                            <td>
+                                ${so.status === 'pending' ? '<span class="text-muted small">Ready for invoice</span>' : ''}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // ============================================================================
+            // CUSTOMER SELECTION HANDLER
+            // ============================================================================
+            document.getElementById('customerId').addEventListener('change', (e) => {
+                const option = e.target.selectedOptions[0];
+                if (option && option.value) {
+                    selectedCustomer = customers.find(c => c.customer_id == option.value);
+                    
+                    // Auto-fill customer details
+                    document.getElementById('displayContact').value = selectedCustomer.contact_number || 'N/A';
+                    document.getElementById('displayEmail').value = selectedCustomer.email || 'N/A';
+                    document.getElementById('deliveryAddress').value = selectedCustomer.address || '';
+                    
+                    console.log('✅ Selected customer:', selectedCustomer.customer_name);
+                } else {
+                    selectedCustomer = null;
+                    document.getElementById('displayContact').value = '';
+                    document.getElementById('displayEmail').value = '';
+                    document.getElementById('deliveryAddress').value = '';
+                }
+            });
+
+            // ============================================================================
+            // MATERIAL SELECTION HANDLER
+            // ============================================================================
+            document.getElementById('itemId').addEventListener('change', (e) => {
+                const option = e.target.selectedOptions[0];
+                if (option && option.value) {
+                    selectedItem = items.find(i => i.item_id == option.value);
+                    document.getElementById('availableStock').textContent = selectedItem.quantity;
+                    calculateTotal();
+                    checkStock();
+                }
+            });
+
+            document.getElementById('quantity').addEventListener('input', () => {
+                calculateTotal();
+                checkStock();
+            });
+
+            function calculateTotal() {
+                if (!selectedItem) return;
+                const qty = parseInt(document.getElementById('quantity').value) || 0;
+                document.getElementById('totalAmount').value = 'PHP ' + (qty * selectedItem.unit_price).toFixed(2);
+            }
+
+            function checkStock() {
+                if (!selectedItem) return;
+                const qty = parseInt(document.getElementById('quantity').value) || 0;
+                const warning = document.getElementById('stockWarning');
+                const submitBtn = document.getElementById('btnSubmitSO');
+                
+                if (qty > selectedItem.quantity) {
+                    warning.classList.remove('d-none');
+                    submitBtn.disabled = true;
+                } else {
+                    warning.classList.add('d-none');
+                    submitBtn.disabled = false;
+                }
+            }
+
+            // ============================================================================
+            // OPEN CREATE MODAL
+            // ============================================================================
+            document.getElementById('btnCreateSO').addEventListener('click', () => {
+                if (!RBAC.can('sales_orders', 'create')) {
+                    Utils.showToast('You do not have permission to create sales orders', 'error');
+                    return;
+                }
+                soForm.reset();
+                document.getElementById('totalAmount').value = 'PHP 0.00';
+                document.getElementById('availableStock').textContent = '-';
+                document.getElementById('displayContact').value = '';
+                document.getElementById('displayEmail').value = '';
+                document.getElementById('stockWarning').classList.add('d-none');
+                selectedCustomer = null;
+                createSOModal.show();
+            });
+
+            // ============================================================================
+            // ✅ FIXED: FORM SUBMISSION - Use API client
+            // ============================================================================
+            soForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                if (!selectedCustomer) {
+                    Utils.showToast('Please select a customer', 'error');
+                    return;
+                }
+
+                const data = {
+                    customer_id: selectedCustomer.customer_id,
+                    customer_order_number: document.getElementById('customerOrderNumber').value || null,
+                    customer_name: selectedCustomer.customer_name,
+                    contact_number: selectedCustomer.contact_number || null,
+                    email: selectedCustomer.email || null,
+                    delivery_address: document.getElementById('deliveryAddress').value,
+                    item_id: document.getElementById('itemId').value,
+                    quantity: parseInt(document.getElementById('quantity').value),
+                    installation_date: document.getElementById('installationDate').value || null,
+                    notes: document.getElementById('soNotes').value || null,
+                    created_by: API.getCurrentUserData().user_id
+                };
+
+                console.log('📤 Submitting SO:', data);
+
+                try {
+                    // ✅ FIXED: Use API client
+                    const response = await API.createSalesOrder(data);
+                    
+                    if (response.success) {
+                        Utils.showToast('Sales order created successfully', 'success');
+                        createSOModal.hide();
+                        loadSalesOrders();
+                    } else {
+                        Utils.showToast(response.message || 'Failed to create sales order', 'error');
+                    }
+                } catch (error) {
+                    console.error('❌ Create SO error:', error);
+                    Utils.showToast('Error creating sales order', 'error');
+                }
+            });
+
+            // ============================================================================
+            // FILTER AND REFRESH
+            // ============================================================================
+            document.getElementById('filterStatus').addEventListener('change', (e) => {
+                const status = e.target.value;
+                const filtered = status ? currentSOs.filter(so => so.status === status) : currentSOs;
+                renderTable(filtered);
+            });
+
+            document.getElementById('btnRefresh').addEventListener('click', loadSalesOrders);
+
+            // ============================================================================
+            // INITIAL LOAD
+            // ============================================================================
+            await loadCustomers();
+            await loadItems();
+            await loadSalesOrders();
+            
+            console.log('✅ Sales Orders page ready');
+            console.log('📦 Customers loaded:', customers.length);
+            console.log('📦 Materials loaded:', items.length);
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>
