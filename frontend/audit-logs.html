@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Logs - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                Audit Logs
+            </h1>
+            <p class="text-muted">System activity and security audit trail</p>
+        </header>
+
+        <section class="card">
+            <div class="card-header">
+                <h2 class="h5 mb-0">
+                    <i class="bi bi-list-check" aria-hidden="true"></i>
+                    Activity Logs
+                </h2>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-3">
+                        <label for="filterModule" class="form-label">Module</label>
+                        <select class="form-select" id="filterModule" aria-label="Filter by module">
+                            <option value="">All Modules</option>
+                            <option value="auth">Authentication</option>
+                            <option value="inventory">Inventory</option>
+                            <option value="purchase_orders">Purchase Orders</option>
+                            <option value="sales_orders">Sales Orders</option>
+                            <option value="invoices">Invoices</option>
+                            <option value="users">Users</option>
+                            <option value="suppliers">Suppliers</option>
+                            <option value="customers">Customers</option>
+                            <option value="profile">Profile</option>
+                            <option value="security">Security</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="filterAction" class="form-label">Action Type</label>
+                        <select class="form-select" id="filterAction" aria-label="Filter by action type">
+                            <option value="">All Actions</option>
+                            <option value="create">Create</option>
+                            <option value="update">Update</option>
+                            <option value="delete">Delete</option>
+                            <option value="login">Login</option>
+                            <option value="login_success">Login Success</option>
+                            <option value="logout">Logout</option>
+                            <option value="approve">Approve</option>
+                            <option value="cancel">Cancel</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="filterUser" class="form-label">User</label>
+                        <input type="text" class="form-control" id="filterUser" 
+                               placeholder="Search by username..." aria-label="Filter by user">
+                    </div>
+                    <div class="col-12 col-md-2 d-flex align-items-end">
+                        <button id="btnFilter" class="btn btn-primary w-100">
+                            <i class="bi bi-funnel" aria-hidden="true"></i>
+                            Filter
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover" aria-label="Audit logs table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Timestamp</th>
+                                <th scope="col">User</th>
+                                <th scope="col">Module</th>
+                                <th scope="col">Action</th>
+                                <th scope="col">Description</th>
+                                <th scope="col">IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTable">
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading logs...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav aria-label="Audit logs pagination">
+                    <ul class="pagination justify-content-center" id="pagination">
+                        <li class="page-item disabled">
+                            <span class="page-link">No data</span>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            let currentPage = 1;
+            const perPage = 50;
+
+            // Check superadmin access
+            if (RBAC.getRole() !== 'superadmin') {
+                Utils.showAlert('Access denied. Superadmin only.', 'danger');
+                setTimeout(() => window.location.href = 'dashboard.html', 2000);
+                return;
+            }
+
+            async function loadLogs(page = 1) {
+                try {
+                    const tbody = document.getElementById('logsTable');
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+
+                    const filters = {
+                        module: document.getElementById('filterModule').value,
+                        action_type: document.getElementById('filterAction').value,
+                        user_search: document.getElementById('filterUser').value.trim(),
+                        page: page,
+                        per_page: perPage
+                    };
+
+                    const queryString = new URLSearchParams(filters).toString();
+                    const response = await fetch(`${API.baseURL}/audit-logs?${queryString}`, {
+                        headers: {
+                            'Authorization': `Bearer ${API.getToken()}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (!result.success || !result.data) {
+                        throw new Error(result.message || 'Failed to load logs');
+                    }
+
+                    const logs = result.data.data || [];
+                    const pagination = result.data.pagination || {};
+
+                    if (logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">No audit logs found</td></tr>';
+                        document.getElementById('pagination').innerHTML = '<li class="page-item disabled"><span class="page-link">No data</span></li>';
+                        return;
+                    }
+
+                    tbody.innerHTML = logs.map(log => {
+                        const actionColors = {
+                            'create': 'success',
+                            'update': 'primary',
+                            'delete': 'danger',
+                            'login': 'info',
+                            'login_success': 'info',
+                            'logout': 'secondary',
+                            'approve': 'success',
+                            'cancel': 'warning',
+                            'password_change': 'warning'
+                        };
+                        const actionBadge = actionColors[log.action_type] || 'secondary';
+                        
+                        return `
+                            <tr>
+                                <td><small>${Utils.formatDateTime(log.created_at)}</small></td>
+                                <td><strong>${log.username || 'System'}</strong></td>
+                                <td><span class="badge bg-light text-dark">${log.module || '-'}</span></td>
+                                <td><span class="badge bg-${actionBadge}">${log.action_type || '-'}</span></td>
+                                <td>${log.action_description || '-'}</td>
+                                <td><code>${log.ip_address || '-'}</code></td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    if (pagination.total_pages > 0) {
+                        renderPagination(pagination.page, pagination.total_pages);
+                    } else {
+                        document.getElementById('pagination').innerHTML = '<li class="page-item disabled"><span class="page-link">Page 1 of 1</span></li>';
+                    }
+
+                } catch (error) {
+                    console.error('Load logs error:', error);
+                    document.getElementById('logsTable').innerHTML = 
+                        '<tr><td colspan="6" class="text-center py-3 text-danger">Failed to load audit logs: ' + error.message + '</td></tr>';
+                }
+            }
+
+            function renderPagination(currentPage, totalPages) {
+                const pagination = document.getElementById('pagination');
+
+                if (totalPages <= 1) {
+                    pagination.innerHTML = '<li class="page-item disabled"><span class="page-link">Page 1 of 1</span></li>';
+                    return;
+                }
+
+                let html = '';
+
+                // Previous button
+                html += `
+                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;" 
+                           aria-label="Previous page">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                `;
+
+                // Page numbers (show max 7 pages)
+                let startPage = Math.max(1, currentPage - 3);
+                let endPage = Math.min(totalPages, currentPage + 3);
+
+                // Adjust if at boundaries
+                if (currentPage <= 4) {
+                    endPage = Math.min(7, totalPages);
+                }
+                if (currentPage > totalPages - 4) {
+                    startPage = Math.max(1, totalPages - 6);
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    html += `
+                        <li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="changePage(${i}); return false;">
+                                ${i}
+                            </a>
+                        </li>
+                    `;
+                }
+
+                // Next button
+                html += `
+                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;"
+                           aria-label="Next page">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                `;
+
+                pagination.innerHTML = html;
+            }
+
+            window.changePage = function(page) {
+                currentPage = page;
+                loadLogs(page);
+            };
+
+            document.getElementById('btnFilter').addEventListener('click', () => {
+                currentPage = 1;
+                loadLogs(1);
+            });
+
+            document.getElementById('filterUser').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    currentPage = 1;
+                    loadLogs(1);
+                }
+            });
+
+            document.getElementById('filterModule').addEventListener('change', () => {
+                currentPage = 1;
+                loadLogs(1);
+            });
+
+            document.getElementById('filterAction').addEventListener('change', () => {
+                currentPage = 1;
+                loadLogs(1);
+            });
+
+            await loadLogs();
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

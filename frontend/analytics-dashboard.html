@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1><i class="bi bi-graph-up-arrow"></i> Advanced Analytics Dashboard</h1>
+            <p class="text-muted">Business intelligence and performance metrics</p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs mb-4" id="analyticsTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview">
+                    <i class="bi bi-speedometer2"></i> Overview
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory">
+                    <i class="bi bi-boxes"></i> Inventory
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="suppliers-tab" data-bs-toggle="tab" data-bs-target="#suppliers">
+                    <i class="bi bi-truck"></i> Suppliers
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="forecast-tab" data-bs-toggle="tab" data-bs-target="#forecast">
+                    <i class="bi bi-graph-up"></i> Forecast
+                </button>
+            </li>
+            <li class="nav-item">
+    <button class="nav-link" id="pr-performance-tab" data-bs-toggle="tab" data-bs-target="#pr-performance">
+        <i class="bi bi-clock-history"></i> PR Performance
+    </button>
+</li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- OVERVIEW TAB -->
+            <div class="tab-pane fade show active" id="overview">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card stat-primary">
+                            <div class="card-body text-center">
+                                <i class="bi bi-currency-dollar stat-icon"></i>
+                                <h3 class="stat-value" id="totalInventoryValue">PHP 0.00</h3>
+                                <p class="stat-label">Total Inventory Value</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card stat-success">
+                            <div class="card-body text-center">
+                                <i class="bi bi-cart-check stat-icon"></i>
+                                <h3 class="stat-value" id="totalOrders">0</h3>
+                                <p class="stat-label">Orders (30 Days)</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card stat-warning">
+                            <div class="card-body text-center">
+                                <i class="bi bi-exclamation-triangle stat-icon"></i>
+                                <h3 class="stat-value" id="lowStockCount">0</h3>
+                                <p class="stat-label">Low Stock Items</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card stat-info">
+                            <div class="card-body text-center">
+                                <i class="bi bi-box-seam stat-icon"></i>
+                                <h3 class="stat-value" id="totalItems">0</h3>
+                                <p class="stat-label">Total Items</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-pie-chart"></i> Stock Status Distribution</h5>
+                            </div>
+                            <div class="card-body" id="stockStatusContainer">
+                                <canvas id="stockStatusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-graph-up"></i> Monthly Sales Trend</h5>
+                            </div>
+                            <div class="card-body" id="monthlyTrendContainer">
+                                <canvas id="monthlyTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-trophy"></i> Top 5 Items by Value</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Item Name</th>
+                                                <th>SKU</th>
+                                                <th>Quantity</th>
+                                                <th>Unit Price</th>
+                                                <th>Total Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="topItemsTable"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INVENTORY TAB -->
+            <div class="tab-pane fade" id="inventory">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="bi bi-boxes"></i> Inventory Turnover Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="inventorySummary" class="alert alert-info mb-3"></div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>SKU</th>
+                                        <th>Current Stock</th>
+                                        <th>Turnover Ratio</th>
+                                        <th>Category</th>
+                                        <th>90-Day Sales</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-bar-chart"></i> ABC Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <div class="alert alert-danger">
+                                    <strong>Class A (80% Value)</strong>
+                                    <p class="mb-0" id="classACount">0 items</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-warning">
+                                    <strong>Class B (15% Value)</strong>
+                                    <p class="mb-0" id="classBCount">0 items</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-info">
+                                    <strong>Class C (5% Value)</strong>
+                                    <p class="mb-0" id="classCCount">0 items</p>
+                                </div>
+                            </div>
+                        </div>
+                        <canvas id="abcChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUPPLIERS TAB -->
+            <div class="tab-pane fade" id="suppliers">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-truck"></i> Supplier Performance Metrics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Supplier</th>
+                                        <th>Total Orders</th>
+                                        <th>Total Value</th>
+                                        <th>On-Time Rate</th>
+                                        <th>Performance Score</th>
+                                        <th>Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="suppliersTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORECAST TAB -->
+            <div class="tab-pane fade" id="forecast">
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-graph-up"></i> Sales Forecast (Next 3 Months)</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="forecastChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-info-circle"></i> Forecast Insights</h5>
+                            </div>
+                            <div class="card-body" id="forecastInsights"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- PR PERFORMANCE TAB -->
+<div class="tab-pane fade" id="pr-performance">
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card stat-primary">
+                <div class="card-body text-center">
+                    <i class="bi bi-clock stat-icon"></i>
+                    <h3 class="stat-value" id="avgCycleTime">0h</h3>
+                    <p class="stat-label">Avg Total Cycle Time</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card stat-info">
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle stat-icon"></i>
+                    <h3 class="stat-value" id="approvalTime">0h</h3>
+                    <p class="stat-label">Avg Approval Time</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card stat-warning">
+                <div class="card-body text-center">
+                    <i class="bi bi-arrow-repeat stat-icon"></i>
+                    <h3 class="stat-value" id="conversionTime">0h</h3>
+                    <p class="stat-label">Avg Conversion Time</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card stat-success">
+                <div class="card-body text-center">
+                    <i class="bi bi-truck stat-icon"></i>
+                    <h3 class="stat-value" id="fulfillmentTime">0d</h3>
+                    <p class="stat-label">Avg Fulfillment Time</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottlenecks Alert -->
+    <div id="bottlenecksAlert" class="alert alert-warning d-none mb-4">
+        <h5><i class="bi bi-exclamation-triangle"></i> Bottlenecks Detected</h5>
+        <ul id="bottlenecksList" class="mb-0"></ul>
+    </div>
+
+    <div class="row g-4">
+        <!-- Cycle Time Trend -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-graph-up"></i> PR Cycle Time Trend (Last 6 Months)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="prCycleTimeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Urgency Breakdown -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-pie-chart"></i> By Urgency</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="urgencyBreakdownChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Performers -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-trophy"></i> Top 5 Fastest PRs</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>PR Number</th>
+                                    <th>Item</th>
+                                    <th>Urgency</th>
+                                    <th>Cycle Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topPerformersTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Performers -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-circle"></i> Top 5 Slowest PRs</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>PR Number</th>
+                                    <th>Item</th>
+                                    <th>Urgency</th>
+                                    <th>Cycle Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bottomPerformersTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PR Status Distribution -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-bar-chart"></i> PR Status Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            <div class="text-center p-3 border rounded">
+                                <h4 id="totalPRs" class="mb-0">0</h4>
+                                <small class="text-muted">Total PRs</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center p-3 border rounded bg-warning bg-opacity-10">
+                                <h4 id="pendingPRs" class="mb-0">0</h4>
+                                <small class="text-muted">Pending</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center p-3 border rounded bg-info bg-opacity-10">
+                                <h4 id="approvedPRs" class="mb-0">0</h4>
+                                <small class="text-muted">Approved</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center p-3 border rounded bg-primary bg-opacity-10">
+                                <h4 id="convertedPRs" class="mb-0">0</h4>
+                                <small class="text-muted">Converted</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center p-3 border rounded bg-success bg-opacity-10">
+                                <h4 id="fulfilledPRs" class="mb-0">0</h4>
+                                <small class="text-muted">Fulfilled</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center p-3 border rounded bg-danger bg-opacity-10">
+                                <h4 id="rejectedPRs" class="mb-0">0</h4>
+                                <small class="text-muted">Rejected</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+ <script>
+(async function() {
+    let charts = {};
+    let currentData = {};
+
+    // ========================================================================
+    // OVERVIEW TAB - Load Dashboard KPIs
+    // ========================================================================
+    async function loadOverview() {
+        try {
+            const response = await API.request('analytics/dashboard');
+            const data = response?.data || response || {};
+            
+            // Store for modal use
+            currentData = data;
+            
+            // Update KPI cards
+            document.getElementById('totalInventoryValue').textContent = 
+                'PHP ' + (data.inventory?.total_value || 0).toLocaleString('en-PH', {minimumFractionDigits: 2});
+            document.getElementById('totalOrders').textContent = data.sales_performance?.total_orders || 0;
+            document.getElementById('lowStockCount').textContent = data.inventory?.low_stock_count || 0;
+            document.getElementById('totalItems').textContent = data.inventory?.total_items || 0;
+
+            // ✅ Stock Status Chart with empty state
+            const stockData = data.stock_status || {};
+            const hasStockData = (stockData.in_stock || 0) + (stockData.low_stock || 0) + (stockData.out_of_stock || 0) > 0;
+
+            if (charts.stockStatus) charts.stockStatus.destroy();
+            
+            const stockContainer = document.getElementById('stockStatusContainer');
+            
+            if (!hasStockData) {
+                stockContainer.innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1"></i>
+                        <p class="mt-2">No stock data yet</p>
+                        <small>Add materials to see distribution</small>
+                    </div>
+                `;
+            } else {
+                if (!document.getElementById('stockStatusChart')) {
+                    stockContainer.innerHTML = '<canvas id="stockStatusChart"></canvas>';
+                }
+                
+                const ctx1 = document.getElementById('stockStatusChart').getContext('2d');
+                charts.stockStatus = new Chart(ctx1, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['In Stock', 'Low Stock', 'Out of Stock'],
+                        datasets: [{
+                            data: [
+                                stockData.in_stock || 0,
+                                stockData.low_stock || 0,
+                                stockData.out_of_stock || 0
+                            ],
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true }
+                });
+            }
+
+            // ✅ Monthly Trend Chart with empty state
+            const monthlyTrend = data.monthly_trend || [];
+            const hasTrendData = monthlyTrend.length > 0;
+
+            if (charts.monthlyTrend) charts.monthlyTrend.destroy();
+            
+            const trendContainer = document.getElementById('monthlyTrendContainer');
+            
+            if (!hasTrendData) {
+                trendContainer.innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1"></i>
+                        <p class="mt-2">No sales data yet</p>
+                        <small>Complete sales orders to see trends</small>
+                    </div>
+                `;
+            } else {
+                if (!document.getElementById('monthlyTrendChart')) {
+                    trendContainer.innerHTML = '<canvas id="monthlyTrendChart"></canvas>';
+                }
+                
+                const ctx2 = document.getElementById('monthlyTrendChart').getContext('2d');
+                charts.monthlyTrend = new Chart(ctx2, {
+                    type: 'line',
+                    data: {
+                        labels: monthlyTrend.map(m => m.month || 'N/A'),
+                        datasets: [{
+                            label: 'Revenue',
+                            data: monthlyTrend.map(m => parseFloat(m.revenue) || 0),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: true, 
+                        scales: { y: { beginAtZero: true } } 
+                    }
+                });
+            }
+
+            // Top Items Table
+            const tbody = document.getElementById('topItemsTable');
+            const topItems = data.top_items || [];
+            tbody.innerHTML = topItems.length === 0 ? 
+                '<tr><td colspan="5" class="text-center">No data</td></tr>' :
+                topItems.map(item => `
+                    <tr>
+                        <td><strong>${item.item_name || 'N/A'}</strong></td>
+                        <td><code>${item.sku || 'N/A'}</code></td>
+                        <td>${item.quantity || 0}</td>
+                        <td>PHP ${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                        <td><strong>PHP ${parseFloat(item.total_value || 0).toFixed(2)}</strong></td>
+                    </tr>
+                `).join('');
+
+            makeStatCardsClickable();
+
+            console.log('✅ Overview loaded');
+        } catch (error) {
+            console.error('❌ Load overview error:', error);
+            Utils.showToast('Failed to load overview', 'error');
+        }
+    }
+
+    // ========================================================================
+    // INVENTORY TAB - Turnover & ABC Analysis
+    // ========================================================================
+    async function loadInventoryAnalysis() {
+        try {
+            const invResponse = await API.request('analytics/inventory');
+            const invData = invResponse?.data || invResponse || {};
+            
+            const items = invData.items || [];
+            const summary = invData.summary || {};
+
+            document.getElementById('inventorySummary').innerHTML = `
+                <strong>Inventory Summary:</strong> 
+                ${summary.fast_moving || 0} Fast Moving | 
+                ${summary.normal || 0} Normal | 
+                ${summary.slow_moving || 0} Slow Moving
+            `;
+
+            const tbody = document.getElementById('inventoryTable');
+            tbody.innerHTML = items.length === 0 ?
+                '<tr><td colspan="6" class="text-center">No inventory data</td></tr>' :
+                items.slice(0, 20).map(i => `
+                    <tr>
+                        <td><strong>${i.item_name}</strong></td>
+                        <td><code>${i.sku}</code></td>
+                        <td>${i.current_stock}</td>
+                        <td><span class="badge ${i.turnover_ratio >= 4 ? 'bg-success' : i.turnover_ratio >= 2 ? 'bg-primary' : 'bg-secondary'}">${i.turnover_ratio}x</span></td>
+                        <td>${i.turnover_category}</td>
+                        <td>${i.units_sold_90d}</td>
+                    </tr>
+                `).join('');
+
+            const abcResponse = await API.request('analytics/abc-analysis');
+            const abcData = abcResponse?.data || abcResponse || {};
+            
+            const abcSummary = abcData.summary || {};
+            document.getElementById('classACount').textContent = `${abcSummary.class_a?.count || 0} items`;
+            document.getElementById('classBCount').textContent = `${abcSummary.class_b?.count || 0} items`;
+            document.getElementById('classCCount').textContent = `${abcSummary.class_c?.count || 0} items`;
+
+            if (charts.abc) charts.abc.destroy();
+            const ctxABC = document.getElementById('abcChart').getContext('2d');
+            charts.abc = new Chart(ctxABC, {
+                type: 'bar',
+                data: {
+                    labels: ['Class A', 'Class B', 'Class C'],
+                    datasets: [{
+                        label: 'Number of Items',
+                        data: [
+                            abcSummary.class_a?.count || 0,
+                            abcSummary.class_b?.count || 0,
+                            abcSummary.class_c?.count || 0
+                        ],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true } } }
+            });
+
+            console.log('✅ Inventory analysis loaded');
+        } catch (error) {
+            console.error('❌ Inventory analysis error:', error);
+            Utils.showToast('Failed to load inventory analysis', 'error');
+        }
+    }
+
+    // ========================================================================
+    // SUPPLIERS TAB - Performance Metrics
+    // ========================================================================
+    async function loadSuppliersAnalysis() {
+        try {
+            const response = await API.request('analytics/suppliers');
+            const data = response?.data || response || {};
+            
+            const suppliers = data.suppliers || [];
+            const tbody = document.getElementById('suppliersTable');
+
+            tbody.innerHTML = suppliers.length === 0 ?
+                '<tr><td colspan="6" class="text-center">No supplier data</td></tr>' :
+                suppliers.map(s => `
+                    <tr>
+                        <td><strong>${s.supplier_name}</strong></td>
+                        <td>${s.total_orders}</td>
+                        <td>PHP ${s.total_value.toLocaleString('en-PH', {minimumFractionDigits: 2})}</td>
+                        <td>${s.on_time_delivery_rate}%</td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar ${s.performance_score >= 90 ? 'bg-success' : s.performance_score >= 75 ? 'bg-primary' : 'bg-warning'}" 
+                                     style="width: ${s.performance_score}%">${s.performance_score}</div>
+                            </div>
+                        </td>
+                        <td><span class="badge ${s.performance_rating === 'Excellent' ? 'bg-success' : s.performance_rating === 'Good' ? 'bg-primary' : 'bg-warning'}">${s.performance_rating}</span></td>
+                    </tr>
+                `).join('');
+
+            console.log('✅ Suppliers analysis loaded');
+        } catch (error) {
+            console.error('❌ Suppliers analysis error:', error);
+            Utils.showToast('Failed to load suppliers analysis', 'error');
+        }
+    }
+
+    // ========================================================================
+    // FORECAST TAB - Sales Forecast
+    // ========================================================================
+    async function loadForecastAnalysis() {
+        try {
+            const response = await API.request('analytics/sales-forecast');
+            const data = response?.data || response || {};
+            
+            const historical = data.historical_data || [];
+            const forecast = data.forecast || [];
+            const trends = data.trends || {};
+
+            const allMonths = [...historical.map(h => h.month), ...forecast.map(f => f.month)];
+            const historicalRevenue = [...historical.map(h => parseFloat(h.revenue)), ...new Array(forecast.length).fill(null)];
+            const forecastRevenue = [...new Array(historical.length).fill(null), ...forecast.map(f => parseFloat(f.forecast_revenue))];
+
+            if (charts.forecast) charts.forecast.destroy();
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            charts.forecast = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allMonths,
+                    datasets: [{
+                        label: 'Historical Revenue',
+                        data: historicalRevenue,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Forecast',
+                        data: forecastRevenue,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderDash: [5, 5],
+                        tension: 0.4
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: true,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            document.getElementById('forecastInsights').innerHTML = `
+                <div class="mb-3">
+                    <strong>Growth Rate (MoM):</strong>
+                    <h3 class="${trends.growth_rate_mom >= 0 ? 'text-success' : 'text-danger'}">${trends.growth_rate_mom}%</h3>
+                </div>
+                <div class="mb-3">
+                    <strong>Trend Direction:</strong>
+                    <span class="badge ${trends.trend_direction === 'Increasing' ? 'bg-success' : trends.trend_direction === 'Decreasing' ? 'bg-danger' : 'bg-secondary'}">${trends.trend_direction}</span>
+                </div>
+                <div>
+                    <strong>Avg Monthly Revenue:</strong>
+                    <p>PHP ${trends.avg_monthly_revenue.toLocaleString('en-PH', {minimumFractionDigits: 2})}</p>
+                </div>
+            `;
+
+            console.log('✅ Forecast loaded');
+        } catch (error) {
+            console.error('❌ Forecast error:', error);
+            Utils.showToast('Failed to load forecast', 'error');
+        }
+    }
+
+    // ========================================================================
+    // PR PERFORMANCE TAB
+    // ========================================================================
+    async function loadPRPerformance() {
+        try {
+            const response = await API.request('analytics/pr-turnaround');
+            const data = response?.data || response || {};
+            
+            const summary = data.summary || {};
+            const bottlenecks = data.bottlenecks || [];
+            const topPerformers = data.top_performers || [];
+            const bottomPerformers = data.bottom_performers || [];
+            const monthlyTrend = data.monthly_trend || [];
+
+            document.getElementById('avgCycleTime').textContent = summary.avg_total_cycle_time ? `${summary.avg_total_cycle_time}h` : '0h';
+            document.getElementById('approvalTime').textContent = summary.avg_approval_time ? `${summary.avg_approval_time}h` : '0h';
+            document.getElementById('conversionTime').textContent = summary.avg_conversion_time ? `${summary.avg_conversion_time}h` : '0h';
+            document.getElementById('fulfillmentTime').textContent = summary.avg_fulfillment_time ? `${Math.round(summary.avg_fulfillment_time / 24)}d` : '0d';
+
+            const bottlenecksAlert = document.getElementById('bottlenecksAlert');
+            const bottlenecksList = document.getElementById('bottlenecksList');
+
+            if (bottlenecks.length > 0) {
+                bottlenecksAlert.classList.remove('d-none');
+                bottlenecksList.innerHTML = bottlenecks.map(b => `
+                    <li><strong>${b.stage.toUpperCase()}:</strong> ${b.message}<br>
+                    <small class="text-muted">💡 ${b.recommendation}</small></li>
+                `).join('');
+            } else {
+                bottlenecksAlert.classList.add('d-none');
+            }
+
+            document.getElementById('totalPRs').textContent = summary.total_prs || 0;
+            document.getElementById('pendingPRs').textContent = summary.pending_prs || 0;
+            document.getElementById('approvedPRs').textContent = summary.approved_prs || 0;
+            document.getElementById('convertedPRs').textContent = summary.converted_prs || 0;
+            document.getElementById('fulfilledPRs').textContent = summary.fulfilled_prs || 0;
+            document.getElementById('rejectedPRs').textContent = summary.rejected_prs || 0;
+
+            if (charts.prCycleTime) charts.prCycleTime.destroy();
+            
+            const ctx1 = document.getElementById('prCycleTimeChart').getContext('2d');
+            charts.prCycleTime = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: monthlyTrend.map(m => m.month),
+                    datasets: [{
+                        label: 'Avg Cycle Time (days)',
+                        data: monthlyTrend.map(m => m.avg_cycle_days),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Days' }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.parsed.y} days`
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (charts.urgencyBreakdown) charts.urgencyBreakdown.destroy();
+            
+            const byUrgency = summary.by_urgency || {};
+            const ctx2 = document.getElementById('urgencyBreakdownChart').getContext('2d');
+            charts.urgencyBreakdown = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low'],
+                    datasets: [{
+                        data: [
+                            byUrgency.critical?.count || 0,
+                            byUrgency.high?.count || 0,
+                            byUrgency.medium?.count || 0,
+                            byUrgency.low?.count || 0
+                        ],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            const topTable = document.getElementById('topPerformersTable');
+            topTable.innerHTML = topPerformers.length === 0 
+                ? '<tr><td colspan="4" class="text-center text-muted">No data yet</td></tr>'
+                : topPerformers.map(pr => `
+                    <tr>
+                        <td><strong>${pr.pr_number}</strong></td>
+                        <td>${pr.item_name}</td>
+                        <td><span class="badge bg-${pr.urgency === 'critical' ? 'danger' : pr.urgency === 'high' ? 'warning' : 'info'}">${pr.urgency}</span></td>
+                        <td><strong>${pr.cycle_time_days} days</strong></td>
+                    </tr>
+                `).join('');
+
+            const bottomTable = document.getElementById('bottomPerformersTable');
+            bottomTable.innerHTML = bottomPerformers.length === 0 
+                ? '<tr><td colspan="4" class="text-center text-muted">No data yet</td></tr>'
+                : bottomPerformers.map(pr => `
+                    <tr>
+                        <td><strong>${pr.pr_number}</strong></td>
+                        <td>${pr.item_name}</td>
+                        <td><span class="badge bg-${pr.urgency === 'critical' ? 'danger' : pr.urgency === 'high' ? 'warning' : 'info'}">${pr.urgency}</span></td>
+                        <td><strong>${pr.cycle_time_days} days</strong></td>
+                    </tr>
+                `).join('');
+
+            console.log('✅ PR Performance loaded');
+        } catch (error) {
+            console.error('❌ PR Performance error:', error);
+            Utils.showToast('Failed to load PR performance', 'error');
+        }
+    }
+
+    // ========================================================================
+    // ✅ MODAL FUNCTIONS FOR STAT CARDS
+    // ========================================================================
+    
+    function showStatDetailsModal(statType, value, label) {
+        let modalContent = '';
+        
+        switch(statType) {
+            case 'inventory-value':
+                modalContent = generateInventoryValueBreakdown();
+                break;
+            case 'orders':
+                modalContent = generateOrdersBreakdown();
+                break;
+            case 'low-stock':
+                modalContent = generateLowStockBreakdown();
+                break;
+            case 'total-items':
+                modalContent = generateTotalItemsBreakdown();
+                break;
+        }
+        
+        // Create modal if doesn't exist
+        let modal = document.getElementById('statDetailsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'statDetailsModal';
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="statModalTitle">Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body" id="statModalBody"></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        document.getElementById('statModalTitle').textContent = label;
+        document.getElementById('statModalBody').innerHTML = modalContent;
+        
+        new bootstrap.Modal(modal).show();
+    }
+    
+    function generateInventoryValueBreakdown() {
+        const topItems = currentData.top_items || [];
+        const totalValue = currentData.inventory?.total_value || 0;
+        
+        return `
+            <div class="alert alert-info">
+                <strong>Total Inventory Value:</strong> PHP ${totalValue.toLocaleString('en-PH', {minimumFractionDigits: 2})}
+            </div>
+            <h6 class="mt-4 mb-3">Top Value Contributors</h6>
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${topItems.map(item => `
+                        <tr>
+                            <td><strong>${item.item_name}</strong></td>
+                            <td>${item.quantity}</td>
+                            <td>PHP ${parseFloat(item.unit_price).toFixed(2)}</td>
+                            <td><strong>PHP ${parseFloat(item.total_value).toFixed(2)}</strong></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    function generateOrdersBreakdown() {
+        const salesPerf = currentData.sales_performance || {};
+        const monthlyTrend = currentData.monthly_trend || [];
+        
+        return `
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Total Orders</h6>
+                            <h3>${salesPerf.total_orders || 0}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Completed</h6>
+                            <h3 class="text-success">${salesPerf.completed_orders || 0}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Fulfillment Rate</h6>
+                            <h3>${salesPerf.fulfillment_rate || 0}%</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h6 class="mb-3">Monthly Performance</h6>
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Orders</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${monthlyTrend.slice(-6).map(m => `
+                        <tr>
+                            <td>${m.month}</td>
+                            <td>${m.order_count}</td>
+                            <td>PHP ${parseFloat(m.revenue || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    function generateLowStockBreakdown() {
+        const stockStatus = currentData.stock_status || {};
+        const lowStockCount = currentData.inventory?.low_stock_count || 0;
+        
+        return `
+            <div class="alert alert-warning">
+                <strong>${lowStockCount}</strong> items are currently below reorder level
+            </div>
+            <h6 class="mb-3">Stock Distribution</h6>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">In Stock</h6>
+                            <h3 class="text-success">${stockStatus.in_stock || 0}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Low Stock</h6>
+                            <h3 class="text-warning">${stockStatus.low_stock || 0}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-danger">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Out of Stock</h6>
+                            <h3 class="text-danger">${stockStatus.out_of_stock || 0}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="alert alert-info mt-4">
+                <strong>Recommendation:</strong> Review purchase requisitions and reorder levels for low-stock items.
+            </div>
+        `;
+    }
+    
+    function generateTotalItemsBreakdown() {
+        const inventory = currentData.inventory || {};
+        const totalItems = inventory.total_items || 0;
+        const totalCategories = inventory.total_categories || 0;
+        
+        return `
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Total Items</h6>
+                            <h3>${totalItems}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Categories</h6>
+                            <h3>${totalCategories}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h6 class="mb-3">Inventory Health</h6>
+            <div class="progress mb-2" style="height: 30px;">
+                <div class="progress-bar bg-success" style="width: ${inventory.low_stock_percentage || 0}%">
+                    ${inventory.low_stock_percentage || 0}% Need Attention
+                </div>
+            </div>
+            <small class="text-muted">
+                ${inventory.low_stock_count || 0} out of ${totalItems} items need restocking
+            </small>
+        `;
+    }
+
+    function makeStatCardsClickable() {
+        const statCards = document.querySelectorAll('.stat-card');
+        
+        statCards.forEach((card) => {
+            card.style.cursor = 'pointer';
+            
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.15)';
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = '';
+                card.style.boxShadow = '';
+            });
+            
+            card.addEventListener('click', () => {
+                const icon = card.querySelector('.stat-icon')?.className || '';
+                const value = card.querySelector('.stat-value')?.textContent || 'N/A';
+                const label = card.querySelector('.stat-label')?.textContent || 'Unknown';
+                
+                let statType = '';
+                if (icon.includes('currency-dollar')) {
+                    statType = 'inventory-value';
+                } else if (icon.includes('cart-check')) {
+                    statType = 'orders';
+                } else if (icon.includes('exclamation-triangle')) {
+                    statType = 'low-stock';
+                } else if (icon.includes('box-seam')) {
+                    statType = 'total-items';
+                }
+                
+                // Visual feedback
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => card.style.transform = '', 200);
+                
+                // Show modal
+                showStatDetailsModal(statType, value, label);
+            });
+        });
+        
+        console.log('✅ Analytics stat cards are now clickable');
+    }
+
+    // ========================================================================
+    // TAB CLICK EVENTS
+    // ========================================================================
+    document.getElementById('overview-tab').addEventListener('click', () => loadOverview());
+    document.getElementById('inventory-tab').addEventListener('click', () => loadInventoryAnalysis());
+    document.getElementById('suppliers-tab').addEventListener('click', () => loadSuppliersAnalysis());
+    document.getElementById('forecast-tab').addEventListener('click', () => loadForecastAnalysis());
+    document.getElementById('pr-performance-tab').addEventListener('click', () => loadPRPerformance());
+
+    // Initialize
+    await loadOverview();
+    
+    console.log('✅ Analytics Dashboard v2.0 Ready');
+})();
+</script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

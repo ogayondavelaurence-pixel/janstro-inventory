@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Orders - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <!-- View PO Modal -->
+<div class="modal fade" id="viewPOModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Purchase Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="viewPODetails">
+                <!-- Details populated by JS -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-cart-plus"></i>
+                Purchase Orders
+            </h1>
+            <p class="text-muted">Create and manage purchase orders for suppliers</p>
+        </header>
+
+        <!-- Action Bar -->
+        <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+            <button id="btnCreatePO" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>
+                Create Purchase Order
+            </button>
+            <div class="d-flex gap-2">
+                <select id="filterStatus" class="form-select" style="width: auto;" aria-label="Filter by Status">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <button id="btnRefresh" class="btn btn-secondary">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- PO Table -->
+        <section class="card">
+            <div class="card-header">
+                <h2 class="h5 mb-0">
+                    <i class="bi bi-list-ul"></i>
+                    Purchase Order List
+                </h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>PO #</th>
+                                <th>DATE</th>
+                                <th>SUPPLIER</th>
+                                <th>ITEM</th>
+                                <th>QUANTITY</th>
+                                <th>TOTAL AMOUNT</th>
+                                <th>EXPECTED DELIVERY</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="poTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-5">
+                                    <div class="spinner-border text-primary"></div>
+                                    <p class="mt-2 text-muted">Loading purchase orders...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Create PO Modal -->
+    <div class="modal fade" id="createPOModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Purchase Order</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="createPOForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="supplierId" class="form-label">
+                                    Supplier <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="supplierId" required>
+                                    <option value="">Loading suppliers...</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="itemId" class="form-label">
+                                    Item <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="itemId" required>
+                                    <option value="">Loading items...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="quantity" class="form-label">
+                                    Quantity <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="quantity" min="1" required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="unitPrice" class="form-label">
+                                    Unit Price (PHP ) <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="unitPrice" step="0.01" min="0" required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="totalAmount" class="form-label">Total Amount (PHP )</label>
+                                <input type="text" class="form-control" id="totalAmount" readonly>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="expectedDeliveryDate" class="form-label">Expected Delivery Date</label>
+                            <input type="date" class="form-control" id="expectedDeliveryDate">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i>
+                            Create PO
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            let allPOs = [];
+            let suppliers = [];
+            let items = [];
+
+            const tbody = document.getElementById('poTableBody');
+            const createPOModal = new bootstrap.Modal(document.getElementById('createPOModal'));
+            const createPOForm = document.getElementById('createPOForm');
+
+            /**
+             * Load suppliers
+             */
+            async function loadSuppliers() {
+                try {
+                    const response = await API.getSuppliers();
+                    suppliers = Array.isArray(response) ? response : (response?.data || []);
+                    
+                    const supplierSelect = document.getElementById('supplierId');
+                    
+                    if (suppliers.length === 0) {
+                        supplierSelect.innerHTML = '<option value="">No suppliers available</option>';
+                        Utils.showToast('No suppliers found. Please add suppliers first.', 'warning');
+                    } else {
+                        supplierSelect.innerHTML = '<option value="">Select supplier</option>';
+                        suppliers.forEach(s => {
+                            supplierSelect.innerHTML += `<option value="${s.supplier_id}">${s.supplier_name}</option>`;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Load suppliers error:', error);
+                    document.getElementById('supplierId').innerHTML = '<option value="">Error loading suppliers</option>';
+                }
+            }
+
+            /**
+             * Load items
+             */
+            async function loadItems() {
+                try {
+                    const response = await API.getInventory();
+                    items = Array.isArray(response) ? response : (response?.data || []);
+                    
+                    const itemSelect = document.getElementById('itemId');
+                    
+                    if (items.length === 0) {
+                        itemSelect.innerHTML = '<option value="">No items available</option>';
+                    } else {
+                        itemSelect.innerHTML = '<option value="">Select item</option>';
+                        items.forEach(item => {
+                            itemSelect.innerHTML += `<option value="${item.item_id}" data-price="${item.unit_price}">${item.item_name} (PHP ${item.unit_price})</option>`;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Load items error:', error);
+                }
+            }
+
+            /**
+             * Load purchase orders
+             */
+            async function loadPOs() {
+                try {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
+                    
+                    const response = await API.getPurchaseOrders();
+                    allPOs = Array.isArray(response) ? response : (response?.data || []);
+
+                    renderTable(allPOs);
+                } catch (error) {
+                    console.error('Load POs error:', error);
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load purchase orders</td></tr>';
+                }
+            }
+
+            /**
+             * Render PO table
+             */
+            function renderTable(pos) {
+                if (!pos || pos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">No purchase orders found. Click "Create Purchase Order" to get started.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = pos.map(po => {
+                    const statusBadge = {
+                        pending: 'bg-warning',
+                        approved: 'bg-success',
+                        delivered: 'bg-primary',
+                        cancelled: 'bg-secondary'
+                    }[po.status] || 'bg-secondary';
+
+                    return `
+                        <tr>
+                            <td><strong>PO-${String(po.po_id).padStart(5, '0')}</strong></td>
+                            <td>${Utils.formatDate(po.po_date)}</td>
+                            <td>${po.supplier_name || 'N/A'}</td>
+                            <td>${po.item_name || 'N/A'}</td>
+                            <td>${po.quantity} ${po.unit || 'pcs'}</td>
+                            <td>PHP ${parseFloat(po.total_amount).toLocaleString('en-PH', {minimumFractionDigits: 2})}</td>
+                            <td>${po.expected_delivery_date ? Utils.formatDate(po.expected_delivery_date) : 'N/A'}</td>
+                            <td><span class="badge ${statusBadge}">${po.status.toUpperCase()}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="viewPO(${po.po_id})" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="downloadPDF(${po.po_id})" title="Download PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            /**
+             * ✅ NEW: Download PO as PDF
+             */
+            // ✅ NEW (fixed):
+window.downloadPDF = async function(poId) {
+    try {
+        const token = API.getToken();
+        if (!token) {
+            Utils.showToast('Please login to download PDF', 'error');
+            return;
+        }
+        
+        const poNumber = 'PO-' + String(poId).padStart(6, '0');
+        Utils.showToast(`Generating ${poNumber} PDF...`, 'info');
+        
+        const pdfUrl = `${API.baseURL}/purchase-orders/${poId}/pdf?token=${encodeURIComponent(token)}`;
+        window.open(pdfUrl, '_blank');
+    } catch (error) {
+        console.error('PDF download error:', error);
+        Utils.showToast('Failed to download PDF', 'error');
+    }
+};
+
+            /**
+             * Open create PO modal
+             */
+            document.getElementById('btnCreatePO').addEventListener('click', async () => {
+                createPOForm.reset();
+                document.getElementById('totalAmount').value = '';
+
+                if (suppliers.length === 0) await loadSuppliers();
+                if (items.length === 0) await loadItems();
+
+                const defaultDate = new Date();
+                defaultDate.setDate(defaultDate.getDate() + 7);
+                document.getElementById('expectedDeliveryDate').value = defaultDate.toISOString().split('T')[0];
+
+                createPOModal.show();
+            });
+
+            /**
+             * Auto-calculate total amount
+             */
+            document.getElementById('itemId').addEventListener('change', (e) => {
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                const price = selectedOption.getAttribute('data-price');
+                if (price) {
+                    document.getElementById('unitPrice').value = price;
+                    calculateTotal();
+                }
+            });
+
+            document.getElementById('quantity').addEventListener('input', calculateTotal);
+            document.getElementById('unitPrice').addEventListener('input', calculateTotal);
+
+            function calculateTotal() {
+                const qty = parseFloat(document.getElementById('quantity').value) || 0;
+                const price = parseFloat(document.getElementById('unitPrice').value) || 0;
+                const total = qty * price;
+                document.getElementById('totalAmount').value = 'PHP ' + total.toLocaleString('en-PH', {minimumFractionDigits: 2});
+            }
+
+            /**
+             * Create PO
+             */
+            createPOForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const data = {
+                    supplier_id: parseInt(document.getElementById('supplierId').value),
+                    item_id: parseInt(document.getElementById('itemId').value),
+                    quantity: parseInt(document.getElementById('quantity').value),
+                    unit_price: parseFloat(document.getElementById('unitPrice').value),
+                    expected_delivery_date: document.getElementById('expectedDeliveryDate').value || null,
+                    notes: document.getElementById('notes').value || null
+                };
+
+                if (!data.supplier_id || !data.item_id || !data.quantity || !data.unit_price) {
+                    Utils.showToast('Please fill all required fields', 'error');
+                    return;
+                }
+
+                try {
+                    const btn = createPOForm.querySelector('button[type="submit"]');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
+
+                    const response = await API.createPurchaseOrder(data);
+
+                    if (response.success || response.data) {
+                        Utils.showToast('Purchase order created successfully', 'success');
+                        createPOModal.hide();
+                        await loadPOs();
+                    } else {
+                        Utils.showToast(response.message || 'Failed to create PO', 'error');
+                    }
+                } catch (error) {
+                    console.error('Create PO error:', error);
+                    Utils.showToast('Error creating purchase order', 'error');
+                } finally {
+                    const btn = createPOForm.querySelector('button[type="submit"]');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-save"></i> Create PO';
+                }
+            });
+
+            /**
+             * View PO details
+             */
+            window.viewPO = async function(poId) {
+    try {
+        const response = await API.request(`purchase-orders/${poId}`);
+        const po = response.data || response;
+        
+        document.getElementById('viewPODetails').innerHTML = `
+            <table class="table table-sm">
+                <tr><th>PO Number:</th><td>PO-${String(po.po_id).padStart(5, '0')}</td></tr>
+                <tr><th>Date:</th><td>${Utils.formatDate(po.po_date)}</td></tr>
+                <tr><th>Supplier:</th><td>${po.supplier_name}</td></tr>
+                <tr><th>Item:</th><td>${po.item_name}</td></tr>
+                <tr><th>SKU:</th><td>${po.sku || 'N/A'}</td></tr>
+                <tr><th>Quantity:</th><td>${po.quantity} ${po.unit || 'pcs'}</td></tr>
+                <tr><th>Unit Price:</th><td>PHP ${parseFloat(po.unit_price).toLocaleString('en-PH', {minimumFractionDigits: 2})}</td></tr>
+                <tr><th>Total Amount:</th><td><strong>PHP ${parseFloat(po.total_amount).toLocaleString('en-PH', {minimumFractionDigits: 2})}</strong></td></tr>
+                <tr><th>Expected Delivery:</th><td>${po.expected_delivery_date ? Utils.formatDate(po.expected_delivery_date) : 'N/A'}</td></tr>
+                <tr><th>Status:</th><td><span class="badge bg-${po.status === 'pending' ? 'warning' : 'success'}">${po.status.toUpperCase()}</span></td></tr>
+                ${po.notes ? `<tr><th>Notes:</th><td>${po.notes}</td></tr>` : ''}
+            </table>
+        `;
+        
+        const modal = new bootstrap.Modal(document.getElementById('viewPOModal'));
+        modal.show();
+    } catch (error) {
+        Utils.showToast('Failed to load PO details', 'error');
+    }
+};
+
+            /**
+             * Filter by status
+             */
+            document.getElementById('filterStatus').addEventListener('change', (e) => {
+                const status = e.target.value;
+                const filtered = status ? allPOs.filter(po => po.status === status) : allPOs;
+                renderTable(filtered);
+            });
+
+            /**
+             * Refresh button
+             */
+            document.getElementById('btnRefresh').addEventListener('click', loadPOs);
+
+            /**
+             * Initialize page
+             */
+            async function initPage() {
+                await Promise.all([loadSuppliers(), loadItems()]);
+                await loadPOs();
+            }
+
+            await initPage();
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

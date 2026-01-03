@@ -1,0 +1,12 @@
+# Allow PDF access but prevent directory listing
+Options -Indexes
+
+# Allow PDF files to be accessed
+<FilesMatch "\.pdf$">
+    Require all granted
+</FilesMatch>
+
+# Block everything else
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

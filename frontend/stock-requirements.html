@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Requirements - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu"><i class="bi bi-list"></i></button>
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1><i class="bi bi-clipboard-data"></i> Stock Requirements Analysis</h1>
+            <p class="text-muted">Track inventory needs based on sales orders</p>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4" id="summaryCards">
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body"><h5>Sufficient</h5><h2 id="sufficientCount">-</h2><small>Stock available</small></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body"><h5>Shortage</h5><h2 id="shortageCount">-</h2><small>Need to order</small></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body"><h5>Critical</h5><h2 id="criticalCount">-</h2><small>Out of stock</small></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body"><h5>Total Items</h5><h2 id="totalCount">-</h2><small>In requirements</small></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <select id="filterStatus" class="form-select" aria-label="Filter by status"><option value="">All Status</option><option value="sufficient">Sufficient</option><option value="shortage">Shortage</option><option value="critical">Critical</option></select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="filterOrder" class="form-select" aria-label="Filter by order status"><option value="">All Orders</option><option value="pending">Pending</option><option value="completed">Completed</option></select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="search" id="searchInput" class="form-control" placeholder="Search...">
+                    </div>
+                    <div class="col-md-2">
+                        <button id="btnRefresh" class="btn btn-secondary w-100"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Requirements List -->
+        <div id="requirementsContainer">
+            <div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Loading...</p></div>
+        </div>
+
+        <!-- Legend -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="bi bi-info-circle"></i> Status Legend</h6>
+                <div class="row">
+                    <div class="col-md-4"><span class="badge bg-success">Sufficient</span> <small class="text-muted ms-2">Stock covers requirement</small></div>
+                    <div class="col-md-4"><span class="badge bg-warning">Shortage</span> <small class="text-muted ms-2">Need to order</small></div>
+                    <div class="col-md-4"><span class="badge bg-danger">Critical</span> <small class="text-muted ms-2">Zero stock</small></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script src="assets/js/stock-requirements.js"></script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

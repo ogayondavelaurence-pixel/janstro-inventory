@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Movements - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                Material Documents (MB51)
+            </h1>
+            <p class="text-muted">Complete history of all stock movements</p>
+        </header>
+
+        <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+            <div class="d-flex gap-2 flex-wrap">
+                <select id="filterType" class="form-select" style="width: auto;" aria-label="Filter by movement type">
+                    <option value="">All Movements</option>
+                    <option value="IN">Stock IN</option>
+                    <option value="OUT">Stock OUT</option>
+                </select>
+                <input type="date" id="dateFrom" class="form-control" style="width: auto;" aria-label="From date">
+                <input type="date" id="dateTo" class="form-control" style="width: auto;" aria-label="To date">
+                <button id="btnFilter" class="btn btn-primary">
+                    <i class="bi bi-funnel" aria-hidden="true"></i>
+                    Apply Filters
+                </button>
+                <button id="btnClearFilter" class="btn btn-secondary">
+                    <i class="bi bi-x-circle" aria-hidden="true"></i>
+                    Clear
+                </button>
+            </div>
+            <button id="btnRefresh" class="btn btn-secondary" aria-label="Refresh movements">
+                <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <section class="card">
+            <div class="card-header">
+                <h2 class="h5 mb-0">
+                    <i class="bi bi-list-task" aria-hidden="true"></i>
+                    Transaction History
+                    <span id="resultCount" class="badge bg-primary ms-2">0</span>
+                </h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" aria-label="Stock movements table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date/Time</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Item</th>
+                                <th scope="col">Quantity</th>
+                                <th scope="col">Unit</th>
+                                <th scope="col">Reference</th>
+                                <th scope="col">Previous</th>
+                                <th scope="col">New Stock</th>
+                                <th scope="col">User</th>
+                            </tr>
+                        </thead>
+                        <tbody id="movementsBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading movements...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    <script>
+        (async function() {
+            let allMovements = [];
+            let filteredMovements = [];
+            const tbody = document.getElementById('movementsBody');
+
+            async function loadMovements() {
+                try {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
+                    
+                    console.log('📡 Fetching stock movements...');
+                    const response = await API.getStockMovements();
+                    
+                    console.log('✅ Response:', response);
+                    
+                    // Handle multiple response formats
+                    let movements = [];
+                    if (Array.isArray(response)) {
+                        movements = response;
+                    } else if (response?.data && Array.isArray(response.data)) {
+                        movements = response.data;
+                    } else if (response?.success && Array.isArray(response.data)) {
+                        movements = response.data;
+                    }
+                    
+                    console.log(`✅ Loaded ${movements.length} movements`);
+                    
+                    allMovements = movements;
+                    filteredMovements = [...allMovements];
+                    renderTable(filteredMovements);
+                } catch (error) {
+                    console.error('❌ Load movements error:', error);
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load movements</td></tr>';
+                }
+            }
+
+            function applyFilters() {
+                console.log('🔍 Applying filters...');
+                
+                const typeFilter = document.getElementById('filterType').value;
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                
+                console.log('Filters:', { typeFilter, dateFrom, dateTo });
+                
+                filteredMovements = allMovements.filter(m => {
+                    // Type filter
+                    if (typeFilter && m.transaction_type !== typeFilter) {
+                        return false;
+                    }
+                    
+                    // Date from filter
+                    if (dateFrom) {
+                        const movementDate = (m.movement_date || m.transaction_date || '').split(' ')[0];
+                        if (movementDate < dateFrom) {
+                            return false;
+                        }
+                    }
+                    
+                    // Date to filter
+                    if (dateTo) {
+                        const movementDate = (m.movement_date || m.transaction_date || '').split(' ')[0];
+                        if (movementDate > dateTo) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+                
+                console.log(`✅ Filtered to ${filteredMovements.length} movements`);
+                renderTable(filteredMovements);
+                
+                if (typeFilter || dateFrom || dateTo) {
+                    Utils.showToast(`Showing ${filteredMovements.length} of ${allMovements.length} movements`, 'info');
+                }
+            }
+
+            function clearFilters() {
+                document.getElementById('filterType').value = '';
+                document.getElementById('dateFrom').value = '';
+                document.getElementById('dateTo').value = '';
+                
+                filteredMovements = [...allMovements];
+                renderTable(filteredMovements);
+                
+                Utils.showToast('Filters cleared', 'success');
+            }
+
+            function renderTable(movements) {
+                const resultCount = document.getElementById('resultCount');
+                resultCount.textContent = movements.length;
+                
+                if (!movements || movements.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">No movements found</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = movements.map(m => {
+                    const typeClass = m.transaction_type === 'IN' ? 'text-success' : 'text-danger';
+                    const typeIcon = m.transaction_type === 'IN' ? 'arrow-down-circle' : 'arrow-up-circle';
+                    const typeBg = m.transaction_type === 'IN' ? 'bg-success' : 'bg-danger';
+
+                    return `
+                        <tr>
+                            <td>${Utils.formatDateTime(m.movement_date || m.transaction_date)}</td>
+                            <td>
+                                <span class="badge ${typeBg}">
+                                    <i class="bi bi-${typeIcon}"></i>
+                                    ${m.transaction_type}
+                                </span>
+                            </td>
+                            <td><strong>${m.item_name || 'N/A'}</strong></td>
+                            <td><strong>${m.transaction_quantity || m.quantity}</strong></td>
+                            <td>${m.unit || 'pcs'}</td>
+                            <td>
+                                <small class="text-muted">${m.reference_type || 'N/A'}</small>
+                                ${m.reference_number ? `<br><code class="small">${m.reference_number}</code>` : ''}
+                            </td>
+                            <td class="text-muted">${m.previous_quantity !== null && m.previous_quantity !== undefined ? m.previous_quantity : '-'}</td>
+                            <td><strong class="${typeClass}">${m.new_quantity !== null && m.new_quantity !== undefined ? m.new_quantity : '-'}</strong></td>
+                            <td><small>${m.user_name || m.username || 'System'}</small></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Event listeners
+            document.getElementById('btnFilter').addEventListener('click', applyFilters);
+            document.getElementById('btnClearFilter').addEventListener('click', clearFilters);
+            document.getElementById('btnRefresh').addEventListener('click', () => {
+                clearFilters();
+                loadMovements();
+            });
+
+            // Allow Enter key on date inputs
+            document.getElementById('dateFrom').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') applyFilters();
+            });
+            document.getElementById('dateTo').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') applyFilters();
+            });
+
+            // Load on page load
+            await loadMovements();
+            
+            console.log('✅ Stock movements page ready');
+        })();
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>
