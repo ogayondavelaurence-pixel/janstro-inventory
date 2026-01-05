@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Requisitions - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+<style>
+    .dropdown-menu {
+        z-index: 1055 !important;
+        position: absolute !important;
+    }
+    .btn-group {
+        position: static !important;
+    }
+    .card, .card-body {
+        overflow: visible !important;
+    }
+</style>
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <h1>
+                <i class="bi bi-file-earmark-text"></i>
+                Purchase Requisitions
+            </h1>
+            <p class="text-muted">Review and approve purchase requests from sales orders</p>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4" id="summaryCards">
+            <div class="col-md-3">
+                <div class="card summary-card bg-warning text-white" onclick="filterByStatus('pending')" style="cursor: pointer;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-1">Pending</h5>
+                                <h2 class="mb-0" id="pendingCount">0</h2>
+                            </div>
+                            <i class="bi bi-clock-history fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-success text-white" onclick="filterByStatus('approved')" style="cursor: pointer;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-1">Approved</h5>
+                                <h2 class="mb-0" id="approvedCount">0</h2>
+                            </div>
+                            <i class="bi bi-check-circle fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-primary text-white" onclick="filterByStatus('converted')" style="cursor: pointer;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-1">Converted</h5>
+                                <h2 class="mb-0" id="convertedCount">0</h2>
+                            </div>
+                            <i class="bi bi-arrow-right-circle fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-info text-white" onclick="filterByStatus('')" style="cursor: pointer;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-1">Total</h5>
+                                <h2 class="mb-0" id="totalCount">0</h2>
+                            </div>
+                            <i class="bi bi-list-check fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters & Actions -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-2">
+                        <select id="filterStatus" class="form-select" aria-label="Filter by Status">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="converted">Converted</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="filterUrgency" class="form-select" aria-label="Filter by Urgency">
+                            <option value="">All Urgency</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="search" id="searchInput" class="form-control" 
+                               placeholder="🔍 Search PR#, customer, item...">
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <!-- ✅ FIXED: Dropdown with position: static to escape overflow -->
+                        <div class="btn-group me-2" style="position: static;">
+                            <button type="button" class="btn btn-primary dropdown-toggle" 
+                                    id="batchActionsDropdown"
+                                    data-bs-toggle="dropdown" 
+                                    data-bs-auto-close="true"
+                                    aria-expanded="false">
+                                <i class="bi bi-lightning-charge"></i> Batch Actions
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="batchActionsDropdown">
+                                <li>
+                                    <a class="dropdown-item" href="#" id="btnBatchApprove">
+                                        <i class="bi bi-check-circle"></i> Approve All Pending
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#" id="btnBatchConvert">
+                                        <i class="bi bi-arrow-right-circle"></i> Convert All Approved
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="#" id="btnExportReport">
+                                        <i class="bi bi-file-earmark-excel"></i> Export Report
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <button id="btnClearFilters" class="btn btn-outline-secondary me-2" onclick="clearFilters()">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                        <button id="btnRefresh" class="btn btn-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="bi bi-funnel"></i> 
+                        <span id="filterResultCount">0 results</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- PR List -->
+        <div id="prListContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+                <p class="mt-3 text-muted">Loading purchase requisitions...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div class="modal fade" id="approveModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header modal-header-success">
+                    <h5 class="modal-title">
+                        <i class="bi bi-check-circle"></i> Approve Purchase Requisition
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <i class="bi bi-info-circle"></i>
+                        Approving this requisition will allow it to be converted to a Purchase Order.
+                    </div>
+                    <p class="fw-bold" id="approvePRDetails"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="btnConfirmApprove">
+                        <i class="bi bi-check-circle"></i> Approve
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="rejectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header modal-header-danger">
+                    <h5 class="modal-title">
+                        <i class="bi bi-x-circle"></i> Reject Purchase Requisition
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="rejectForm">
+                    <div class="modal-body">
+                        <p class="fw-bold" id="rejectPRDetails"></p>
+                        <div class="mb-3">
+                            <label for="rejectReason" class="form-label">
+                                Reason for Rejection <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="rejectReason" rows="4" required
+                                      placeholder="Please provide a detailed reason for rejection..."></textarea>
+                            <small class="text-muted">This will be visible to the requester.</small>
+                        </div>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Warning:</strong> Rejecting this PR will mark it as denied.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle"></i> Reject PR
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="convertModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header modal-header-primary">
+                    <h5 class="modal-title">
+                        <i class="bi bi-arrow-right-circle"></i> Convert PR to Purchase Order
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="convertForm">
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>PR Details:</strong>
+                            <p class="mb-0 mt-2" id="convertPRDetails"></p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-building"></i> Select Supplier <span class="text-danger">*</span>
+                            </label>
+                            <div id="supplierList">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    <small class="ms-2 text-muted">Loading suppliers...</small>
+                                </div>
+                            </div>
+                            <input type="hidden" id="selectedSupplierId" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="unitPrice" class="form-label">
+                                    Unit Price (PHP) <span class="text-muted">(Optional)</span>
+                                </label>
+                                <input type="number" class="form-control" id="unitPrice" 
+                                       step="0.01" min="0" placeholder="Override default price">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="expectedDelivery" class="form-label">
+                                    Expected Delivery Date <span class="text-muted">(Optional)</span>
+                                </label>
+                                <input type="date" class="form-control" id="expectedDelivery">
+                            </div>
+                        </div>
+
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i>
+                            <strong>This will:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Create a new Purchase Order</li>
+                                <li>Mark this PR as "Converted"</li>
+                                <li>Send notification to purchasing team</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="btnConfirmConvert">
+                            <i class="bi bi-arrow-right-circle"></i> Convert to PO
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="viewDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-file-earmark-text"></i> PR Details
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="prDetailsContent"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Progress Modal -->
+    <div class="modal fade" id="batchProgressModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-lightning-charge"></i> Processing Batch Action
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span id="batchProgressText">Processing...</span>
+                            <span id="batchProgressCount">0/0</span>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="batchProgressBar" role="progressbar" style="width: 0%">0%</div>
+                        </div>
+                    </div>
+                    <div id="batchResultsContainer" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btnCloseBatchModal" 
+                            data-bs-dismiss="modal" disabled>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+
+    <script>
+        (async function() {
+            'use strict';
+
+            let currentPRs = [];
+            let allPRs = [];
+            let suppliers = [];
+            let selectedPR = null;
+
+            const container = document.getElementById('prListContainer');
+            
+            const approveModal = new bootstrap.Modal(document.getElementById('approveModal'));
+            const rejectModal = new bootstrap.Modal(document.getElementById('rejectModal'));
+            const convertModal = new bootstrap.Modal(document.getElementById('convertModal'));
+            const viewDetailsModal = new bootstrap.Modal(document.getElementById('viewDetailsModal'));
+            const batchProgressModal = new bootstrap.Modal(document.getElementById('batchProgressModal'));
+
+            // ✅ FIX: Initialize dropdown programmatically
+            document.addEventListener('DOMContentLoaded', function() {
+                const dropdownElement = document.getElementById('batchActionsDropdown');
+                if (dropdownElement) {
+                    new bootstrap.Dropdown(dropdownElement);
+                    console.log('✅ Batch Actions dropdown initialized');
+                }
+            });
+
+            // ✅ FIX: Attach event listeners to dropdown items
+            document.getElementById('btnBatchApprove')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                batchApprovePending();
+            });
+
+            document.getElementById('btnBatchConvert')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                batchConvertApproved();
+            });
+
+            document.getElementById('btnExportReport')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                exportPRReport();
+            });
+
+            async function loadPRs() {
+                try {
+                    showLoading();
+
+                    const response = await API.getPRs();
+                    currentPRs = response.requisitions || [];
+                    allPRs = [...currentPRs];
+                    const summary = response.summary || {};
+
+                    updateSummary(summary);
+                    renderPRList(currentPRs);
+
+                    console.log(`✅ Loaded ${currentPRs.length} purchase requisitions`);
+                } catch (error) {
+                    console.error('❌ Load PRs error:', error);
+                    showError('Failed to load purchase requisitions: ' + error.message);
+                }
+            }
+
+            function updateSummary(summary) {
+                document.getElementById('pendingCount').textContent = summary.pending || 0;
+                document.getElementById('approvedCount').textContent = summary.approved || 0;
+                document.getElementById('convertedCount').textContent = summary.converted || 0;
+                document.getElementById('totalCount').textContent = summary.total || 0;
+            }
+
+            function renderPRList(prs) {
+                if (!prs || prs.length === 0) {
+                    container.innerHTML = `
+                        <div class="alert alert-info text-center py-5">
+                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                            <h5>No purchase requisitions found</h5>
+                            <p class="text-muted mb-0">PRs are auto-generated when stock shortages are detected</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const sorted = [...prs].sort((a, b) => {
+                    const statusOrder = { pending: 0, approved: 1, rejected: 2, converted: 3 };
+                    const urgencyOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+                    
+                    const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+                    if (statusDiff !== 0) return statusDiff;
+                    
+                    return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+                });
+
+                container.innerHTML = sorted.map(pr => renderPRCard(pr)).join('');
+                updateFilterBadge(sorted.length);
+            }
+
+            function renderPRCard(pr) {
+                const canApprove = RBAC.can('purchase_requisitions', 'approve') && pr.status === 'pending';
+                const canConvert = RBAC.can('purchase_requisitions', 'convert_to_po') && pr.status === 'approved';
+
+                return `
+                    <div class="card pr-card urgency-${pr.urgency}" data-pr-id="${pr.pr_id}">
+                        <div class="card-body">
+                            <div class="row align-items-start">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <h5 class="mb-0 me-2">
+                                            <strong>${pr.pr_number}</strong>
+                                        </h5>
+                                        <span class="badge status-badge-${pr.status}">${pr.status.toUpperCase()}</span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <span class="urgency-indicator urgency-${pr.urgency}">
+                                            ${pr.urgency === 'critical' ? '🚨' : pr.urgency === 'high' ? '⚠️' : pr.urgency === 'medium' ? 'ℹ️' : '📋'}
+                                            ${pr.urgency.toUpperCase()}
+                                        </span>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <strong class="text-primary">
+                                            <i class="bi bi-box-seam"></i> ${pr.item_name}
+                                        </strong>
+                                    </div>
+
+                                    <div class="text-muted small">
+                                        <div><strong>Quantity Needed:</strong> ${pr.required_quantity} ${pr.unit}</div>
+                                        ${pr.customer_name ? `<div><strong>Customer:</strong> ${pr.customer_name}</div>` : ''}
+                                        ${pr.sales_order_id ? `<div><strong>Sales Order:</strong> SO-${String(pr.sales_order_id).padStart(5, '0')}</div>` : ''}
+                                        <div><strong>Requested By:</strong> ${pr.requested_by_name}</div>
+                                        <div><strong>Date:</strong> ${Utils.formatDate(pr.created_at)}</div>
+                                    </div>
+
+                                    ${pr.rejection_reason ? `
+                                        <div class="alert alert-danger mt-3 mb-0 py-2">
+                                            <small><strong>Rejection Reason:</strong><br>${pr.rejection_reason}</small>
+                                        </div>
+                                    ` : ''}
+                                </div>
+
+                                <div class="col-md-6">
+                                    ${pr.reason ? `
+                                        <div class="alert alert-light py-2 px-3 mb-3">
+                                            <small class="text-muted">
+                                                <strong>Reason:</strong><br>${pr.reason}
+                                            </small>
+                                        </div>
+                                    ` : ''}
+
+                                    <div class="action-btn-group">
+                                        ${canApprove ? `
+                                            <button class="btn btn-success flex-fill" 
+                                                    onclick="approvePR(${pr.pr_id}, '${pr.pr_number}', '${pr.item_name}', ${pr.required_quantity})">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </button>
+                                            <button class="btn btn-danger flex-fill" 
+                                                    onclick="rejectPR(${pr.pr_id}, '${pr.pr_number}', '${pr.item_name}')">
+                                                <i class="bi bi-x-circle"></i> Reject
+                                            </button>
+                                        ` : ''}
+
+                                        ${canConvert ? `
+                                            <button class="btn btn-primary w-100" 
+                                                    onclick="convertPR(${pr.pr_id}, '${pr.pr_number}', '${pr.item_name}', ${pr.required_quantity}, ${pr.item_id}, ${pr.unit_price || 0})">
+                                                <i class="bi bi-arrow-right-circle"></i> Convert to PO
+                                            </button>
+                                        ` : ''}
+
+                                        ${pr.status === 'converted' && pr.converted_to_po_id ? `
+                                            <a href="purchase-orders.html?po_id=${pr.converted_to_po_id}" 
+                                               class="btn btn-outline-primary w-100">
+                                                <i class="bi bi-box-arrow-up-right"></i> View Purchase Order
+                                            </a>
+                                        ` : ''}
+
+                                        <button class="btn btn-outline-secondary w-100" 
+                                                onclick="viewPRDetails(${pr.pr_id})">
+                                            <i class="bi bi-eye"></i> View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            async function batchApprovePending() {
+                const pendingPRs = currentPRs.filter(pr => pr.status === 'pending');
+                
+                if (pendingPRs.length === 0) {
+                    Utils.showToast('No pending PRs to approve', 'info');
+                    return;
+                }
+
+                if (!confirm(`Approve ${pendingPRs.length} pending PR(s)?`)) return;
+
+                await processBatchAction(pendingPRs, 'approve', 'Approving PRs');
+            }
+
+            async function batchConvertApproved() {
+                const approvedPRs = currentPRs.filter(pr => pr.status === 'approved');
+                
+                if (approvedPRs.length === 0) {
+                    Utils.showToast('No approved PRs to convert', 'info');
+                    return;
+                }
+
+                Utils.showToast('Batch conversion requires supplier selection per PR. Please convert individually.', 'warning');
+            }
+
+            async function processBatchAction(prs, action, progressText) {
+                batchProgressModal.show();
+                
+                const resultsContainer = document.getElementById('batchResultsContainer');
+                const progressBar = document.getElementById('batchProgressBar');
+                const progressCount = document.getElementById('batchProgressCount');
+                const progressTextEl = document.getElementById('batchProgressText');
+                const closeBtn = document.getElementById('btnCloseBatchModal');
+                
+                resultsContainer.innerHTML = '';
+                progressTextEl.textContent = progressText;
+                closeBtn.disabled = true;
+
+                let completed = 0;
+                const total = prs.length;
+
+                for (const pr of prs) {
+                    try {
+                        let result;
+                        if (action === 'approve') {
+                            result = await API.approvePR(pr.pr_id);
+                        }
+
+                        completed++;
+                        const progress = Math.round((completed / total) * 100);
+                        
+                        progressBar.style.width = `${progress}%`;
+                        progressBar.textContent = `${progress}%`;
+                        progressCount.textContent = `${completed}/${total}`;
+
+                        resultsContainer.innerHTML += `
+                            <div class="alert alert-success alert-sm mb-2">
+                                <i class="bi bi-check-circle"></i> ${pr.pr_number}: Success
+                            </div>
+                        `;
+                    } catch (error) {
+                        completed++;
+                        const progress = Math.round((completed / total) * 100);
+                        
+                        progressBar.style.width = `${progress}%`;
+                        progressBar.textContent = `${progress}%`;
+                        progressCount.textContent = `${completed}/${total}`;
+
+                        resultsContainer.innerHTML += `
+                            <div class="alert alert-danger alert-sm mb-2">
+                                <i class="bi bi-x-circle"></i> ${pr.pr_number}: ${error.message}
+                            </div>
+                        `;
+                    }
+
+                    resultsContainer.scrollTop = resultsContainer.scrollHeight;
+                }
+
+                progressTextEl.textContent = 'Batch action completed';
+                progressBar.classList.remove('progress-bar-animated');
+                closeBtn.disabled = false;
+
+                await loadPRs();
+            }
+
+            function exportPRReport() {
+                const csv = Utils.arrayToCSV(currentPRs.map(pr => ({
+                    'PR Number': pr.pr_number,
+                    'Status': pr.status,
+                    'Urgency': pr.urgency,
+                    'Item': pr.item_name,
+                    'Quantity': pr.required_quantity,
+                    'Customer': pr.customer_name || 'N/A',
+                    'Requested By': pr.requested_by_name,
+                    'Date': Utils.formatDate(pr.created_at)
+                })));
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `PR_Report_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                Utils.showToast('Report exported', 'success');
+            }
+
+            window.approvePR = function(prId, prNumber, itemName, qty) {
+                selectedPR = prId;
+                document.getElementById('approvePRDetails').textContent = 
+                    `${prNumber} - ${itemName} (${qty} units)`;
+                approveModal.show();
+            };
+
+            document.getElementById('btnConfirmApprove').addEventListener('click', async () => {
+                try {
+                    const btn = document.getElementById('btnConfirmApprove');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Approving...';
+
+                    await API.approvePR(selectedPR);
+                    
+                    Utils.showToast('✅ PR approved successfully', 'success');
+                    approveModal.hide();
+                    await loadPRs();
+                } catch (error) {
+                    Utils.showToast('Failed to approve PR: ' + error.message, 'error');
+                } finally {
+                    const btn = document.getElementById('btnConfirmApprove');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Approve';
+                }
+            });
+
+            window.rejectPR = function(prId, prNumber, itemName) {
+                selectedPR = prId;
+                document.getElementById('rejectPRDetails').textContent = `${prNumber} - ${itemName}`;
+                document.getElementById('rejectReason').value = '';
+                rejectModal.show();
+            };
+
+            document.getElementById('rejectForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                try {
+                    const btn = e.target.querySelector('button[type="submit"]');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Rejecting...';
+
+                    const reason = document.getElementById('rejectReason').value.trim();
+                    await API.rejectPR(selectedPR, reason);
+                    
+                    Utils.showToast('PR rejected', 'success');
+                    rejectModal.hide();
+                    await loadPRs();
+                } catch (error) {
+                    Utils.showToast('Failed to reject PR: ' + error.message, 'error');
+                } finally {
+                    const btn = e.target.querySelector('button[type="submit"]');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-x-circle"></i> Reject PR';
+                }
+            });
+
+            window.convertPR = async function(prId, prNumber, itemName, qty, itemId, unitPrice) {
+                selectedPR = { pr_id: prId, item_id: itemId };
+                
+                document.getElementById('convertPRDetails').textContent = `${prNumber} - ${itemName} (${qty} units)`;
+                document.getElementById('unitPrice').value = unitPrice || '';
+                
+                const defaultDate = new Date();
+                defaultDate.setDate(defaultDate.getDate() + 7);
+                document.getElementById('expectedDelivery').value = defaultDate.toISOString().split('T')[0];
+                
+                await loadSuppliersForConversion();
+                convertModal.show();
+            };
+
+            async function loadSuppliersForConversion() {
+                const supplierList = document.getElementById('supplierList');
+                
+                try {
+                    supplierList.innerHTML = `
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <small class="ms-2 text-muted">Loading suppliers...</small>
+                        </div>
+                    `;
+
+                    if (suppliers.length === 0) {
+                        const response = await API.getSuppliers();
+                        suppliers = Array.isArray(response) ? response : (response?.data || []);
+                    }
+
+                    if (suppliers.length === 0) {
+                        supplierList.innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                No suppliers found. Please add suppliers first.
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    supplierList.innerHTML = suppliers.map(s => `
+                        <div class="supplier-option" onclick="selectSupplier(${s.supplier_id}, '${s.supplier_name}')">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${s.supplier_name}</strong>
+                                    ${s.contact_person ? `<br><small class="text-muted">Contact: ${s.contact_person}</small>` : ''}
+                                </div>
+                                <i class="bi bi-check-circle text-success d-none supplier-check-${s.supplier_id}"></i>
+                            </div>
+                        </div>
+                    `).join('');
+                } catch (error) {
+                    supplierList.innerHTML = `
+                        <div class="alert alert-danger">
+                            Failed to load suppliers. Please try again.
+                        </div>
+                    `;
+                }
+            }
+
+            window.selectSupplier = function(supplierId) {
+                document.querySelectorAll('.supplier-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                document.querySelectorAll('[class^="supplier-check-"]').forEach(icon => {
+                    icon.classList.add('d-none');
+                });
+
+                event.currentTarget.classList.add('selected');
+                document.querySelector(`.supplier-check-${supplierId}`).classList.remove('d-none');
+                document.getElementById('selectedSupplierId').value = supplierId;
+            };
+
+            document.getElementById('convertForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const supplierId = document.getElementById('selectedSupplierId').value;
+                if (!supplierId) {
+                    Utils.showToast('Please select a supplier', 'error');
+                    return;
+                }
+                
+                try {
+                    const btn = document.getElementById('btnConfirmConvert');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Converting...';
+
+                    const data = {
+                        supplier_id: parseInt(supplierId),
+                        unit_price: parseFloat(document.getElementById('unitPrice').value) || null,
+                        expected_delivery_date: document.getElementById('expectedDelivery').value || null
+                    };
+
+                    const response = await API.convertPRtoPO(selectedPR.pr_id, data);
+                    
+                    Utils.showToast(`✅ PR converted to PO #${response.data?.po_id || 'N/A'}`, 'success');
+                    convertModal.hide();
+                    await loadPRs();
+                } catch (error) {
+                    Utils.showToast('Failed to convert PR: ' + error.message, 'error');
+                } finally {
+                    const btn = document.getElementById('btnConfirmConvert');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-arrow-right-circle"></i> Convert to PO';
+                }
+            });
+
+            window.viewPRDetails = async function(prId) {
+                const pr = allPRs.find(p => p.pr_id === prId);
+                if (!pr) return;
+
+                const content = document.getElementById('prDetailsContent');
+                content.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">Basic Information</h6>
+                            <table class="table table-sm">
+                                <tr><th>PR Number:</th><td>${pr.pr_number}</td></tr>
+                                <tr><th>Status:</th><td><span class="badge status-badge-${pr.status}">${pr.status.toUpperCase()}</span></td></tr>
+                                <tr><th>Urgency:</th><td><span class="urgency-indicator urgency-${pr.urgency}">${pr.urgency.toUpperCase()}</span></td></tr>
+                                <tr><th>Created:</th><td>${Utils.formatDate(pr.created_at)}</td></tr>
+                                <tr><th>Requested By:</th><td>${pr.requested_by_name}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">Item Details</h6>
+                            <table class="table table-sm">
+                                <tr><th>Item:</th><td>${pr.item_name}</td></tr>
+                                <tr><th>SKU:</th><td>${pr.sku || 'N/A'}</td></tr>
+                                <tr><th>Quantity:</th><td>${pr.required_quantity} ${pr.unit}</td></tr>
+                                <tr><th>Unit Price:</th><td>₱${(pr.unit_price || 0).toFixed(2)}</td></tr>
+                                ${pr.customer_name ? `<tr><th>Customer:</th><td>${pr.customer_name}</td></tr>` : ''}
+                                ${pr.sales_order_id ? `<tr><th>Sales Order:</th><td>SO-${String(pr.sales_order_id).padStart(5, '0')}</td></tr>` : ''}
+                            </table>
+                        </div>
+                    </div>
+                    ${pr.reason ? `
+                        <div class="mt-3">
+                            <h6 class="text-primary">Reason</h6>
+                            <p class="text-muted">${pr.reason}</p>
+                        </div>
+                    ` : ''}
+                    ${pr.rejection_reason ? `
+                        <div class="mt-3">
+                            <h6 class="text-danger">Rejection Reason</h6>
+                            <div class="alert alert-danger">${pr.rejection_reason}</div>
+                        </div>
+                    ` : ''}
+                `;
+
+                viewDetailsModal.show();
+            };
+
+            function applyFilters() {
+                const statusFilter = document.getElementById('filterStatus')?.value || '';
+                const urgencyFilter = document.getElementById('filterUrgency')?.value || '';
+                const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
+
+                let filtered = [...allPRs];
+
+                if (statusFilter) filtered = filtered.filter(pr => pr.status === statusFilter);
+                if (urgencyFilter) filtered = filtered.filter(pr => pr.urgency === urgencyFilter);
+                
+                if (searchQuery) {
+                    filtered = filtered.filter(pr => {
+                        const searchFields = [
+                            pr.pr_number,
+                            pr.item_name,
+                            pr.customer_name,
+                            pr.requested_by_name
+                        ].filter(Boolean);
+
+                        return searchFields.some(field => 
+                            String(field).toLowerCase().includes(searchQuery)
+                        );
+                    });
+                }
+
+                currentPRs = filtered;
+                renderPRList(currentPRs);
+            }
+
+            window.filterByStatus = function(status) {
+                document.getElementById('filterStatus').value = status;
+                applyFilters();
+            };
+
+            window.clearFilters = function() {
+                document.getElementById('filterStatus').value = '';
+                document.getElementById('filterUrgency').value = '';
+                document.getElementById('searchInput').value = '';
+                applyFilters();
+                Utils.showToast('Filters cleared', 'info');
+            };
+
+            function updateFilterBadge(count) {
+                const badge = document.getElementById('filterResultCount');
+                if (badge) badge.textContent = `${count} result${count !== 1 ? 's' : ''}`;
+            }
+
+            function showLoading() {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+                        <p class="mt-3 text-muted">Loading purchase requisitions...</p>
+                    </div>
+                `;
+            }
+
+            function showError(message) {
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Error</strong>
+                        <p class="mb-0 mt-2">${message}</p>
+                        <button class="btn btn-sm btn-outline-danger mt-3" onclick="loadPRs()">
+                            <i class="bi bi-arrow-clockwise"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+
+            document.getElementById('filterStatus')?.addEventListener('change', applyFilters);
+            document.getElementById('filterUrgency')?.addEventListener('change', applyFilters);
+            document.getElementById('searchInput')?.addEventListener('input', Utils.debounce(applyFilters, 300));
+            document.getElementById('btnRefresh')?.addEventListener('click', loadPRs);
+
+            await loadPRs();
+
+            console.log('✅ Purchase Requisitions page ready (Fixed Dropdown v2.0)');
+        })();
+    </script>
+
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

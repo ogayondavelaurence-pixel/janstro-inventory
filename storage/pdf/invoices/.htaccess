@@ -1,0 +1,21 @@
+# Prevent directory listing
+Options -Indexes
+
+# Allow PDF files to be accessed
+<FilesMatch "\.pdf$">
+    Require all granted
+</FilesMatch>
+
+# Block direct access to hidden files
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+```
+
+---
+
+## Deployment
+
+Replace the file at:
+```
+storage/pdf/invoices/.htaccess

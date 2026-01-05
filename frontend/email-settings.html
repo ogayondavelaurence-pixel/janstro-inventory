@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Settings - Janstro IMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <div>
+                <h1><i class="bi bi-envelope"></i> Email Settings</h1>
+                <p class="text-muted">Configure SMTP and notification settings</p>
+            </div>
+        </header>
+
+        <div class="email-settings-container">
+            <!-- SMTP Configuration -->
+            <div class="settings-card">
+                <h2><i class="bi bi-server"></i> SMTP Configuration</h2>
+                
+                <form id="smtpForm">
+                    <div class="mb-3">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enabled" checked>
+                            <span>Enable Email Notifications</span>
+                        </label>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="mb-3">
+                            <label class="form-label">SMTP Host <span class="text-danger">*</span></label>
+                            <input type="text" id="smtp_host" class="form-control" aria-label="SMTP Host"
+                                   value="smtp.gmail.com" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">SMTP Port <span class="text-danger">*</span></label>
+                            <input type="number" id="smtp_port" class="form-control" aria-label="SMTP Port"
+                                   value="587" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Encryption</label>
+                        <select id="smtp_encryption" class="form-control" aria-label="SMTP Encryption">
+                            <option value="tls">TLS</option>
+                            <option value="ssl">SSL</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">SMTP Username (Email) <span class="text-danger">*</span></label>
+                        <input type="email" id="smtp_username" class="form-control" 
+                               placeholder="your-email@gmail.com" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">SMTP Password / App Password <span class="text-danger">*</span></label>
+                        <input type="password" id="smtp_password" class="form-control" 
+                               placeholder="Enter password or app-specific password" required>
+                        <small class="text-muted">For Gmail: Use App Password (not your regular password)</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="mb-3">
+                            <label class="form-label">From Email <span class="text-danger">*</span></label>
+                            <input type="email" id="from_email" class="form-control" aria-label="From Email"
+                                   value="noreply@janstro.com" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">From Name <span class="text-danger">*</span></label>
+                            <input type="text" id="from_name" class="form-control" aria-label="From Name"
+                                   value="Janstro Inventory System" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Reply-To Email</label>
+                        <input type="email" id="reply_to" class="form-control" 
+                               placeholder="support@janstro.com">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save SMTP Settings
+                    </button>
+                </form>
+            </div>
+
+            <!-- Notification Settings -->
+            <div class="settings-card">
+                <h2><i class="bi bi-bell"></i> Notification Preferences</h2>
+                
+                <form id="notificationForm">
+                    <div class="mb-3">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify_low_stock">
+                            <span>Low Stock Alerts</span>
+                        </label>
+                        <small class="text-muted d-block ms-4">Send email when items reach reorder level</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify_new_order">
+                            <span>New Order Notifications</span>
+                        </label>
+                        <small class="text-muted d-block ms-4">Notify when new orders are created</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify_po_delivered">
+                            <span>Purchase Order Deliveries</span>
+                        </label>
+                        <small class="text-muted d-block ms-4">Notify when PO goods are received</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify_installation_complete">
+                            <span>Installation Completions</span>
+                        </label>
+                        <small class="text-muted d-block ms-4">Notify when installations are completed</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Admin Notification Emails</label>
+                        <textarea id="admin_emails" class="form-control" rows="3"
+                                  placeholder="admin1@janstro.com, admin2@janstro.com"></textarea>
+                        <small class="text-muted">Comma-separated list of admin emails</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Notification Settings
+                    </button>
+                </form>
+            </div>
+
+            <!-- Test Email -->
+            <div class="settings-card">
+                <h2><i class="bi bi-send-check"></i> Test Email Configuration</h2>
+                
+                <form id="testEmailForm">
+                    <div class="mb-3">
+                        <label class="form-label">Test Email Address <span class="text-danger">*</span></label>
+                        <input type="email" id="test_email" class="form-control" 
+                               placeholder="test@example.com" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-envelope-check"></i> Send Test Email
+                    </button>
+                </form>
+
+                <div id="testResult" class="test-result"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    
+    <script>
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🔧 Email Settings: Initializing...');
+            await verifyAccess();
+            await loadSettings();
+            setupEventListeners();
+        });
+
+        async function verifyAccess() {
+            try {
+                console.log('🔐 Verifying superadmin access...');
+                const response = await API.getCurrentUser();
+                
+                console.log('📦 User response:', response);
+                
+                if (response.success && response.data) {
+                    currentUser = response.data;
+                    
+                    // Check if superadmin
+                    const userRole = (currentUser.role || currentUser.role_name || '').toLowerCase();
+                    
+                    console.log('👤 User role:', userRole);
+                    
+                    if (userRole !== 'superadmin') {
+                        console.error('❌ Access denied: Not superadmin');
+                        Utils.showToast('Access denied. Superadmin only.', 'error');
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 2000);
+                        return;
+                    }
+                    
+                    console.log('✅ Superadmin access verified');
+                }
+            } catch (error) {
+                console.error('❌ Access verification error:', error);
+                Utils.showToast('Authentication failed', 'error');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                console.log('📥 Loading email settings...');
+                
+                const response = await API.getEmailSettings();
+                
+                console.log('📦 Settings response:', response);
+                
+                // Handle both wrapped and unwrapped responses
+                const settings = response.data || response;
+                
+                if (settings) {
+                    // Populate SMTP settings
+                    document.getElementById('enabled').checked = settings.enabled == 1;
+                    document.getElementById('smtp_host').value = settings.smtp_host || 'smtp.gmail.com';
+                    document.getElementById('smtp_port').value = settings.smtp_port || 587;
+                    document.getElementById('smtp_encryption').value = settings.smtp_encryption || 'tls';
+                    document.getElementById('smtp_username').value = settings.smtp_username || '';
+                    document.getElementById('smtp_password').value = settings.smtp_password || '';
+                    document.getElementById('from_email').value = settings.from_email || 'noreply@janstro.com';
+                    document.getElementById('from_name').value = settings.from_name || 'Janstro Inventory System';
+                    document.getElementById('reply_to').value = settings.reply_to || '';
+                    
+                    // Populate notification settings
+                    document.getElementById('notify_low_stock').checked = settings.notify_low_stock == 1;
+                    document.getElementById('notify_new_order').checked = settings.notify_new_order == 1;
+                    document.getElementById('notify_po_delivered').checked = settings.notify_po_delivered == 1;
+                    document.getElementById('notify_installation_complete').checked = settings.notify_installation_complete == 1;
+                    document.getElementById('admin_emails').value = settings.admin_emails || '';
+                    
+                    console.log('✅ Settings loaded successfully');
+                    Utils.showToast('Settings loaded', 'success');
+                }
+            } catch (error) {
+                console.error('❌ Load settings error:', error);
+                Utils.showToast('Failed to load settings: ' + error.message, 'error');
+            }
+        }
+
+        function setupEventListeners() {
+            const smtpForm = document.getElementById('smtpForm');
+            if (smtpForm) {
+                smtpForm.addEventListener('submit', handleSaveSMTP);
+            }
+            
+            const notificationForm = document.getElementById('notificationForm');
+            if (notificationForm) {
+                notificationForm.addEventListener('submit', handleSaveNotifications);
+            }
+            
+            const testEmailForm = document.getElementById('testEmailForm');
+            if (testEmailForm) {
+                testEmailForm.addEventListener('submit', handleTestEmail);
+            }
+        }
+
+        async function handleSaveSMTP(e) {
+            e.preventDefault();
+            
+            const data = {
+                enabled: document.getElementById('enabled').checked ? 1 : 0,
+                smtp_host: document.getElementById('smtp_host').value.trim(),
+                smtp_port: parseInt(document.getElementById('smtp_port').value),
+                smtp_encryption: document.getElementById('smtp_encryption').value,
+                smtp_username: document.getElementById('smtp_username').value.trim(),
+                smtp_password: document.getElementById('smtp_password').value,
+                from_email: document.getElementById('from_email').value.trim(),
+                from_name: document.getElementById('from_name').value.trim(),
+                reply_to: document.getElementById('reply_to').value.trim()
+            };
+            
+            // Validate
+            if (!data.smtp_host) {
+                Utils.showToast('SMTP host is required', 'error');
+                return;
+            }
+            
+            if (!data.smtp_port || data.smtp_port < 1 || data.smtp_port > 65535) {
+                Utils.showToast('Valid SMTP port is required', 'error');
+                return;
+            }
+            
+            try {
+                console.log('💾 Saving SMTP settings...', data);
+                const response = await API.saveEmailSettings(data);
+                
+                console.log('📦 Save response:', response);
+                
+                if (response.success) {
+                    Utils.showToast('SMTP settings saved successfully', 'success');
+                } else {
+                    Utils.showToast(response.message || 'Save failed', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Save SMTP error:', error);
+                Utils.showToast(error.message || 'Save failed', 'error');
+            }
+        }
+
+        async function handleSaveNotifications(e) {
+            e.preventDefault();
+            
+            const data = {
+                notify_low_stock: document.getElementById('notify_low_stock').checked ? 1 : 0,
+                notify_new_order: document.getElementById('notify_new_order').checked ? 1 : 0,
+                notify_po_delivered: document.getElementById('notify_po_delivered').checked ? 1 : 0,
+                notify_installation_complete: document.getElementById('notify_installation_complete').checked ? 1 : 0,
+                admin_emails: document.getElementById('admin_emails').value.trim()
+            };
+            
+            try {
+                console.log('💾 Saving notification settings...', data);
+                const response = await API.saveEmailSettings(data);
+                
+                console.log('📦 Save response:', response);
+                
+                if (response.success) {
+                    Utils.showToast('Notification settings saved successfully', 'success');
+                } else {
+                    Utils.showToast(response.message || 'Save failed', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Save notifications error:', error);
+                Utils.showToast(error.message || 'Save failed', 'error');
+            }
+        }
+
+        async function handleTestEmail(e) {
+            e.preventDefault();
+            
+            const testEmail = document.getElementById('test_email').value.trim();
+            const resultDiv = document.getElementById('testResult');
+            
+            if (!testEmail || !Utils.validateEmail(testEmail)) {
+                Utils.showToast('Please enter a valid email address', 'error');
+                return;
+            }
+            
+            // Show loading state
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result';
+            resultDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Sending test email...';
+            
+            try {
+                console.log('📧 Sending test email to:', testEmail);
+                const response = await API.testEmail(testEmail);
+                
+                console.log('📦 Test response:', response);
+                
+                if (response.success) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = '<i class="bi bi-check-circle"></i> Test email sent successfully! Check your inbox.';
+                    Utils.showToast('Test email sent to ' + testEmail, 'success');
+                } else {
+                    resultDiv.className = 'test-result error';
+                    resultDiv.innerHTML = `<i class="bi bi-x-circle"></i> Test failed: ${response.message || 'Unknown error'}`;
+                    Utils.showToast('Test email failed', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Test email error:', error);
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `<i class="bi bi-x-circle"></i> Test failed: ${error.message || 'Unknown error'}`;
+                Utils.showToast('Test email failed: ' + error.message, 'error');
+            }
+        }
+    </script>
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>

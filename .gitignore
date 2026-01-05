@@ -1,0 +1,200 @@
+# =============================================================================
+# JANSTRO IMS - PRODUCTION .GITIGNORE
+# =============================================================================
+# This file prevents sensitive and unnecessary files from being committed
+# =============================================================================
+
+# =============================================================================
+# CRITICAL: NEVER COMMIT THESE FILES
+# =============================================================================
+.env
+.env.production
+.env.local
+.env.*.local
+config/database.php
+
+# Backup files containing production data
+*.sql
+*.sql.gz
+*.backup
+backups/
+
+# =============================================================================
+# SECURITY & CREDENTIALS
+# =============================================================================
+*.key
+*.pem
+*.crt
+*.cert
+*.p12
+*.pfx
+id_rsa*
+*.ppk
+
+# =============================================================================
+# LOGS & TEMPORARY FILES
+# =============================================================================
+logs/
+*.log
+*.log.*
+error.log
+access.log
+php_error.log
+debug.log
+
+# Temporary files
+temp/
+tmp/
+cache/
+*.tmp
+*.temp
+*.cache
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# UPLOADS & STORAGE
+# =============================================================================
+storage/uploads/*
+storage/temp/*
+storage/cache/*
+!storage/uploads/.gitkeep
+!storage/temp/.gitkeep
+!storage/cache/.gitkeep
+
+# =============================================================================
+# DEPENDENCIES
+# =============================================================================
+vendor/
+node_modules/
+composer.lock
+package-lock.json
+yarn.lock
+
+# Composer
+composer.phar
+
+# =============================================================================
+# IDE & EDITOR FILES
+# =============================================================================
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# PhpStorm / IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Eclipse
+.project
+.buildpath
+.settings/
+
+# NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# =============================================================================
+# OPERATING SYSTEM FILES
+# =============================================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# =============================================================================
+# BUILD & COMPILED FILES
+# =============================================================================
+*.compiled
+*.min.js.map
+*.min.css.map
+dist/
+build/
+
+# =============================================================================
+# DATABASE FILES
+# =============================================================================
+*.sqlite
+*.sqlite3
+*.db
+
+# =============================================================================
+# TEST FILES
+# =============================================================================
+test.php
+test_*.php
+debug.php
+phpunit.xml
+.phpunit.result.cache
+
+# =============================================================================
+# DOCUMENTATION DRAFTS
+# =============================================================================
+NOTES.md
+TODO.md
+DRAFT*.md
+
+# =============================================================================
+# KEEP THESE FILES (NEGATION)
+# =============================================================================
+!.gitkeep
+!.htaccess
+!.gitignore
+
+# =============================================================================
+# PROJECT SPECIFIC
+# =============================================================================
+
+# Keep empty directories
+!logs/.gitkeep
+!storage/.gitkeep
+!storage/uploads/.gitkeep
+!storage/temp/.gitkeep
+!backups/.gitkeep
+
+# =============================================================================
+# END OF .GITIGNORE
+# ============================================================================= 

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Janstro IMS v2.1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/main-complete.css" rel="stylesheet">
+</head>
+<body>
+    <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content" id="main-content">
+        <!-- Stale Data Warning -->
+        <div class="stale-indicator" id="staleIndicator">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span>Data may be outdated. Last refresh: <span id="staleTime">--</span></span>
+            <button class="btn btn-sm btn-warning ms-auto" onclick="forceRefresh()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Now
+            </button>
+        </div>
+
+        <header class="dashboard-header">
+            <div>
+                <h1>
+                    <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                    Dashboard
+                </h1>
+                <p class="text-muted">Real-time inventory overview</p>
+            </div>
+            
+            <div class="quick-actions">
+                <button class="quick-action-btn primary" onclick="window.location.href='purchase-orders.html'" data-permission="purchase_orders:create">
+                    <i class="bi bi-cart-plus"></i> Create PO
+                </button>
+                <button class="quick-action-btn primary" onclick="window.location.href='sales-orders.html'" data-permission="sales_orders:create">
+                    <i class="bi bi-cart-check"></i> Create SO
+                </button>
+                <button class="quick-action-btn secondary" onclick="goToLowStock()">
+                    <i class="bi bi-exclamation-triangle"></i> Low Stock
+                </button>
+                <button class="quick-action-btn secondary" onclick="window.location.href='reports.html'">
+                    <i class="bi bi-graph-up"></i> Reports
+                </button>
+            </div>
+        </header>
+
+        <div class="live-indicators">
+            <div class="indicator-card">
+                <div class="indicator-icon pulse" style="background: #dbeafe; color: #1e40af;">
+                    <i class="bi bi-arrow-repeat"></i>
+                </div>
+                <div class="indicator-content">
+                    <h4>Live Updates</h4>
+                    <div class="value">Active</div>
+                    <small style="color: #6b7280;">Last: <span id="lastUpdate">Just now</span></small>
+                </div>
+            </div>
+
+            <div class="indicator-card">
+                <div class="indicator-icon" style="background: #dcfce7; color: #166534;">
+                    <i class="bi bi-heart-pulse"></i>
+                </div>
+                <div class="indicator-content">
+                    <h4>System Health</h4>
+                    <div class="value">
+                        <span class="health-badge healthy" id="systemHealth">
+                            <span class="health-dot"></span>
+                            Healthy
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="indicator-card">
+                <div class="indicator-icon" style="background: #e0e7ff; color: #3730a3;">
+                    <i class="bi bi-activity"></i>
+                </div>
+                <div class="indicator-content">
+                    <h4>Stock Movements Today</h4>
+                    <div class="value" id="todayActivity">0</div>
+                    <small style="color: #6b7280;">Transactions</small>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem; gap: 1rem;">
+            <div class="widget-controls">
+                <label style="font-size: 0.875rem; color: #6b7280;">Toggle Widgets:</label>
+                <button class="widget-toggle" onclick="toggleWidget('stats')" title="Toggle Stats">
+                    <i class="bi bi-bar-chart"></i>
+                </button>
+                <button class="widget-toggle" onclick="toggleWidget('metrics')" title="Toggle Metrics">
+                    <i class="bi bi-speedometer"></i>
+                </button>
+                <button class="widget-toggle" onclick="toggleWidget('charts')" title="Toggle Charts">
+                    <i class="bi bi-graph-up"></i>
+                </button>
+                <button class="widget-toggle" onclick="toggleWidget('tables')" title="Toggle Tables">
+                    <i class="bi bi-table"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="widget-section" id="widget-stats">
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card stat-primary" onclick="goToInventory()" role="button" tabindex="0">
+                        <i class="bi bi-box-seam stat-icon"></i>
+                        <div class="stat-value loading-pulse" id="totalItems">-</div>
+                        <div class="stat-label">Total Items</div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card stat-warning" onclick="goToLowStock()" role="button" tabindex="0">
+                        <i class="bi bi-exclamation-triangle stat-icon"></i>
+                        <div class="stat-value loading-pulse" id="lowStockItems">-</div>
+                        <div class="stat-label">Low Stock Alerts</div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card stat-danger" onclick="goToPendingPOs()" role="button" tabindex="0">
+                        <i class="bi bi-cart-plus stat-icon"></i>
+                        <div class="stat-value loading-pulse" id="pendingPOs">-</div>
+                        <div class="stat-label">Pending POs</div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="stat-card stat-success" onclick="goToInventory()" role="button" tabindex="0">
+                        <i class="bi bi-cash-stack stat-icon"></i>
+                        <div class="stat-value loading-pulse" id="inventoryValue">-</div>
+                        <div class="stat-label">Inventory Value</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-section" id="widget-metrics">
+            <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">Performance Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Inventory Turnover</div>
+                    <div class="metric-value" id="turnoverRate">0x</div>
+                    <div class="metric-trend trend-up" id="turnoverTrend">
+                        <i class="bi bi-dash"></i>
+                        <span>No data yet</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-title">Order Fulfillment Rate</div>
+                    <div class="metric-value" id="fulfillmentRate">0%</div>
+                    <div class="metric-trend trend-up" id="fulfillmentTrend">
+                        <i class="bi bi-dash"></i>
+                        <span>No orders yet</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-title">Stock Accuracy</div>
+                    <div class="metric-value" id="stockAccuracy">100%</div>
+                    <div class="metric-trend trend-up">
+                        <i class="bi bi-check-circle"></i>
+                        <span>System synchronized</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-title">Average Order Value</div>
+                    <div class="metric-value" id="avgOrderValue">PHP 0</div>
+                    <div class="metric-trend trend-up" id="avgOrderTrend">
+                        <i class="bi bi-dash"></i>
+                        <span>No orders yet</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-section" id="widget-charts">
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-lg-8">
+                    <section class="card">
+                        <div class="card-header">
+                            <h2 class="h5 mb-0">
+                                <i class="bi bi-graph-up"></i>
+                                Stock Movement Trend (Last 7 Days)
+                            </h2>
+                            <button class="view-all-btn btn btn-sm btn-primary" onclick="window.location.href='stock-movements.html'">
+                                <i class="bi bi-eye"></i> View All
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="movementChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="col-12 col-lg-4">
+                    <section class="card">
+                        <div class="card-header">
+                            <h2 class="h5 mb-0">
+                                <i class="bi bi-pie-chart"></i>
+                                Inventory Status
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-section" id="widget-tables">
+            <div class="row g-4">
+                <div class="col-12 col-lg-6">
+                    <section class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h2 class="h5 mb-0">
+                                <i class="bi bi-exclamation-circle"></i>
+                                Low Stock Items
+                            </h2>
+                            <button class="btn btn-sm btn-warning" onclick="goToLowStock()">
+                                <i class="bi bi-funnel"></i> View All
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Current</th>
+                                            <th>Reorder</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lowStockTable">
+                                        <tr>
+                                            <td colspan="3" class="text-center py-3">
+                                                <div class="spinner-border spinner-border-sm"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <section class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h2 class="h5 mb-0">
+                                <i class="bi bi-clock-history"></i>
+                                Recent Stock Movements
+                            </h2>
+                            <button class="btn btn-sm btn-primary" onclick="window.location.href='stock-movements.html'">
+                                <i class="bi bi-eye"></i> View All
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Type</th>
+                                            <th>Qty</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recentTransactions">
+                                        <tr>
+                                            <td colspan="4" class="text-center py-3">
+                                                <div class="spinner-border spinner-border-sm"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ FIXED: Auto-refresh indicator with proper positioning -->
+        <div id="refreshIndicator" style="
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 8px 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            align-items: center;
+            gap: 8px;
+            z-index: 1030;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        ">
+            <span class="refresh-dot" style="
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #48bb78;
+                animation: pulse 2s infinite;
+            "></span>
+            <span id="refreshText">Auto-refresh in 60s</span>
+            <button class="btn btn-sm btn-light ms-2" onclick="toggleAutoRefresh()" style="
+                padding: 2px 8px;
+                border-radius: 4px;
+                border: 1px solid var(--border-color);
+                background: transparent;
+                color: var(--text-primary);
+            ">
+                <i class="bi bi-pause-fill" id="refreshToggleIcon"></i>
+            </button>
+        </div>
+    </main>
+
+    <style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="assets/js/error-handler.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api-client.js"></script>
+    <script src="assets/js/rbac.js"></script>
+    <script src="assets/js/accessibility-fix.js"></script>
+    <script src="assets/js/app-core.js"></script>
+    
+    <script>
+    function goToInventory() {
+        window.location.href = 'materials.html';
+    }
+
+    function goToMaterials() {
+        window.location.href = 'materials.html';
+    }
+    
+    function goToLowStock() {
+        window.location.href = 'materials.html?filter=lowstock';
+    }
+
+    function goToPendingPOs() {
+        window.location.href = 'purchase-orders.html?status=pending';
+    }
+
+    function forceRefresh() {
+        loadAll();
+    }
+
+    let widgetPreferences = JSON.parse(localStorage.getItem('dashboardWidgets') || '{"stats":true,"metrics":true,"charts":true,"tables":true}');
+
+    function toggleWidget(widget) {
+        widgetPreferences[widget] = !widgetPreferences[widget];
+        localStorage.setItem('dashboardWidgets', JSON.stringify(widgetPreferences));
+        applyWidgetPreferences();
+    }
+
+    function applyWidgetPreferences() {
+        Object.keys(widgetPreferences).forEach(widget => {
+            const el = document.getElementById(`widget-${widget}`);
+            if (el) {
+                el.classList.toggle('hidden', !widgetPreferences[widget]);
+            }
+        });
+    }
+
+    let autoRefreshEnabled = true;
+    let refreshCountdown = 60;
+    let lastRefreshTime = null;
+
+    function toggleAutoRefresh() {
+        autoRefreshEnabled = !autoRefreshEnabled;
+        const icon = document.getElementById('refreshToggleIcon');
+        icon.className = autoRefreshEnabled ? 'bi bi-pause-fill' : 'bi bi-play-fill';
+        if (autoRefreshEnabled) {
+            refreshCountdown = 60;
+        }
+    }
+
+    function updateRefreshIndicator() {
+        const indicator = document.getElementById('refreshIndicator');
+        const text = document.getElementById('refreshText');
+        
+        if (autoRefreshEnabled) {
+            indicator.style.display = 'flex';
+            text.textContent = `Auto-refresh in ${refreshCountdown}s`;
+        } else {
+            indicator.style.display = 'flex';
+            text.textContent = 'Auto-refresh paused';
+        }
+    }
+
+    function checkStaleData() {
+        if (!lastRefreshTime) return;
+        
+        const staleThreshold = 5 * 60 * 1000;
+        const now = Date.now();
+        const elapsed = now - lastRefreshTime;
+        
+        const staleIndicator = document.getElementById('staleIndicator');
+        if (elapsed > staleThreshold) {
+            staleIndicator.classList.add('active');
+            const mins = Math.floor(elapsed / 60000);
+            document.getElementById('staleTime').textContent = `${mins} min ago`;
+        } else {
+            staleIndicator.classList.remove('active');
+        }
+    }
+
+    (async function() {
+        let movementChart = null;
+        let statusChart = null;
+
+        applyWidgetPreferences();
+
+        async function loadStats() {
+            try {
+                const response = await API.request('analytics/dashboard');
+                const data = response?.data || response || {};
+
+                document.getElementById('totalItems').textContent = data.inventory?.total_items || 0;
+                document.getElementById('lowStockItems').textContent = data.inventory?.low_stock_count || 0;
+                document.getElementById('pendingPOs').textContent = data.purchase_orders?.pending?.count || 0;
+                document.getElementById('inventoryValue').textContent = 'PHP ' + parseFloat(data.inventory?.total_value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+
+                const turnover = data.metrics?.inventory_turnover || 0;
+                document.getElementById('turnoverRate').textContent = turnover.toFixed(1) + 'x';
+                
+                const turnoverTrend = document.getElementById('turnoverTrend');
+                if (turnover > 0) {
+                    turnoverTrend.innerHTML = '<i class="bi bi-check-circle"></i><span>Active inventory</span>';
+                    turnoverTrend.className = 'metric-trend trend-up';
+                } else {
+                    turnoverTrend.innerHTML = '<i class="bi bi-dash"></i><span>No sales data yet</span>';
+                    turnoverTrend.className = 'metric-trend';
+                }
+
+                const totalOrders = data.sales_performance?.total_orders || 0;
+                const completedOrders = data.sales_performance?.completed_orders || 0;
+                const fulfillmentRate = totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) : 0;
+                
+                document.getElementById('fulfillmentRate').textContent = fulfillmentRate + '%';
+                
+                const fulfillmentTrend = document.getElementById('fulfillmentTrend');
+                if (totalOrders > 0) {
+                    const rateNum = parseFloat(fulfillmentRate);
+                    if (rateNum >= 95) {
+                        fulfillmentTrend.innerHTML = '<i class="bi bi-arrow-up"></i><span>Excellent</span>';
+                        fulfillmentTrend.className = 'metric-trend trend-up';
+                    } else if (rateNum >= 80) {
+                        fulfillmentTrend.innerHTML = '<i class="bi bi-check-circle"></i><span>Good</span>';
+                        fulfillmentTrend.className = 'metric-trend trend-up';
+                    } else {
+                        fulfillmentTrend.innerHTML = '<i class="bi bi-arrow-down"></i><span>Needs improvement</span>';
+                        fulfillmentTrend.className = 'metric-trend trend-down';
+                    }
+                } else {
+                    fulfillmentTrend.innerHTML = '<i class="bi bi-dash"></i><span>No orders yet</span>';
+                    fulfillmentTrend.className = 'metric-trend';
+                }
+
+                const stockAccuracy = data.metrics?.stock_accuracy || 100;
+                document.getElementById('stockAccuracy').textContent = stockAccuracy + '%';
+
+                const avgValue = data.sales_performance?.avg_order_value || 0;
+                document.getElementById('avgOrderValue').textContent = 'PHP ' + avgValue.toLocaleString('en-PH', { minimumFractionDigits: 0 });
+                
+                const avgOrderTrend = document.getElementById('avgOrderTrend');
+                if (avgValue > 0) {
+                    avgOrderTrend.innerHTML = '<i class="bi bi-check-circle"></i><span>Orders active</span>';
+                    avgOrderTrend.className = 'metric-trend trend-up';
+                } else {
+                    avgOrderTrend.innerHTML = '<i class="bi bi-dash"></i><span>No orders yet</span>';
+                    avgOrderTrend.className = 'metric-trend';
+                }
+
+                const healthEl = document.getElementById('systemHealth');
+                const totalItems = data.inventory?.total_items || 0;
+                const lowStock = data.inventory?.low_stock_count || 0;
+                const outOfStock = data.stock_status?.out_of_stock || 0;
+                
+                let healthStatus = 'healthy';
+                let healthText = 'Healthy';
+                
+                if (totalItems === 0) {
+                    healthStatus = 'healthy';
+                    healthText = 'Ready';
+                } else {
+                    const criticalRatio = outOfStock / totalItems;
+                    const lowStockRatio = lowStock / totalItems;
+                    
+                    if (criticalRatio > 0.1) {
+                        healthStatus = 'critical';
+                        healthText = 'Critical';
+                    } else if (lowStockRatio > 0.2) {
+                        healthStatus = 'warning';
+                        healthText = 'Warning';
+                    } else {
+                        healthStatus = 'healthy';
+                        healthText = 'Healthy';
+                    }
+                }
+                
+                healthEl.className = `health-badge ${healthStatus}`;
+                healthEl.innerHTML = `<span class="health-dot"></span> ${healthText}`;
+
+                document.querySelectorAll('.loading-pulse').forEach(el => el.classList.remove('loading-pulse'));
+                lastRefreshTime = Date.now();
+            } catch (error) {
+                console.error('❌ Load stats error:', error);
+            }
+        }
+
+        async function loadMovementChart() {
+            try {
+                const response = await API.getStockMovements({ limit: 50 });
+                const movements = response?.data || response || [];
+                const chartData = processMovementData(movements);
+                const ctx = document.getElementById('movementChart');
+                if (!ctx) return;
+                if (movementChart) movementChart.destroy();
+
+                if (!chartData) {
+                    ctx.parentElement.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1"></i><p class="mt-2">No stock movements yet</p></div>`;
+                    return;
+                }
+
+                movementChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [
+                            { label: 'Stock IN', data: chartData.stockIn, borderColor: '#48bb78', backgroundColor: 'rgba(72, 187, 120, 0.2)', tension: 0.4, fill: true },
+                            { label: 'Stock OUT', data: chartData.stockOut, borderColor: '#f56565', backgroundColor: 'rgba(245, 101, 101, 0.2)', tension: 0.4, fill: true }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+                });
+            } catch (error) {
+                console.error('❌ Chart error:', error);
+            }
+        }
+
+        function processMovementData(transactions) {
+            if (!transactions || transactions.length === 0) return null;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const last7Days = []; const last7DaysLabels = [];
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today); date.setDate(today.getDate() - i);
+                const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                last7Days.push(dateStr);
+                last7DaysLabels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            }
+            const stockIn = new Array(7).fill(0); const stockOut = new Array(7).fill(0);
+            transactions.forEach(m => {
+                let rawDate = m.movement_date || m.transaction_date || '';
+                if (!rawDate) return;
+                let dateStr = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.split(' ')[0];
+                const index = last7Days.indexOf(dateStr);
+                if (index !== -1) {
+                    const qty = parseInt(m.quantity || m.transaction_quantity) || 0;
+                    if (m.transaction_type === 'IN') stockIn[index] += qty;
+                    else if (m.transaction_type === 'OUT') stockOut[index] += qty;
+                }
+            });
+            if (stockIn.reduce((a, b) => a + b, 0) === 0 && stockOut.reduce((a, b) => a + b, 0) === 0) return null;
+            return { labels: last7DaysLabels, stockIn, stockOut };
+        }
+
+        async function loadStatusChart() {
+            try {
+                const response = await API.getInventory();
+                const items = response?.data || response || [];
+                const ctx = document.getElementById('statusChart');
+                if (!ctx) return;
+                if (statusChart) statusChart.destroy();
+
+                if (!items || items.length === 0) {
+                    ctx.parentElement.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1"></i><p class="mt-2">No inventory data</p></div>`;
+                    return;
+                }
+
+                let sufficient = 0, low = 0, critical = 0;
+                items.forEach(item => {
+                    if (item.quantity === 0) critical++;
+                    else if (item.quantity <= item.reorder_level) low++;
+                    else sufficient++;
+                });
+
+                statusChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: ['Sufficient', 'Low Stock', 'Out of Stock'], datasets: [{ data: [sufficient, low, critical], backgroundColor: ['#48bb78', '#ed8936', '#f56565'] }] },
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+                });
+            } catch (error) {
+                console.error('❌ Status chart error:', error);
+            }
+        }
+
+        async function loadLowStock() {
+            try {
+                const tbody = document.getElementById('lowStockTable');
+                const response = await API.getInventory();
+                const lowStock = (response.data || response || []).filter(item => item.quantity <= item.reorder_level).slice(0, 5);
+                if (lowStock.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3 text-success">✅ All items sufficiently stocked</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = lowStock.map(item => `<tr><td><strong>${item.item_name}</strong></td><td class="${item.quantity === 0 ? 'text-danger' : 'text-warning'} fw-bold">${item.quantity}</td><td>${item.reorder_level}</td></tr>`).join('');
+            } catch (error) {
+                console.error('❌ Low stock error:', error);
+            }
+        }
+
+        async function loadRecentTransactions() {
+            try {
+                const tbody = document.getElementById('recentTransactions');
+                const response = await API.getStockMovements({ limit: 5 });
+                const transactions = response?.data || response || [];
+                if (transactions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No transactions yet</td></tr>';
+                    document.getElementById('todayActivity').textContent = '0';
+                    return;
+                }
+                tbody.innerHTML = transactions.map(t => {
+                    const typeClass = t.transaction_type === 'IN' ? 'text-success' : 'text-danger';
+                    const typeIcon = t.transaction_type === 'IN' ? 'arrow-down' : 'arrow-up';
+                    return `<tr><td><small>${t.item_name || 'N/A'}</small></td><td class="${typeClass}"><i class="bi bi-${typeIcon}"></i> ${t.transaction_type}</td><td><strong>${t.transaction_quantity || t.quantity}</strong></td><td><small>${Utils.formatDate(t.movement_date || t.transaction_date)}</small></td></tr>`;
+                }).join('');
+                const today = new Date().toISOString().split('T')[0];
+                const todayTransactions = transactions.filter(t => (t.movement_date || t.transaction_date || '').split('T')[0].split(' ')[0] === today);
+                document.getElementById('todayActivity').textContent = todayTransactions.length;
+            } catch (error) {
+                console.error('❌ Transactions error:', error);
+            }
+        }
+
+        function updateLastRefresh() {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+
+        async function loadAll() {
+            document.getElementById('main-content').classList.add('refreshing');
+            await Promise.all([loadStats(), loadMovementChart(), loadStatusChart(), loadLowStock(), loadRecentTransactions()]);
+            updateLastRefresh();
+            setTimeout(() => document.getElementById('main-content').classList.remove('refreshing'), 1000);
+        }
+
+        await loadAll();
+        setInterval(() => {
+            if (autoRefreshEnabled) {
+                refreshCountdown--;
+                if (refreshCountdown <= 0) {
+                    refreshCountdown = 60;
+                    loadAll();
+                }
+            }
+            updateRefreshIndicator();
+            checkStaleData();
+        }, 1000);
+    })();
+    </script>
+
+    <script src="assets/js/app-init.js"></script>
+</body>
+</html>
